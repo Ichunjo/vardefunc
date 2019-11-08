@@ -27,7 +27,7 @@ def fade_filter(source: vs.VideoNode, clipa: vs.VideoNode, clipb: vs.VideoNode, 
     return merged
 
 
-#It's basically adaptive_denoise with show_mask=True
+#It's basically adaptive_grain of kagefunc with show_mask=True
 def adaptive_mask(source: vs.VideoNode, luma_scaling=12) -> vs.VideoNode:
     import numpy as np
     if get_depth(source) != 8:
