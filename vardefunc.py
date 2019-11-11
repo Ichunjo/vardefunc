@@ -59,3 +59,8 @@ def adaptive_mask(source: vs.VideoNode, luma_scaling=12) -> vs.VideoNode:
     if get_depth(source) != 8:
         mask = fvf.Depth(mask, bits=get_depth(source))
     return mask
+
+def KNLMCL(source: vs.VideoNode, h_Y=1.2, h_UV=0.5, device_id=0)-> vs.VideoNode:
+    denoise = core.knlm.KNLMeansCL(source, a=2, h=h_Y, d=3, device_type='gpu', device_id=device_id, channels='Y')
+    denoise = core.knlm.KNLMeansCL(denoise, a=2, h=h_UV, d=3, device_type='gpu', device_id=device_id, channels='UV')
+    return denoise
