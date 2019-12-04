@@ -8,7 +8,8 @@ from vsutil import *
 
 core = vs.core
 
-def fade_filter(source: vs.VideoNode, clipa: vs.VideoNode, clipb: vs.VideoNode, start=None, end=None, length=None)-> vs.VideoNode:
+def fade_filter(source: vs.VideoNode, clipa: vs.VideoNode, clipb: vs.VideoNode, 
+                start: int = None, end: int = None, length: int = None)-> vs.VideoNode:
 
     if not length:
         length = end - start + 1
@@ -30,7 +31,7 @@ def fade_filter(source: vs.VideoNode, clipa: vs.VideoNode, clipb: vs.VideoNode, 
 
 
 #It's basically adaptive_grain of kagefunc with show_mask=True
-def adaptive_mask(source: vs.VideoNode, luma_scaling=12) -> vs.VideoNode:
+def adaptive_mask(source: vs.VideoNode, luma_scaling: int = 12)-> vs.VideoNode:
     import numpy as np
     if get_depth(source) != 8:
         clip = fvf.Depth(source, bits=8)
@@ -62,12 +63,14 @@ def adaptive_mask(source: vs.VideoNode, luma_scaling=12) -> vs.VideoNode:
         mask = fvf.Depth(mask, bits=get_depth(source))
     return mask
 
-def KNLMCL(source: vs.VideoNode, h_Y=1.2, h_UV=0.5, device_id=0)-> vs.VideoNode:
+def KNLMCL(source: vs.VideoNode, h_Y: float = 1.2, h_UV: float = 0.5, device_id: int = 0)-> vs.VideoNode:
     denoise = core.knlm.KNLMeansCL(source, a=2, h=h_Y, d=3, device_type='gpu', device_id=device_id, channels='Y')
     denoise = core.knlm.KNLMeansCL(denoise, a=2, h=h_UV, d=3, device_type='gpu', device_id=device_id, channels='UV')
     return denoise
 
-def DiffRescaleMask(source, h=720, kernel='bicubic', b=1/3, c=1/3, mthr=55, mode='rectangle', sw=2, sh=2):
+def DiffRescaleMask(source: vs.VideoNode, h: int = 720, kernel: str = 'bicubic', 
+                    b:float = 1/3, c:float = 1/3, mthr: int = 55, 
+                    mode: str = 'rectangle', sw: int = 2, sh: int = 2)-> vs.VideoNode:
 
     only_luma = source.format.num_planes == 1
 
@@ -93,3 +96,38 @@ def DiffRescaleMask(source, h=720, kernel='bicubic', b=1/3, c=1/3, mthr=55, mode
     return mask
 
 DRM = DiffRescaleMask
+
+def F3kdbSep(src_l: vs.VideoNode, src_c: vs.VideoNode, 
+            range: int = None, y: int = None, cb: int = None, cr: int = None,
+            grainy: int = None, grainc: int = None,
+            mask: vs.VideoNode = None)-> List[vs.VideoNode]:
+
+    only_luma = src_l.format.num_planes == 1
+
+    if not only_luma:
+        src_l = get_y(src_l)
+
+    if get_depth(src_l) != 16:
+        src_l = fvf.Depth(src_l, 16)
+    if get_depth(src_c) != 16:
+        src_c = fvf.Depth(src_c, 16)
+
+    db_y = core.f3kdb.Deband(src_l, range, y, grainy=grainy, output_depth=16, preset='luma')
+    db_c = core.f3kdb.Deband(src_c, range, cb=cb, cr=cr, grainc=grainc, output_depth=16, preset='chroma')
+
+    if mask is not None:
+        if get_depth(mask) != 16:
+            mask = fvf.Depth(mask, 16)
+        if mask.height != src_l.height:
+            mask_y = core.std.Bicubic(mask, src_l.width, src_l.height)
+        else:
+            mask_y = mask
+        db_y = core.std.MaskedMerge(db_y, src_l, mask_y, 0)
+
+        if mask.height != src_c.height:
+            mask_c = core.std.Bicubic(mask, src_c.width, src_c.height)
+        else:
+            mask_c = mask
+        db_c = core.std.MaskedMerge(db_c, src_c, mask_c, [1, 2])
+
+    return db_y, db_c
