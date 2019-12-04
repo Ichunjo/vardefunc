@@ -1,8 +1,10 @@
 import vapoursynth as vs
 import fvsfunc as fvf
 import kagefunc as kgf
+import havsfunc as hvf
+import descale as dsc
 from functools import partial
-from vsutil import get_depth, get_y
+from vsutil import *
 
 core = vs.core
 
@@ -64,3 +66,30 @@ def KNLMCL(source: vs.VideoNode, h_Y=1.2, h_UV=0.5, device_id=0)-> vs.VideoNode:
     denoise = core.knlm.KNLMeansCL(source, a=2, h=h_Y, d=3, device_type='gpu', device_id=device_id, channels='Y')
     denoise = core.knlm.KNLMeansCL(denoise, a=2, h=h_UV, d=3, device_type='gpu', device_id=device_id, channels='UV')
     return denoise
+
+def DiffRescaleMask(source, h=720, kernel='bicubic', b=1/3, c=1/3, mthr=55, mode='rectangle', sw=2, sh=2):
+
+    only_luma = source.format.num_planes == 1
+
+    if get_depth(source) != 8:
+        clip = fvf.Depth(source, 8)
+    else:
+        clip = source
+
+    if not only_luma:
+        clip = get_y(clip)
+
+    w = get_w(h)
+    desc = fvf.Resize(clip, w, h, kernel=kernel, a1=b, a2=c, invks=True)
+    upsc = fvf.Depth(fvf.Resize(desc, w, h, kernel=kernel, a1=b, a2=c), 8)
+    
+    diff = core.std.MakeDiff(clip, upsc)
+    mask = diff.rgvs.RemoveGrain(2).rgvs.RemoveGrain(2).hist.Luma()
+    mask = mask.std.Expr('x {thr} < 0 x ?'.format(thr=mthr))
+    mask = mask.std.Prewitt().std.Maximum().std.Maximum().std.Deflate()
+    mask = hvf.mt_expand_multi(mask, mode=mode, sw=sw, sh=sh)
+    if get_depth(source) != 8:
+        mask = fvf.Depth(mask, bits=get_depth(source))
+    return mask
+
+DRM = DiffRescaleMask
