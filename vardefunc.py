@@ -98,7 +98,7 @@ def DiffRescaleMask(source: vs.VideoNode, h: int = 720, kernel: str = 'bicubic',
 DRM = DiffRescaleMask
 
 def F3kdbSep(src_l: vs.VideoNode, src_c: vs.VideoNode, 
-            range: int = None, y: int = None, cb: int = None, cr: int = None,
+            range: int = None, y: int = None, c: int = None,
             grainy: int = None, grainc: int = None,
             mask: vs.VideoNode = None)-> List[vs.VideoNode]:
 
@@ -113,19 +113,19 @@ def F3kdbSep(src_l: vs.VideoNode, src_c: vs.VideoNode,
         src_c = fvf.Depth(src_c, 16)
 
     db_y = core.f3kdb.Deband(src_l, range, y, grainy=grainy, output_depth=16, preset='luma')
-    db_c = core.f3kdb.Deband(src_c, range, cb=cb, cr=cr, grainc=grainc, output_depth=16, preset='chroma')
+    db_c = core.f3kdb.Deband(src_c, range, cb=c, cr=c, grainc=grainc, output_depth=16, preset='chroma')
 
     if mask is not None:
         if get_depth(mask) != 16:
             mask = fvf.Depth(mask, 16)
         if mask.height != src_l.height:
-            mask_y = core.std.Bicubic(mask, src_l.width, src_l.height)
+            mask_y = core.resize.Bicubic(mask, src_l.width, src_l.height)
         else:
             mask_y = mask
         db_y = core.std.MaskedMerge(db_y, src_l, mask_y, 0)
 
         if mask.height != src_c.height:
-            mask_c = core.std.Bicubic(mask, src_c.width, src_c.height)
+            mask_c = core.resize.Bicubic(mask, src_c.width, src_c.height)
         else:
             mask_c = mask
         db_c = core.std.MaskedMerge(db_c, src_c, mask_c, [1, 2])
