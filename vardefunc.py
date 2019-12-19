@@ -2,7 +2,6 @@ import vapoursynth as vs
 import fvsfunc as fvf
 import kagefunc as kgf
 import havsfunc as hvf
-import descale as dsc
 from functools import partial
 from vsutil import *
 
@@ -141,3 +140,21 @@ def F3kdbSep(src_l: vs.VideoNode, src_c: vs.VideoNode,
         db_c = core.std.MaskedMerge(db_c, src_c, mask_c, [1, 2])
 
     return db_y, db_c
+
+#Zastin’s nnedi3 chroma upscaler
+def to444(clip, w=None, h=None, join=True):
+    
+    uv = [nnedi3x2(c) for c in kgf.split(clip)[1:]]
+    
+    if w in (None, clip.width) and h in (None, clip.height):
+        uv = [core.fmtc.resample(c, sy=0.5, flt=0) for c in uv]
+    else:
+        uv = [core.resize.Spline36(c, w, h, src_top=0.5) for c in uv]
+    
+    return core.std.ShufflePlanes([clip] + uv, [0]*3, vs.YUV) if join else uv
+
+def nnedi3x2(clip):
+    if hasattr(core, 'znedi3'):
+        return clip.std.Transpose().znedi3.nnedi3(1, 1, 0, 0, 4, 2).std.Transpose().znedi3.nnedi3(0, 1, 0, 0, 4, 2)
+    else:
+        return clip.std.Transpose().nnedi3.nnedi3(1, 1, 0, 0, 3, 1).std.Transpose().nnedi3.nnedi3(0, 1, 0, 0, 3, 1)
