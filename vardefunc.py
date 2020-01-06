@@ -176,3 +176,8 @@ def generate_keyframes(clip: vs.VideoNode, out_path=None) -> None:
     text_file = open(out_path, "w")
     text_file.write(out_txt)
     text_file.close()
+    
+def RegionMask(clip: vs.VideoNode, left: int = None, right: int = None, top: int = None, bottom: int = None)-> vs.VideoNode:
+    crop = core.std.Crop(clip, left, right, top, bottom)
+    borders = core.std.AddBorders(crop, left, right, top, bottom)
+    return borders
