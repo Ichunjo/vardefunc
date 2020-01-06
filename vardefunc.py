@@ -7,6 +7,7 @@ from vsutil import *
 
 core = vs.core
 
+# Broken. Don't use it.
 def fade_filter(source: vs.VideoNode, clipa: vs.VideoNode, clipb: vs.VideoNode, 
                 start: int = None, end: int = None, length: int = None)-> vs.VideoNode:
 
@@ -29,7 +30,7 @@ def fade_filter(source: vs.VideoNode, clipa: vs.VideoNode, clipb: vs.VideoNode,
     return merged
 
 
-#It's basically adaptive_grain of kagefunc with show_mask=True
+# Basically adaptive_grain of kagefunc with show_mask=True
 def adaptive_mask(source: vs.VideoNode, luma_scaling: int = 12)-> vs.VideoNode:
     import numpy as np
     if get_depth(source) != 8:
@@ -77,6 +78,7 @@ def KNLMCL(source: vs.VideoNode, h_Y: float = 1.2, h_UV: float = 0.5, device_id:
     
     return denoise
 
+# Modified version of atomchtools
 def DiffRescaleMask(source: vs.VideoNode, h: int = 720, kernel: str = 'bicubic', 
                     b:float = 1/3, c:float = 1/3, mthr: int = 55, 
                     mode: str = 'rectangle', sw: int = 2, sh: int = 2)-> vs.VideoNode:
