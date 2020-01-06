@@ -158,3 +158,19 @@ def nnedi3x2(clip):
         return clip.std.Transpose().znedi3.nnedi3(1, 1, 0, 0, 4, 2).std.Transpose().znedi3.nnedi3(0, 1, 0, 0, 4, 2)
     else:
         return clip.std.Transpose().nnedi3.nnedi3(1, 1, 0, 0, 3, 1).std.Transpose().nnedi3.nnedi3(0, 1, 0, 0, 3, 1)
+
+# Modified version of kagefunc without the header text
+def generate_keyframes(clip: vs.VideoNode, out_path=None) -> None:
+    import os
+    clip = core.resize.Bilinear(clip, 640, 360)
+    clip = core.wwxd.WWXD(clip)
+    out_txt = ""
+    for i in range(clip.num_frames):
+        if clip.get_frame(i).props.Scenechange == 1:
+            out_txt += "%d I -1\n" % i
+        if i % 1000 == 0:
+            print(i)
+    out_path = fallback(out_path, os.path.expanduser("~") + "/Desktop/keyframes.log")
+    text_file = open(out_path, "w")
+    text_file.write(out_txt)
+    text_file.close()
