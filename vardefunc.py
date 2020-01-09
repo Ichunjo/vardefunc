@@ -95,13 +95,14 @@ def DiffRescaleMask(source: vs.VideoNode, h: int = 720, kernel: str = 'bicubic',
 
     w = get_w(h)
     desc = fvf.Resize(clip, w, h, kernel=kernel, a1=b, a2=c, invks=True)
-    upsc = fvf.Depth(fvf.Resize(desc, w, h, kernel=kernel, a1=b, a2=c), 8)
+    upsc = fvf.Depth(fvf.Resize(desc, source.width, source.height, kernel=kernel, a1=b, a2=c), 8)
     
     diff = core.std.MakeDiff(clip, upsc)
     mask = diff.rgvs.RemoveGrain(2).rgvs.RemoveGrain(2).hist.Luma()
     mask = mask.std.Expr('x {thr} < 0 x ?'.format(thr=mthr))
     mask = mask.std.Prewitt().std.Maximum().std.Maximum().std.Deflate()
     mask = hvf.mt_expand_multi(mask, mode=mode, sw=sw, sh=sh)
+
     if get_depth(source) != 8:
         mask = fvf.Depth(mask, bits=get_depth(source))
     return mask
