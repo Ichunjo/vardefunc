@@ -109,6 +109,38 @@ def DiffRescaleMask(source: vs.VideoNode, h: int = 720, kernel: str = 'bicubic',
 
 DRM = DiffRescaleMask
 
+# Modified version of atomchtools
+def DiffCreditlessMask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.VideoNode, 
+                        start: int = None, end: int = None, 
+                        sw: int = 2, sh: int = 2)-> vs.VideoNode:
+
+    if get_depth(titles) != 8:
+        titles = fvf.Depth(titles, 8)
+    if get_depth(nc) != 8:
+        nc = fvf.Depth(nc, 8)
+
+    diff = core.std.MakeDiff(titles, nc, [0])
+    diff = get_y(diff)
+    diff = diff.std.Prewitt().std.Expr('x 25 < 0 x ?').std.Expr('x 2 *')
+    diff = core.rgvs.RemoveGrain(diff, 4).std.Expr('x 30 > 255 x ?')
+
+    credit_m = hvf.mt_expand_multi(diff, sw=sw, sh=sh)
+
+    blank = core.std.BlankClip(source, format=vs.GRAY8)
+
+    if start == 0:
+        credit_m = credit_m+blank[end+1:]
+    elif end == source.num_frames-1:
+        credit_m = blank[:start]+credit_m
+    else:
+        credit_m = blank[:start]+credit_m+blank[end+1:]
+
+    if get_depth(source) != 8:
+        credit_m = fvf.Depth(credit_m, bits=get_depth(source))
+    return credit_m
+
+DCM = DiffCreditlessMask
+
 def F3kdbSep(src_l: vs.VideoNode, src_c: vs.VideoNode, 
             range: int = None, y: int = None, c: int = None,
             grainy: int = None, grainc: int = None,
