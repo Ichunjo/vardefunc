@@ -218,3 +218,11 @@ def RegionMask(clip: vs.VideoNode, left: int = None, right: int = None, top: int
     crop = core.std.Crop(clip, left, right, top, bottom)
     borders = core.std.AddBorders(crop, left, right, top, bottom)
     return borders
+
+def GetChromaShift(src_h: int = None, dst_h: int = None, aspect_ratio: float = 16/9) -> float:
+    src_w = get_w(src_h, aspect_ratio)
+    dst_w = get_w(dst_h, aspect_ratio)
+    
+    ch_shift = 0.25 - 0.25 * (src_w / dst_w)
+    ch_shift = float(round(ch_shift, 5))
+    return ch_shift
