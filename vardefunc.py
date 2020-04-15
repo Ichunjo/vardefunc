@@ -63,7 +63,12 @@ def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bi
     only_luma = source.format.num_planes == 1
 
     if not only_luma:
-        clip = kgf.get_y(clip)
+        clip = kgf.get_y(source)
+    else:
+        clip = source
+
+    if kgf.get_depth(source) != 8:
+        clip = fvf.Depth(clip, 8)
 
     width = kgf.get_w(height)
     desc = fvf.Resize(clip, width, height, kernel=kernel, a1=b, a2=c, invks=True)
