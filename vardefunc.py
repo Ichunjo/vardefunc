@@ -10,7 +10,7 @@ import vapoursynth as vs
 
 core = vs.core
 
-def fade_filter(source: vs.VideoNode, clipa: vs.VideoNode, clipb: vs.VideoNode,
+def fade_filter(source: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode,
                 start_f: int = None, end_f: int = None)-> vs.VideoNode:
     """
     Apply a filter with a fade
