@@ -9,29 +9,19 @@ import vapoursynth as vs
 core = vs.core
 
 def fade_filter(source: vs.VideoNode, clipa: vs.VideoNode, clipb: vs.VideoNode,
-                start: int = None, end: int = None, length: int = None)-> vs.VideoNode:
+                start_f: int = None, end_f: int = None)-> vs.VideoNode:
     """
     Apply a filter with a fade
     """
+    length = end_f - start_f
+    
+    def _fade(n, clip_a, clip_b, length):
+        return core.std.Merge(clip_a, clip_b, n / length)
 
-    if not length:
-        length = end - start + 1
-
-    length = length + 3
-
-    black = core.std.BlankClip(source, format=vs.GRAY8, length=length, color=0)
-    white = core.std.BlankClip(source, format=vs.GRAY8, length=length, color=255)
-
-    fadmask = kgf.crossfade(black, white, length-1)
-
-    fadmask = fadmask[2:-1]
-
-    if kgf.get_depth(source) != 8:
-        fadmask = fvf.Depth(fadmask, bits=kgf.get_depth(source))
-
-    merged = source[:start] + core.std.MaskedMerge(clipa[start:end+1],
-                                                   clipb[start:end+1], fadmask) + source[end+1:]
-    return merged
+    clip_fad = core.std.FrameEval(source[start_f:end_f+1], 
+                                  partial(_fade, clip_a=clip_a[start_f:end_f+1], 
+                                          clip_b=clip_b[start_f:end_f+1], length=length))
+    return source[:start_f] + clip_fad + source[end_f+1:]
 
 def knlmcl(source: vs.VideoNode, h_y: float = 1.2, h_uv: float = 0.5,
            device_id: int = 0, depth: int = None)-> vs.VideoNode:
