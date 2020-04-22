@@ -1,6 +1,8 @@
 """
 Various functions I use. Most of them are bad though.
 """
+from functools import partial
+
 import fvsfunc as fvf
 import kagefunc as kgf
 import havsfunc as hvf
