@@ -108,6 +108,27 @@ def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.Vide
         credit_m = fvf.Depth(credit_m, bits=kgf.get_depth(source))
     return credit_m
 
+def znnedi3cl_double(clip: vs.VideoNode, **args) -> vs.VideoNode:
+    """
+    Double the clip using znedi3 (fallback nnedi3) for even frames and nnedi3cl for odd frames
+    Intended to speed up encoding speed without hogging the GPU either
+    """
+    args = dict(nsize=0, nns=4, qual=2, pscrn=2) or args
+
+    def _nnedi3(clip):
+        if hasattr(core, 'znedi3'):
+            clip = clip.std.Transpose().znedi3.nnedi3(0, True, **args) \
+                .std.Transpose().znedi3.nnedi3(0, True, **args)
+        else:
+            clip = clip.std.Transpose().nnedi3.nnedi3(0, True, **args) \
+                .std.Transpose().nnedi3.nnedi3(0, True, **args)
+        return clip
+
+    def _nnedi3cl(clip):
+        return clip.nnedi3cl.NNEDI3CL(0, True, True, **args)
+
+    clip = core.std.Interleave([_nnedi3(clip[::2]), _nnedi3cl(clip[1::2])])
+    return core.resize.Spline36(clip, src_top=.5, src_left=.5)
 
 def to444(clip, width: int = None, height: int = None, join: bool = True)-> vs.VideoNode:
     """
