@@ -2,9 +2,9 @@
 Various functions I use. Most of them are bad though.
 """
 from functools import partial
+from vsutil import *
 
 import fvsfunc as fvf
-import kagefunc as kgf
 import havsfunc as hvf
 import vapoursynth as vs
 
@@ -31,7 +31,7 @@ def knlmcl(source: vs.VideoNode, h_y: float = 1.2, h_uv: float = 0.5,
     Denoise both luma and chroma with KNLMeansCL
     """
 
-    if kgf.get_depth(source) != 32:
+    if get_depth(source) != 32:
         clip = fvf.Depth(source, 32)
     else:
         clip = source
@@ -55,14 +55,14 @@ def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bi
     only_luma = source.format.num_planes == 1
 
     if not only_luma:
-        clip = kgf.get_y(source)
+        clip = get_y(source)
     else:
         clip = source
 
-    if kgf.get_depth(source) != 8:
+    if get_depth(source) != 8:
         clip = fvf.Depth(clip, 8)
 
-    width = kgf.get_w(height)
+    width = get_w(height)
     desc = fvf.Resize(clip, width, height, kernel=kernel, a1=b, a2=c, invks=True)
     upsc = fvf.Depth(fvf.Resize(desc, source.width, source.height, kernel=kernel, a1=b, a2=c), 8)
 
@@ -72,8 +72,8 @@ def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bi
     mask = mask.std.Prewitt().std.Maximum().std.Maximum().std.Deflate()
     mask = hvf.mt_expand_multi(mask, mode=mode, sw=sw, sh=sh)
 
-    if kgf.get_depth(source) != 8:
-        mask = fvf.Depth(mask, bits=kgf.get_depth(source))
+    if get_depth(source) != 8:
+        mask = fvf.Depth(mask, bits=get_depth(source))
     return mask
 
 def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.VideoNode,
@@ -83,13 +83,13 @@ def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.Vide
     Modified version of Atomchtools for generate a mask with with a NC
     """
 
-    if kgf.get_depth(titles) != 8:
+    if get_depth(titles) != 8:
         titles = fvf.Depth(titles, 8)
-    if kgf.get_depth(nc) != 8:
+    if get_depth(nc) != 8:
         nc = fvf.Depth(nc, 8)
 
     diff = core.std.MakeDiff(titles, nc, [0])
-    diff = kgf.get_y(diff)
+    diff = get_y(diff)
     diff = diff.std.Prewitt().std.Expr('x 25 < 0 x ?').std.Expr('x 2 *')
     diff = core.rgvs.RemoveGrain(diff, 4).std.Expr('x 30 > 255 x ?')
 
@@ -104,8 +104,8 @@ def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.Vide
     else:
         credit_m = blank[:start]+credit_m+blank[end+1:]
 
-    if kgf.get_depth(source) != 8:
-        credit_m = fvf.Depth(credit_m, bits=kgf.get_depth(source))
+    if get_depth(source) != 8:
+        credit_m = fvf.Depth(credit_m, bits=get_depth(source))
     return credit_m
 
 def znnedi3cl_double(clip: vs.VideoNode, **args) -> vs.VideoNode:
@@ -144,7 +144,7 @@ def to444(clip, width: int = None, height: int = None, join: bool = True)-> vs.V
                 .std.Transpose().nnedi3.nnedi3(0, 1, 0, 0, 3, 1)
         return clip
 
-    chroma = [_nnedi3x2(c) for c in kgf.split(clip)[1:]]
+    chroma = [_nnedi3x2(c) for c in split(clip)[1:]]
 
     if width in (None, clip.width) and height in (None, clip.height):
         chroma = [core.fmtc.resample(c, sy=0.5, flt=0) for c in chroma]
@@ -168,8 +168,8 @@ def get_chroma_shift(src_h: int = None, dst_h: int = None,
     """
     Intended to calculate the right value for chroma shifting
     """
-    src_w = kgf.get_w(src_h, aspect_ratio)
-    dst_w = kgf.get_w(dst_h, aspect_ratio)
+    src_w = get_w(src_h, aspect_ratio)
+    dst_w = get_w(dst_h, aspect_ratio)
 
     ch_shift = 0.25 - 0.25 * (src_w / dst_w)
     ch_shift = float(round(ch_shift, 5))
