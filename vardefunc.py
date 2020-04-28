@@ -16,7 +16,7 @@ def fade_filter(source: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode
     Apply a filter with a fade
     """
     length = end_f - start_f
-    
+
     def _fade(n, clip_a, clip_b, length):
         return core.std.Merge(clip_a, clip_b, n / length)
 
@@ -116,9 +116,11 @@ def to444(clip, width: int = None, height: int = None, join: bool = True)-> vs.V
 
     def _nnedi3x2(clip):
         if hasattr(core, 'znedi3'):
-            clip = clip.std.Transpose().znedi3.nnedi3(1, 1, 0, 0, 4, 2).std.Transpose().znedi3.nnedi3(0, 1, 0, 0, 4, 2)
+            clip = clip.std.Transpose().znedi3.nnedi3(1, 1, 0, 0, 4, 2) \
+                .std.Transpose().znedi3.nnedi3(0, 1, 0, 0, 4, 2)
         else:
-            clip = clip.std.Transpose().nnedi3.nnedi3(1, 1, 0, 0, 3, 1).std.Transpose().nnedi3.nnedi3(0, 1, 0, 0, 3, 1)
+            clip = clip.std.Transpose().nnedi3.nnedi3(1, 1, 0, 0, 3, 1) \
+                .std.Transpose().nnedi3.nnedi3(0, 1, 0, 0, 3, 1)
         return clip
 
     chroma = [_nnedi3x2(c) for c in kgf.split(clip)[1:]]
