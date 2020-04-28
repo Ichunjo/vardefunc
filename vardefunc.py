@@ -109,45 +109,6 @@ def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.Vide
     return credit_m
 
 
-# def F3kdbSep(src_y: vs.VideoNode, src_uv: vs.VideoNode,
-#             range: int = None, y: int = None, c: int = None,
-#             grainy: int = None, grainc: int = None,
-#             mask: vs.VideoNode = None, neo_f3kdb: bool = True)-> List[vs.VideoNode]:
-
-#     only_luma = src_y.format.num_planes == 1
-
-#     if not only_luma:
-#         src_y = kgf.get_y(src_y)
-
-#     if kgf.get_depth(src_y) != 16:
-#         src_y = fvf.Depth(src_y, 16)
-#     if kgf.get_depth(src_uv) != 16:
-#         src_uv = fvf.Depth(src_uv, 16)
-
-#     if neo_f3kdb:
-#         db_y = core.neo_f3kdb.Deband(src_y, range, y, grainy=grainy, sample_mode=4, preset='luma')
-#         db_c = core.neo_f3kdb.Deband(src_uv, range, cb=c, cr=c, grainc=grainc, sample_mode=4, preset='chroma')
-#     else:
-#         db_y = core.f3kdb.Deband(src_y, range, y, grainy=grainy, output_depth=16, preset='luma')
-#         db_c = core.f3kdb.Deband(src_uv, range, cb=c, cr=c, grainc=grainc, output_depth=16, preset='chroma')
-
-#     if mask is not None:
-#         if kgf.get_depth(mask) != 16:
-#             mask = fvf.Depth(mask, 16)
-#         if mask.height != src_y.height:
-#             mask_y = core.resize.Bicubic(mask, src_y.width, src_y.height)
-#         else:
-#             mask_y = mask
-#         db_y = core.std.MaskedMerge(db_y, src_y, mask_y, 0)
-
-#         if mask.height != src_uv.height:
-#             mask_c = core.resize.Bicubic(mask, src_uv.width, src_uv.height)
-#         else:
-#             mask_c = mask
-#         db_c = core.std.MaskedMerge(db_c, src_uv, mask_c, [1, 2])
-
-#     return db_y, db_c
-
 def to444(clip, width: int = None, height: int = None, join: bool = True)-> vs.VideoNode:
     """
     Zastin’s nnedi3 chroma upscaler
