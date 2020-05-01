@@ -108,15 +108,15 @@ def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.Vide
         credit_m = fvf.Depth(credit_m, bits=get_depth(source))
     return credit_m
 
-def znnedi3cl_double(clip: vs.VideoNode, **args) -> vs.VideoNode:
+def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True, **args) -> vs.VideoNode:
     """
-    Double the clip using znedi3 (fallback nnedi3) for even frames and nnedi3cl for odd frames
+    Double the clip using nnedi3 for even frames and nnedi3cl for odd frames
     Intended to speed up encoding speed without hogging the GPU either
     """
-    args = dict(nsize=0, nns=4, qual=2, pscrn=2) or args
+    args = args or dict(nsize=0, nns=4, qual=2, pscrn=2)
 
     def _nnedi3(clip):
-        if hasattr(core, 'znedi3'):
+        if znedi:
             clip = clip.std.Transpose().znedi3.nnedi3(0, True, **args) \
                 .std.Transpose().znedi3.nnedi3(0, True, **args)
         else:
