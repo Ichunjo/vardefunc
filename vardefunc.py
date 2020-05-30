@@ -130,7 +130,7 @@ def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True, **args) -> vs.VideoN
     clip = core.std.Interleave([_nnedi3(clip[::2]), _nnedi3cl(clip[1::2])])
     return core.resize.Spline36(clip, src_top=.5, src_left=.5)
 
-def to444(clip, width: int = None, height: int = None, join: bool = True)-> vs.VideoNode:
+def to444(clip, width: int = None, height: int = None, join_planes: bool = True)-> vs.VideoNode:
     """
     Zastin’s nnedi3 chroma upscaler
     """
@@ -151,7 +151,7 @@ def to444(clip, width: int = None, height: int = None, join: bool = True)-> vs.V
     else:
         chroma = [core.resize.Spline36(c, width, height, src_top=0.5) for c in chroma]
 
-    return core.std.ShufflePlanes([clip] + chroma, [0]*3, vs.YUV) if join else chroma
+    return core.std.ShufflePlanes([clip] + chroma, [0]*3, vs.YUV) if join_planes else chroma
 
 def region_mask(clip: vs.VideoNode,
                 left: int = None, right: int = None,
