@@ -148,7 +148,7 @@ def to444(clip, width: int = None, height: int = None, join_planes: bool = True)
     chroma = [_nnedi3x2(c) for c in split(clip)[1:]]
 
     if width in (None, clip.width) and height in (None, clip.height):
-        chroma = [core.fmtc.resample(c, sy=0.5, flt=0) for c in chroma]
+        chroma = [core.resize.Spline36(c, src_top=0.5) for c in chroma]
     else:
         chroma = [core.resize.Spline36(c, width, height, src_top=0.5) for c in chroma]
 
