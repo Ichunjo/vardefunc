@@ -176,6 +176,27 @@ def get_chroma_shift(src_h: int = None, dst_h: int = None,
     ch_shift = float(round(ch_shift, 5))
     return ch_shift
 
+def generate_keyframes(clip: vs.VideoNode, out_path: str = None, use_scxvid: bool = True) -> None:
+    """
+    Generate qp filename for keyframes for timing or pass the file into the encoder
+    to force I frames. Stolen from the kagefunc.
+    """
+    clip = core.resize.Bilinear(clip, 640, 360)
+    if use_scxvid:
+        clip = core.scxvid.Scxvid(clip)
+    else:
+        clip = core.wwxd.WWXD(clip)
+    out_txt = ""
+    for i in range(clip.num_frames):
+        if clip.get_frame(i).props["_SceneChangePrev"] == 1:
+            out_txt += "%d I -1\n" % i
+        if i % 500 == 0:
+            print(i)
+    text_file = open(out_path, "w")
+    text_file.write(out_txt)
+    text_file.close()
+
 
 drm = diff_rescale_mask
 dcm = diff_creditless_mask
+gk = generate_keyframes
