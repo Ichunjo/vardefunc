@@ -6,6 +6,7 @@ from vsutil import *
 
 import fvsfunc as fvf
 import havsfunc as hvf
+
 import vapoursynth as vs
 
 core = vs.core
@@ -26,13 +27,13 @@ def fade_filter(source: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode
     return source[:start_f] + clip_fad + source[end_f+1:]
 
 def knlmcl(source: vs.VideoNode, h_y: float = 1.2, h_uv: float = 0.5,
-           device_id: int = 0, depth: int = None)-> vs.VideoNode:
+           device_id: int = 0, bits: int = None)-> vs.VideoNode:
     """
     Denoise both luma and chroma with KNLMeansCL
     """
 
     if get_depth(source) != 32:
-        clip = fvf.Depth(source, 32)
+        clip = depth(source, 32)
     else:
         clip = source
 
@@ -41,7 +42,7 @@ def knlmcl(source: vs.VideoNode, h_y: float = 1.2, h_uv: float = 0.5,
     denoise = core.knlm.KNLMeansCL(denoise, a=2, h=h_uv, d=3, device_type='gpu',
                                    device_id=device_id, channels='UV')
     if depth is not None:
-        denoise = fvf.Depth(denoise, depth)
+        denoise = depth(denoise, bits)
 
     return denoise
 
@@ -60,11 +61,11 @@ def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bi
         clip = source
 
     if get_depth(source) != 8:
-        clip = fvf.Depth(clip, 8)
+        clip = depth(clip, 8)
 
     width = get_w(height)
     desc = fvf.Resize(clip, width, height, kernel=kernel, a1=b, a2=c, invks=True)
-    upsc = fvf.Depth(fvf.Resize(desc, source.width, source.height, kernel=kernel, a1=b, a2=c), 8)
+    upsc = depth(fvf.Resize(desc, source.width, source.height, kernel=kernel, a1=b, a2=c), 8)
 
     diff = core.std.MakeDiff(clip, upsc)
     mask = diff.rgvs.RemoveGrain(2).rgvs.RemoveGrain(2).hist.Luma()
@@ -73,7 +74,7 @@ def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bi
     mask = hvf.mt_expand_multi(mask, mode=mode, sw=sw, sh=sh)
 
     if get_depth(source) != 8:
-        mask = fvf.Depth(mask, bits=get_depth(source))
+        mask = depth(mask, get_depth(source))
     return mask
 
 def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.VideoNode,
@@ -84,9 +85,9 @@ def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.Vide
     """
 
     if get_depth(titles) != 8:
-        titles = fvf.Depth(titles, 8)
+        titles = depth(titles, 8)
     if get_depth(nc) != 8:
-        nc = fvf.Depth(nc, 8)
+        nc = depth(nc, 8)
 
     diff = core.std.MakeDiff(titles, nc, [0])
     diff = get_y(diff)
@@ -105,7 +106,7 @@ def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.Vide
         credit_m = blank[:start]+credit_m+blank[end+1:]
 
     if get_depth(source) != 8:
-        credit_m = fvf.Depth(credit_m, bits=get_depth(source))
+        credit_m = depth(credit_m, get_depth(source))
     return credit_m
 
 def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True, **args) -> vs.VideoNode:
