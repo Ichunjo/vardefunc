@@ -176,7 +176,8 @@ def get_chroma_shift(src_h: int = None, dst_h: int = None,
     ch_shift = float(round(ch_shift, 5))
     return ch_shift
 
-def generate_keyframes(clip: vs.VideoNode, out_path: str = None, use_scxvid: bool = True) -> None:
+def generate_keyframes(clip: vs.VideoNode, out_path: str = None,
+                       use_scxvid: bool = True) -> NoReturn:
     """
     Generate qp filename for keyframes for timing or pass the file into the encoder
     to force I frames. Stolen from the kagefunc.
