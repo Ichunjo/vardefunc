@@ -1,9 +1,12 @@
 """
 Various functions I use. Most of them are bad though.
 """
+from pathlib import Path
+from typing import Union, NoReturn
 from functools import partial
 from vsutil import *
 
+import subprocess
 import fvsfunc as fvf
 import havsfunc as hvf
 
@@ -196,6 +199,39 @@ def generate_keyframes(clip: vs.VideoNode, out_path: str = None,
     text_file = open(out_path, "w")
     text_file.write(out_txt)
     text_file.close()
+
+
+def encode(clip: vs.VideoNode, x264: Union[str, Path] = None,
+           output_file: str = None, **args) -> NoReturn:
+    """
+    Stolen from lyfunc
+    """
+    x264_cmd = [x264,
+                "--demuxer", "y4m",
+                "--sar", "1:1",
+                "--output-depth", "10",
+                "--output-csp", "i420",
+                "--colormatrix", "bt709",
+                "--colorprim", "bt709",
+                "--transfer", "bt709",
+                "--no-fast-pskip",
+                "--no-dct-decimate",
+                "--partitions", "all",
+                "-o", output_file,
+                "-"]
+    for i, v in args.items():
+        i = "--" + i if i[:2] != "--" else i
+        i = i.replace("_", "-")
+        if i in x264_cmd:
+            x264_cmd[x264_cmd.index(i)+ 1] = str(v)
+        else:
+            x264_cmd.extend([i, str(v)])
+
+    print("x264 command: ", " ".join(x264_cmd), "\n")
+    process = subprocess.Popen(x264_cmd, stdin=subprocess.PIPE)
+    clip.output(process.stdin, y4m=True, progress_update=lambda value, endvalue: print(
+        f"\rVapourSynth: {value}/{endvalue} ~ {100 * value // endvalue}% || x264: ", end=""))
+    process.communicate()
 
 
 drm = diff_rescale_mask
