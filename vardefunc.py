@@ -1,18 +1,14 @@
 """
 Various functions I use. Most of them are bad though.
 """
+import subprocess
 from pathlib import Path
 from typing import Union, NoReturn
 from functools import partial
-from vsutil import *
+from vsutil import core, vs, depth, get_depth, get_y, get_w, split
 
-import subprocess
 import fvsfunc as fvf
 import havsfunc as hvf
-
-import vapoursynth as vs
-
-core = vs.core
 
 def fade_filter(source: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode,
                 start_f: int = None, end_f: int = None)-> vs.VideoNode:
