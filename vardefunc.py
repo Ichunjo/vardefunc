@@ -193,18 +193,18 @@ def get_bicubic_params(cubic_filter: str):
     def _sqrt(var):
         return math.sqrt(var)
 
-    def _robidoux_soft()-> Tuple:
+    def _get_robidoux_soft()-> Tuple:
         b = (9-3*_sqrt(2))/7
         c = (1-b)/2
         return b, c
 
-    def _robidoux()-> Tuple:
+    def _get_robidoux()-> Tuple:
         sqrt2 = _sqrt(2)
         b = 12/(19+9*sqrt2)
         c = 113/(58+216*sqrt2)
         return b, c
 
-    def _robidoux_sharp()-> Tuple:
+    def _get_robidoux_sharp()-> Tuple:
         sqrt2 = _sqrt(2)
         b = 6/(13+7*sqrt2)
         c = 7/(2+12*sqrt2)
@@ -221,9 +221,9 @@ def get_bicubic_params(cubic_filter: str):
         'catrom': (0, 1/2),
         'bicubic_sharp': (0, 1),
         'sharp_bicubic': (0, 1),
-        'robidoux_soft': _robidoux_soft(),
-        'robidoux': _robidoux(),
-        'robidoux_sharp': _robidoux_sharp()
+        'robidoux_soft': _get_robidoux_soft(),
+        'robidoux': _get_robidoux(),
+        'robidoux_sharp': _get_robidoux_sharp()
     }
     return cubic_filters[cubic_filter]
 
