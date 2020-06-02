@@ -163,6 +163,13 @@ def region_mask(clip: vs.VideoNode,
     borders = core.std.AddBorders(crop, left, right, top, bottom)
     return borders
 
+def merge_chroma(luma: vs.VideoNode, ref: vs.VideoNode)-> vs.VideoNode:
+    """
+    Merge chroma from ref with luma
+    """
+    return core.std.ShufflePlanes([luma, ref], [0, 1, 2], vs.YUV)
+
+
 def get_chroma_shift(src_h: int = None, dst_h: int = None,
                      aspect_ratio: float = 16/9) -> float:
     """
