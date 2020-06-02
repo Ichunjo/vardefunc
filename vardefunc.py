@@ -1,9 +1,10 @@
 """
 Various functions I use. Most of them are bad though.
 """
+import math
 import subprocess
 from pathlib import Path
-from typing import Union, NoReturn
+from typing import Union, NoReturn, Tuple
 from functools import partial
 from vsutil import core, vs, depth, get_depth, get_y, get_w, split
 
@@ -181,6 +182,51 @@ def get_chroma_shift(src_h: int = None, dst_h: int = None,
     ch_shift = 0.25 - 0.25 * (src_w / dst_w)
     ch_shift = float(round(ch_shift, 5))
     return ch_shift
+
+
+def get_bicubic_params(cubic_filter: str):
+    """
+    Return the parameter b and c for the bicubic filter
+    Source: https://www.imagemagick.org/discourse-server/viewtopic.php?f=22&t=19823
+            https://www.imagemagick.org/Usage/filter/#mitchell
+    """
+    def _sqrt(var):
+        return math.sqrt(var)
+
+    def _robidoux_soft()-> Tuple:
+        b = (9-3*_sqrt(2))/7
+        c = (1-b)/2
+        return b, c
+
+    def _robidoux()-> Tuple:
+        sqrt2 = _sqrt(2)
+        b = 12/(19+9*sqrt2)
+        c = 113/(58+216*sqrt2)
+        return b, c
+
+    def _robidoux_sharp()-> Tuple:
+        sqrt2 = _sqrt(2)
+        b = 6/(13+7*sqrt2)
+        c = 7/(2+12*sqrt2)
+        return b, c
+
+    cubic_filter = cubic_filter.lower().replace(' ', '_').replace('-', '_')
+    cubic_filters = {
+        'spline': (1, 0),
+        'b_spline': (1, 0),
+        'hermite': (0, 0),
+        'mitchell_netravali': (1/3, 1/3),
+        'mitchell': (1/3, 1/3),
+        'catmull_rom': (0, 1/2),
+        'catrom': (0, 1/2),
+        'bicubic_sharp': (0, 1),
+        'sharp_bicubic': (0, 1),
+        'robidoux_soft': _robidoux_soft(),
+        'robidoux': _robidoux(),
+        'robidoux_sharp': _robidoux_sharp()
+    }
+    return cubic_filters[cubic_filter]
+
 
 def generate_keyframes(clip: vs.VideoNode, out_path: str = None) -> NoReturn:
     """
