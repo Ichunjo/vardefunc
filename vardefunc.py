@@ -20,8 +20,8 @@ def fade_filter(source: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode
     def _fade(n, clip_a, clip_b, length):
         return core.std.Merge(clip_a, clip_b, n / length)
 
-    clip_fad = core.std.FrameEval(source[start_f:end_f+1], 
-                                  partial(_fade, clip_a=clip_a[start_f:end_f+1], 
+    clip_fad = core.std.FrameEval(source[start_f:end_f+1],
+                                  partial(_fade, clip_a=clip_a[start_f:end_f+1],
                                           clip_b=clip_b[start_f:end_f+1], length=length))
     return source[:start_f] + clip_fad + source[end_f+1:]
 
