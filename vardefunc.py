@@ -46,7 +46,7 @@ def knlmcl(source: vs.VideoNode, h_y: float = 1.2, h_uv: float = 0.5,
     return denoise
 
 def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bicubic',
-                      b: float = 1/3, c: float = 1/3, mthr: int = 55,
+                      b: float = 0, c: float = 1/2, mthr: int = 55,
                       mode: str = 'rectangle', sw: int = 2, sh: int = 2)-> vs.VideoNode:
     """
     Modified version of Atomchtools for generate a mask with a rescaled difference
