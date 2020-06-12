@@ -1,5 +1,5 @@
 """
-Various functions I use. Most of them are bad though.
+Various functions I use.
 """
 import math
 import subprocess
