@@ -13,8 +13,17 @@ import havsfunc as hvf
 
 def fade_filter(source: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode,
                 start_f: int = None, end_f: int = None)-> vs.VideoNode:
-    """
-    Apply a filter with a fade
+    """Apply a filter with a fade
+
+    Args:
+        source (vs.VideoNode): Source clip
+        clip_a (vs.VideoNode): Fade in clip
+        clip_b (vs.VideoNode): Fade out clip
+        start_f (int, optional): Start frame. Defaults to None.
+        end_f (int, optional): End frame. Defaults to None.
+
+    Returns:
+        vs.VideoNode:
     """
     length = end_f - start_f
 
@@ -28,10 +37,18 @@ def fade_filter(source: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode
 
 def knlmcl(source: vs.VideoNode, h_y: float = 1.2, h_uv: float = 0.5,
            device_id: int = 0, bits: int = None)-> vs.VideoNode:
-    """
-    Denoise both luma and chroma with KNLMeansCL
-    """
+    """Denoise both luma and chroma with KNLMeansCL
 
+    Args:
+        source (vs.VideoNode): Source clip
+        h_y (float, optional): h parameter in KNLMeansCL for the luma. Defaults to 1.2.
+        h_uv (float, optional): h parameter in KNLMeansCL for the chroma. Defaults to 0.5.
+        device_id (int, optional): Device id in KNLMeansCL. Defaults to 0.
+        bits (int, optional): Output bitdepth. Defaults to None.
+
+    Returns:
+        vs.VideoNode:
+    """
     if get_depth(source) != 32:
         clip = depth(source, 32)
     else:
@@ -49,10 +66,22 @@ def knlmcl(source: vs.VideoNode, h_y: float = 1.2, h_uv: float = 0.5,
 def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bicubic',
                       b: float = 0, c: float = 1/2, mthr: int = 55,
                       mode: str = 'rectangle', sw: int = 2, sh: int = 2)-> vs.VideoNode:
-    """
-    Modified version of Atomchtools for generate a mask with a rescaled difference
-    """
+    """Modified version of Atomchtools for generate a mask with a rescaled difference
 
+    Args:
+        source (vs.VideoNode): Source clip
+        height (int, optional): Defaults to 720.
+        kernel (str, optional): Defaults to 'bicubic'.
+        b (float, optional): Defaults to 0.
+        c (float, optional): Defaults to 1/2.
+        mthr (int, optional): Defaults to 55.
+        mode (str, optional): Can be 'rectangle', 'losange' or 'ellipse' . Defaults to 'rectangle'.
+        sw (int, optional): Growing/shrinking shape width. 0 is allowed. Defaults to 2.
+        sh (int, optional): Growing/shrinking shape height. 0 is allowed. Defaults to 2.
+
+    Returns:
+        vs.VideoNode:
+    """
     only_luma = source.format.num_planes == 1
 
     if not only_luma:
@@ -80,10 +109,20 @@ def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bi
 def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.VideoNode,
                          start: int = None, end: int = None,
                          sw: int = 2, sh: int = 2)-> vs.VideoNode:
-    """
-    Modified version of Atomchtools for generate a mask with with a NC
-    """
+    """Modified version of Atomchtools for generate a mask with with a NC
 
+    Args:
+        source (vs.VideoNode): Source clip
+        titles (vs.VideoNode): Credit clip
+        nc (vs.VideoNode): Non credit clip
+        start (int, optional): Start frame. Defaults to None.
+        end (int, optional): End frame. Defaults to None.
+        sw (int, optional): Growing/shrinking shape width. 0 is allowed. Defaults to 2.
+        sh (int, optional): Growing/shrinking shape height. 0 is allowed. Defaults to 2.
+
+    Returns:
+        vs.VideoNode:
+    """
     if get_depth(titles) != 8:
         titles = depth(titles, 8)
     if get_depth(nc) != 8:
@@ -109,10 +148,16 @@ def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.Vide
         credit_m = depth(credit_m, get_depth(source))
     return credit_m
 
-def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True, **args) -> vs.VideoNode:
-    """
-    Double the clip using nnedi3 for even frames and nnedi3cl for odd frames
-    Intended to speed up encoding speed without hogging the GPU either
+def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True, **args)-> vs.VideoNode:
+    """Double the clip using nnedi3 for even frames and nnedi3cl for odd frames
+       Intended to speed up encoding speed without hogging the GPU either
+
+    Args:
+        clip (vs.VideoNode): Source clip
+        znedi (bool, optional): Use znedi3 or not. Defaults to True.
+
+    Returns:
+        vs.VideoNode:
     """
     args = args or dict(nsize=0, nns=4, qual=2, pscrn=2)
 
@@ -131,11 +176,18 @@ def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True, **args) -> vs.VideoN
     clip = core.std.Interleave([_nnedi3(clip[::2]), _nnedi3cl(clip[1::2])])
     return core.resize.Spline36(clip, src_top=.5, src_left=.5)
 
-def to444(clip, width: int = None, height: int = None, join_planes: bool = True)-> vs.VideoNode:
-    """
-    Zastin’s nnedi3 chroma upscaler
-    """
+def to444(clip: vs.VideoNode, width: int = None, height: int = None, join_planes: bool = True)-> vs.VideoNode:
+    """Zastin’s nnedi3 chroma upscaler
 
+    Args:
+        clip ([type]): Source clip
+        width (int, optional): Upscale width. Defaults to None.
+        height (int, optional): Upscale height. Defaults to None.
+        join_planes (bool, optional): Defaults to True.
+
+    Returns:
+        vs.VideoNode: [description]
+    """
     def _nnedi3x2(clip):
         if hasattr(core, 'znedi3'):
             clip = clip.std.Transpose().znedi3.nnedi3(1, 1, 0, 0, 4, 2) \
@@ -157,24 +209,46 @@ def to444(clip, width: int = None, height: int = None, join_planes: bool = True)
 def region_mask(clip: vs.VideoNode,
                 left: int = None, right: int = None,
                 top: int = None, bottom: int = None)-> vs.VideoNode:
-    """
-    Crop your mask
+    """Crop your mask
+
+    Args:
+        clip (vs.VideoNode): Source clip
+        left (int, optional): Left crop. Defaults to None.
+        right (int, optional): Right crop. Defaults to None.
+        top (int, optional): Top crop. Defaults to None.
+        bottom (int, optional): Bottom crop. Defaults to None.
+
+    Returns:
+        vs.VideoNode:
     """
     crop = core.std.Crop(clip, left, right, top, bottom)
     borders = core.std.AddBorders(crop, left, right, top, bottom)
     return borders
 
 def merge_chroma(luma: vs.VideoNode, ref: vs.VideoNode)-> vs.VideoNode:
-    """
-    Merge chroma from ref with luma
+    """Merge chroma from ref with luma
+
+    Args:
+        luma (vs.VideoNode): Source luma clip
+        ref (vs.VideoNode): Source chroma clip
+
+    Returns:
+        vs.VideoNode:
     """
     return core.std.ShufflePlanes([luma, ref], [0, 1, 2], vs.YUV)
 
 
 def get_chroma_shift(src_h: int = None, dst_h: int = None,
-                     aspect_ratio: float = 16/9) -> float:
-    """
-    Intended to calculate the right value for chroma shifting
+                     aspect_ratio: float = 16/9)-> float:
+    """Intended to calculate the right value for chroma shifting
+
+    Args:
+        src_h (int, optional): Source height. Defaults to None.
+        dst_h (int, optional): Destination height. Defaults to None.
+        aspect_ratio (float, optional): Defaults to 16/9.
+
+    Returns:
+        float:
     """
     src_w = get_w(src_h, aspect_ratio)
     dst_w = get_w(dst_h, aspect_ratio)
@@ -184,11 +258,17 @@ def get_chroma_shift(src_h: int = None, dst_h: int = None,
     return ch_shift
 
 
-def get_bicubic_params(cubic_filter: str):
-    """
-    Return the parameter b and c for the bicubic filter
-    Source: https://www.imagemagick.org/discourse-server/viewtopic.php?f=22&t=19823
-            https://www.imagemagick.org/Usage/filter/#mitchell
+def get_bicubic_params(cubic_filter: str)-> Tuple:
+    """Return the parameter b and c for the bicubic filter
+       Source: https://www.imagemagick.org/discourse-server/viewtopic.php?f=22&t=19823
+               https://www.imagemagick.org/Usage/filter/#mitchell
+
+    Args:
+        cubic_filter (str): Can be: Spline, B-Spline, Hermite, Mitchell-Netravali, Mitchell,
+                            Catmull-Rom, Catrom, Sharp Bicubic, Robidoux soft, Robidoux, Robidoux Sharp.
+
+    Returns:
+        Tuple: b/c combo
     """
     def _sqrt(var):
         return math.sqrt(var)
@@ -229,9 +309,12 @@ def get_bicubic_params(cubic_filter: str):
 
 
 def generate_keyframes(clip: vs.VideoNode, out_path: str = None) -> NoReturn:
-    """
-    Generate qp filename for keyframes for timing or pass the file into the encoder
-    to force I frames. Use both scxvid and wwxd. Original function stolen from kagefunc.
+    """Generate qp filename for keyframes to pass the file into the encoder
+       to force I frames. Use both scxvid and wwxd. Original function stolen from kagefunc.
+
+    Args:
+        clip (vs.VideoNode): Source clip
+        out_path (str, optional): Defaults to None.
     """
     clip = core.resize.Bilinear(clip, 640, 360)
     clip = core.scxvid.Scxvid(clip)
@@ -250,8 +333,11 @@ def generate_keyframes(clip: vs.VideoNode, out_path: str = None) -> NoReturn:
 
 def encode(clip: vs.VideoNode, x264: Union[str, Path] = None,
            output_file: str = None, **args) -> NoReturn:
-    """
-    Stolen from lyfunc
+    """Stolen from lyfunc
+    Args:
+        clip (vs.VideoNode): Source filtered clip
+        x264 (Union[str, Path]): Path to x264 build. Defaults to None.
+        output_file (str): Path to output file. Defaults to None.
     """
     x264_cmd = [x264,
                 "--demuxer", "y4m",
