@@ -67,7 +67,7 @@ def knlmcl(source: vs.VideoNode, h_y: float = 1.2, h_uv: float = 0.5,
 
 
 def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, original_grained: vs.VideoNode,
-                       range_avg: Tuple[float, float] = (0.5, 0.4), luma_scaling: int = 20)-> vs.VideoNode:
+                       range_avg: Tuple[float, float] = (0.5, 0.4), luma_scaling: int = 28)-> vs.VideoNode:
     """Merge back the original grain below the lower range_avg value, apply the new grain clip above the higher range_avg value
        and weight both of them between the range_avg values for a smooth merging.
        Intended for use in applying a static grain in higher PlaneStatsAverage values to decrease the file size since we can't see a dynamic grain on that level.
@@ -78,6 +78,7 @@ def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, origin
         new_grained (vs.VideoNode): The new regrained clip
         original_grained (vs.VideoNode): The original regrained clip
         range_avg (Tuple[float, float], optional): Range used in PlaneStatsAverage. Defaults to (0.5, 0.4).
+        luma_scaling (int, optional): Parameter in adg.Mask. Defaults to 28.
 
     Returns:
         vs.VideoNode: The new adaptative grained clip
