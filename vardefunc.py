@@ -66,6 +66,60 @@ def knlmcl(source: vs.VideoNode, h_y: float = 1.2, h_uv: float = 0.5,
     return denoise
 
 
+def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, original_grained: vs.VideoNode,
+                       range_avg: Tuple[float, float] = (0.5, 0.4), luma_scaling: int = 20)-> vs.VideoNode:
+    """Merge back the original grain below the lower range_avg value, apply the new grain clip above the higher range_avg value
+       and weight both of them between the range_avg values for a smooth merging.
+       Intended for use in applying a static grain in higher PlaneStatsAverage values to decrease the file size since we can't see a dynamic grain on that level.
+       However, in dark scenes, it's more noticeable so we apply the original grain.
+
+    Args:
+        denoised (vs.VideoNode): The denoised clip
+        new_grained (vs.VideoNode): The new regrained clip
+        original_grained (vs.VideoNode): The original regrained clip
+        range_avg (Tuple[float, float], optional): Range used in PlaneStatsAverage. Defaults to (0.5, 0.4).
+
+    Returns:
+        vs.VideoNode: The new adaptative grained clip
+
+    Example:
+        import vardefunc as vdf
+
+        denoise = denoise_filter(src, ...)
+        diff = core.std.MakeDiff(src, denoise)
+        ...
+        some filters
+        ...
+        new_grained = core.neo_f3kdb.Deband(last, preset='depth', grainy=32, grainc=32)
+        original_grained = core.std.MergeDiff(last, diff)
+        adapt_regrain = vdf.adaptative_regrain(last, new_grained, original_grained, range_avg=(0.5, 0.4), luma_scaling=28)
+    """
+
+    avg = core.std.PlaneStats(denoised)
+    adapt_mask = core.adg.Mask(get_y(avg), luma_scaling)
+    adapt_grained = core.std.MaskedMerge(new_grained, original_grained, adapt_mask)
+
+    avg_max = max(range_avg)
+    avg_min = min(range_avg)
+
+    # pylint: disable=unused-argument
+    def _diff(n: int, f: vs.VideoFrame, avg_max: float, avg_min: float,
+              new: vs.VideoNode, adapt: vs.VideoNode) -> vs.VideoNode:
+        psa = f.props['PlaneStatsAverage']
+        if psa > avg_max:
+            clip = new
+        elif psa < avg_min:
+            clip = adapt
+        else:
+            weight = (psa - avg_min) / (avg_max - avg_min)
+            clip = core.std.Merge(adapt, new, weight)
+        return clip
+
+    diff_function = partial(_diff, avg_max=avg_max, avg_min=avg_min, new=new_grained, adapt=adapt_grained)
+
+    return core.std.FrameEval(denoised, diff_function, avg)
+
+
 def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bicubic',
                       b: float = 0, c: float = 1/2, mthr: int = 55,
                       mode: str = 'rectangle', sw: int = 2, sh: int = 2)-> vs.VideoNode:
