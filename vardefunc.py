@@ -11,6 +11,7 @@ from vsutil import core, vs, depth, get_depth, get_y, get_w, split
 import fvsfunc as fvf
 import havsfunc as hvf
 
+
 def fade_filter(source: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode,
                 start_f: int = None, end_f: int = None)-> vs.VideoNode:
     """Apply a filter with a fade
@@ -34,6 +35,7 @@ def fade_filter(source: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode
                                   partial(_fade, clip_a=clip_a[start_f:end_f+1],
                                           clip_b=clip_b[start_f:end_f+1], length=length))
     return source[:start_f] + clip_fad + source[end_f+1:]
+
 
 def knlmcl(source: vs.VideoNode, h_y: float = 1.2, h_uv: float = 0.5,
            device_id: int = 0, bits: int = None)-> vs.VideoNode:
@@ -62,6 +64,7 @@ def knlmcl(source: vs.VideoNode, h_y: float = 1.2, h_uv: float = 0.5,
         denoise = depth(denoise, bits)
 
     return denoise
+
 
 def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bicubic',
                       b: float = 0, c: float = 1/2, mthr: int = 55,
@@ -106,6 +109,7 @@ def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bi
         mask = depth(mask, get_depth(source))
     return mask
 
+
 def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.VideoNode,
                          start: int = None, end: int = None,
                          sw: int = 2, sh: int = 2)-> vs.VideoNode:
@@ -148,6 +152,7 @@ def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.Vide
         credit_m = depth(credit_m, get_depth(source))
     return credit_m
 
+
 def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True, **args)-> vs.VideoNode:
     """Double the clip using nnedi3 for even frames and nnedi3cl for odd frames
        Intended to speed up encoding speed without hogging the GPU either
@@ -175,6 +180,7 @@ def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True, **args)-> vs.VideoNo
 
     clip = core.std.Interleave([_nnedi3(clip[::2]), _nnedi3cl(clip[1::2])])
     return core.resize.Spline36(clip, src_top=.5, src_left=.5)
+
 
 def to444(clip: vs.VideoNode, width: int = None, height: int = None, join_planes: bool = True)-> vs.VideoNode:
     """Zastin’s nnedi3 chroma upscaler
@@ -206,6 +212,7 @@ def to444(clip: vs.VideoNode, width: int = None, height: int = None, join_planes
 
     return core.std.ShufflePlanes([clip] + chroma, [0]*3, vs.YUV) if join_planes else chroma
 
+
 def region_mask(clip: vs.VideoNode,
                 left: int = None, right: int = None,
                 top: int = None, bottom: int = None)-> vs.VideoNode:
@@ -224,6 +231,7 @@ def region_mask(clip: vs.VideoNode,
     crop = core.std.Crop(clip, left, right, top, bottom)
     borders = core.std.AddBorders(crop, left, right, top, bottom)
     return borders
+
 
 def merge_chroma(luma: vs.VideoNode, ref: vs.VideoNode)-> vs.VideoNode:
     """Merge chroma from ref with luma
