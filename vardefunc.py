@@ -3,8 +3,7 @@ Various functions I use.
 """
 import math
 import subprocess
-from pathlib import Path
-from typing import Union, NoReturn, Tuple
+from typing import Tuple
 from functools import partial
 from vsutil import core, vs, depth, get_depth, get_y, get_w, split
 
@@ -13,7 +12,7 @@ import havsfunc as hvf
 
 
 def fade_filter(source: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode,
-                start_f: int = None, end_f: int = None)-> vs.VideoNode:
+                start_f: int, end_f: int)-> vs.VideoNode:
     """Apply a filter with a fade
 
     Args:
@@ -168,8 +167,7 @@ def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bi
 
 
 def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.VideoNode,
-                         start: int = None, end: int = None,
-                         sw: int = 2, sh: int = 2)-> vs.VideoNode:
+                         start: int, end: int, sw: int = 2, sh: int = 2)-> vs.VideoNode:
     """Modified version of Atomchtools for generate a mask with with a NC
 
     Args:
@@ -373,7 +371,7 @@ def get_bicubic_params(cubic_filter: str)-> Tuple:
     return cubic_filters[cubic_filter]
 
 
-def generate_keyframes(clip: vs.VideoNode, out_path: str = None) -> NoReturn:
+def generate_keyframes(clip: vs.VideoNode, out_path: str) -> None:
     """Generate qp filename for keyframes to pass the file into the encoder
        to force I frames. Use both scxvid and wwxd. Original function stolen from kagefunc.
 
@@ -396,8 +394,7 @@ def generate_keyframes(clip: vs.VideoNode, out_path: str = None) -> NoReturn:
     text_file.close()
 
 
-def encode(clip: vs.VideoNode, x264: Union[str, Path] = None,
-           output_file: str = None, **args) -> NoReturn:
+def encode(clip: vs.VideoNode, x264: str, output_file: str, **args) -> None:
     """Stolen from lyfunc
     Args:
         clip (vs.VideoNode): Source filtered clip
