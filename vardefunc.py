@@ -19,8 +19,8 @@ def fade_filter(source: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode
         source (vs.VideoNode): Source clip
         clip_a (vs.VideoNode): Fade in clip
         clip_b (vs.VideoNode): Fade out clip
-        start_f (int, optional): Start frame. Defaults to None.
-        end_f (int, optional): End frame. Defaults to None.
+        start_f (int): Start frame.
+        end_f (int): End frame.
 
     Returns:
         vs.VideoNode:
@@ -174,7 +174,7 @@ def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.Vide
         source (vs.VideoNode): Source clip
         titles (vs.VideoNode): Credit clip
         nc (vs.VideoNode): Non credit clip
-        start (int, optional): Start frame. Defaults to None.
+        start (int, optional): Start frame.
         end (int, optional): End frame. Defaults to None.
         sw (int, optional): Growing/shrinking shape width. 0 is allowed. Defaults to 2.
         sh (int, optional): Growing/shrinking shape height. 0 is allowed. Defaults to 2.
@@ -269,19 +269,19 @@ def to444(clip: vs.VideoNode, width: int = None, height: int = None, join_planes
 
 
 def region_mask(clip: vs.VideoNode,
-                left: int = None, right: int = None,
-                top: int = None, bottom: int = None)-> vs.VideoNode:
+                left: int = 0, right: int = 0,
+                top: int = 0, bottom: int = 0)-> vs.VideoNode:
     """Crop your mask
 
     Args:
-        clip (vs.VideoNode): Source clip
-        left (int, optional): Left crop. Defaults to None.
-        right (int, optional): Right crop. Defaults to None.
-        top (int, optional): Top crop. Defaults to None.
-        bottom (int, optional): Bottom crop. Defaults to None.
+        clip (vs.VideoNode): [description]
+        left (int, optional): [description]. Defaults to 0.
+        right (int, optional): [description]. Defaults to 0.
+        top (int, optional): [description]. Defaults to 0.
+        bottom (int, optional): [description]. Defaults to 0.
 
     Returns:
-        vs.VideoNode:
+        vs.VideoNode: Cropped clip
     """
     crop = core.std.Crop(clip, left, right, top, bottom)
     borders = core.std.AddBorders(crop, left, right, top, bottom)
@@ -301,13 +301,12 @@ def merge_chroma(luma: vs.VideoNode, ref: vs.VideoNode)-> vs.VideoNode:
     return core.std.ShufflePlanes([luma, ref], [0, 1, 2], vs.YUV)
 
 
-def get_chroma_shift(src_h: int = None, dst_h: int = None,
-                     aspect_ratio: float = 16/9)-> float:
+def get_chroma_shift(src_h: int, dst_h: int, aspect_ratio: float = 16/9)-> float:
     """Intended to calculate the right value for chroma shifting
 
     Args:
-        src_h (int, optional): Source height. Defaults to None.
-        dst_h (int, optional): Destination height. Defaults to None.
+        src_h (int): Source height.
+        dst_h (int): Destination height.
         aspect_ratio (float, optional): Defaults to 16/9.
 
     Returns:
@@ -377,7 +376,7 @@ def generate_keyframes(clip: vs.VideoNode, out_path: str) -> None:
 
     Args:
         clip (vs.VideoNode): Source clip
-        out_path (str, optional): Defaults to None.
+        out_path (str): output path
     """
     clip = core.resize.Bilinear(clip, 640, 360)
     clip = core.scxvid.Scxvid(clip)
@@ -394,14 +393,14 @@ def generate_keyframes(clip: vs.VideoNode, out_path: str) -> None:
     text_file.close()
 
 
-def encode(clip: vs.VideoNode, x264: str, output_file: str, **args) -> None:
+def encode(clip: vs.VideoNode, binary: str, output_file: str, **args) -> None:
     """Stolen from lyfunc
     Args:
         clip (vs.VideoNode): Source filtered clip
-        x264 (Union[str, Path]): Path to x264 build. Defaults to None.
-        output_file (str): Path to output file. Defaults to None.
+        binary (str): Path to x26X binary.
+        output_file (str): Path to the output file.
     """
-    x264_cmd = [x264,
+    x264_cmd = [binary,
                 "--demuxer", "y4m",
                 "--sar", "1:1",
                 "--output-depth", "10",
@@ -422,10 +421,10 @@ def encode(clip: vs.VideoNode, x264: str, output_file: str, **args) -> None:
         else:
             x264_cmd.extend([i, str(v)])
 
-    print("x264 command: ", " ".join(x264_cmd), "\n")
+    print("Encoder command: ", " ".join(x264_cmd), "\n")
     process = subprocess.Popen(x264_cmd, stdin=subprocess.PIPE)
     clip.output(process.stdin, y4m=True, progress_update=lambda value, endvalue: print(
-        f"\rVapourSynth: {value}/{endvalue} ~ {100 * value // endvalue}% || x264: ", end=""))
+        f"\rVapourSynth: {value}/{endvalue} ~ {100 * value // endvalue}% || Encoder: ", end=""))
     process.communicate()
 
 
