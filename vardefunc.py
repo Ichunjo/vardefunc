@@ -393,38 +393,45 @@ def generate_keyframes(clip: vs.VideoNode, out_path: str) -> None:
     text_file.close()
 
 
-def encode(clip: vs.VideoNode, binary: str, output_file: str, **args) -> None:
+def encode(clip: vs.VideoNode, binary: str, output_file: str, x264: bool, **args) -> None:
     """Stolen from lyfunc
     Args:
         clip (vs.VideoNode): Source filtered clip
         binary (str): Path to x26X binary.
         output_file (str): Path to the output file.
     """
-    x264_cmd = [binary,
-                "--demuxer", "y4m",
-                "--sar", "1:1",
-                "--output-depth", "10",
-                "--output-csp", "i420",
-                "--colormatrix", "bt709",
-                "--colorprim", "bt709",
-                "--transfer", "bt709",
-                "--no-fast-pskip",
-                "--no-dct-decimate",
-                "--partitions", "all",
-                "-o", output_file,
-                "-"]
+    if x264:
+        cmd = [binary,
+               "--demuxer", "y4m",
+               "--frames", f"{clip.num_frames}",
+               "--sar", "1:1",
+               "--output-depth", "10",
+               "--output-csp", "i420",
+               "--colormatrix", "bt709",
+               "--colorprim", "bt709",
+               "--transfer", "bt709",
+               "--no-fast-pskip",
+               "--no-dct-decimate",
+               "--partitions", "all",
+               "-o", output_file,
+               "-"]
+    else:
+        cmd = [binary,
+               "-o", output_file,
+               "-"]
+
     for i, v in args.items():
         i = "--" + i if i[:2] != "--" else i
         i = i.replace("_", "-")
-        if i in x264_cmd:
-            x264_cmd[x264_cmd.index(i)+ 1] = str(v)
+        if i in cmd:
+            cmd[cmd.index(i)+ 1] = str(v)
         else:
-            x264_cmd.extend([i, str(v)])
+            cmd.extend([i, str(v)])
 
-    print("Encoder command: ", " ".join(x264_cmd), "\n")
-    process = subprocess.Popen(x264_cmd, stdin=subprocess.PIPE)
-    clip.output(process.stdin, y4m=True, progress_update=lambda value, endvalue: print(
-        f"\rVapourSynth: {value}/{endvalue} ~ {100 * value // endvalue}% || Encoder: ", end=""))
+    print("Encoder command: ", " ".join(cmd), "\n")
+    process = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+    clip.output(process.stdin, y4m=True, progress_update=lambda value, endvalue:
+                print(f"\rVapourSynth: {value}/{endvalue} ~ {100 * value // endvalue}% || Encoder: ", end=""))
     process.communicate()
 
 
