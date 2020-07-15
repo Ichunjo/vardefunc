@@ -5,10 +5,14 @@ import math
 import subprocess
 from typing import Tuple
 from functools import partial
-from vsutil import core, vs, depth, get_depth, get_y, get_w, split
 
 import fvsfunc as fvf
 import havsfunc as hvf
+
+from vsutil import depth, get_depth, get_y, get_w, split
+import vapoursynth as vs
+
+core = vs.core
 
 
 def fade_filter(source: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode,
