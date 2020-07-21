@@ -397,33 +397,27 @@ def generate_keyframes(clip: vs.VideoNode, out_path: str) -> None:
     text_file.close()
 
 
-def encode(clip: vs.VideoNode, binary: str, output_file: str, x264: bool, **args) -> None:
+def encode(clip: vs.VideoNode, binary: str, output_file: str, **args) -> None:
     """Stolen from lyfunc
     Args:
         clip (vs.VideoNode): Source filtered clip
-        binary (str): Path to x26X binary.
+        binary (str): Path to x264 binary.
         output_file (str): Path to the output file.
     """
-    if x264:
-        cmd = [binary,
-               "--demuxer", "y4m",
-               "--frames", f"{clip.num_frames}",
-               "--sar", "1:1",
-               "--output-depth", "10",
-               "--output-csp", "i420",
-               "--colormatrix", "bt709",
-               "--colorprim", "bt709",
-               "--transfer", "bt709",
-               "--no-fast-pskip",
-               "--no-dct-decimate",
-               "--partitions", "all",
-               "-o", output_file,
-               "-"]
-    else:
-        cmd = [binary,
-               "-o", output_file,
-               "-"]
-
+    cmd = [binary,
+           "--demuxer", "y4m",
+           "--frames", f"{clip.num_frames}",
+           "--sar", "1:1",
+           "--output-depth", "10",
+           "--output-csp", "i420",
+           "--colormatrix", "bt709",
+           "--colorprim", "bt709",
+           "--transfer", "bt709",
+           "--no-fast-pskip",
+           "--no-dct-decimate",
+           "--partitions", "all",
+           "-o", output_file,
+           "-"]
     for i, v in args.items():
         i = "--" + i if i[:2] != "--" else i
         i = i.replace("_", "-")
