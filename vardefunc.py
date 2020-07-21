@@ -390,7 +390,7 @@ def generate_keyframes(clip: vs.VideoNode, out_path: str) -> None:
         if clip.get_frame(i).props["_SceneChangePrev"] == 1 \
             or clip.get_frame(i).props["Scenechange"] == 1:
             out_txt += "%d I -1\n" % i
-        if i % 500 == 0:
+        if i % 2000 == 0:
             print(i)
     text_file = open(out_path, "w")
     text_file.write(out_txt)
