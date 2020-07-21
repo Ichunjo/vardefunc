@@ -3,11 +3,12 @@ Various functions I use.
 """
 import math
 import subprocess
-from typing import Tuple
+from typing import Tuple, Callable
 from functools import partial
 
 import fvsfunc as fvf
 import havsfunc as hvf
+import placebo
 
 from vsutil import depth, get_depth, get_y, get_w, split
 import vapoursynth as vs
@@ -218,6 +219,44 @@ def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True, **args)-> vs.VideoNo
     clip = core.std.Interleave([_nnedi3(clip[::2]), _nnedi3cl(clip[1::2])])
     return core.resize.Spline36(clip, src_top=.5, src_left=.5)
 
+
+def fsrcnnx_upscale(source: vs.VideoNode, height: int, shader_file: str,
+                    downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Spline36,
+                    draft: bool = False, **nnargs)-> vs.VideoNode:
+    """Upscale the given source clip with FSRCNNX to a given height and deal with the occasional ringing
+       that can occur by replacing too bright pixels with a smoother nnedi3 upscale.
+
+    Args:
+        source (vs.VideoNode): Source clip.
+        height (int): Target resolution height.
+        shader_file (str): Path to the FSRCNNX shader file.
+        downscaler (Callable[[vs.VideoNode, int, int], vs.VideoNode], optional): Resizer used to downscale the upscaled clip.
+                                                                                 Defaults to core.resize.Spline36.
+        draft (bool, optional): Allow to only output the FSRCNNX resized without the nnedi3 one. Defaults to False.
+
+    Returns:
+        vs.VideoNode: Upscaled clip.
+    """
+    if get_depth(source) != 16:
+        clip = depth(clip, 16)
+    else:
+        clip = source
+
+    fsrcnnx = placebo.shader(clip, clip.width*2, clip.height*2, shader_file)
+
+    if not draft:
+        nnargs = nnargs or dict(nsize=4, nns=4, qual=2, pscrn=2)
+        smooth = clip.std.Transpose().nnedi3.nnedi3(0, True, **nnargs).std.Transpose().nnedi3.nnedi3(0, True, **nnargs)
+        smooth = core.resize.Spline36(smooth, src_top=.5, src_left=.5)
+        out = core.std.Expr([fsrcnnx, smooth], 'x y < x y ?')
+    else:
+        out = fsrcnnx
+
+    scaled = downscaler(out, get_w(height, clip.width/clip.height), height)
+
+    if get_depth(source) != 16:
+        scaled = depth(scaled, get_depth(source))
+    return scaled
 
 def to_444(clip: vs.VideoNode, width: int = None, height: int = None, join_planes: bool = True)-> vs.VideoNode:
     """Zastin’s nnedi3 chroma upscaler
