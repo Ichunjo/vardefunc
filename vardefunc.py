@@ -241,7 +241,7 @@ def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True, **args)-> vs.VideoNo
     return core.resize.Spline36(clip, src_top=.5, src_left=.5)
 
 
-def to444(clip: vs.VideoNode, width: int = None, height: int = None, join_planes: bool = True)-> vs.VideoNode:
+def to_444(clip: vs.VideoNode, width: int = None, height: int = None, join_planes: bool = True)-> vs.VideoNode:
     """Zastin’s nnedi3 chroma upscaler
 
     Args:
