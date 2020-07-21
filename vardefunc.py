@@ -128,7 +128,7 @@ def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, origin
 
 def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bicubic',
                       b: float = 0, c: float = 1/2, mthr: int = 55,
-                      mode: str = 'rectangle', sw: int = 2, sh: int = 2)-> vs.VideoNode:
+                      mode: str = 'ellipse', sw: int = 2, sh: int = 2)-> vs.VideoNode:
     """Modified version of Atomchtools for generate a mask with a rescaled difference
 
     Args:
@@ -138,7 +138,7 @@ def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bi
         b (float, optional): Defaults to 0.
         c (float, optional): Defaults to 1/2.
         mthr (int, optional): Defaults to 55.
-        mode (str, optional): Can be 'rectangle', 'losange' or 'ellipse' . Defaults to 'rectangle'.
+        mode (str, optional): Can be 'rectangle', 'losange' or 'ellipse' . Defaults to 'ellipse'.
         sw (int, optional): Growing/shrinking shape width. 0 is allowed. Defaults to 2.
         sh (int, optional): Growing/shrinking shape height. 0 is allowed. Defaults to 2.
 
