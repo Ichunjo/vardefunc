@@ -40,35 +40,6 @@ def fade_filter(source: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode
     return source[:start_f] + clip_fad + source[end_f+1:]
 
 
-def knlmcl(source: vs.VideoNode, h_y: float = 1.2, h_uv: float = 0.5,
-           device_id: int = 0, bits: int = None)-> vs.VideoNode:
-    """Denoise both luma and chroma with KNLMeansCL
-
-    Args:
-        source (vs.VideoNode): Source clip
-        h_y (float, optional): h parameter in KNLMeansCL for the luma. Defaults to 1.2.
-        h_uv (float, optional): h parameter in KNLMeansCL for the chroma. Defaults to 0.5.
-        device_id (int, optional): Device id in KNLMeansCL. Defaults to 0.
-        bits (int, optional): Output bitdepth. Defaults to None.
-
-    Returns:
-        vs.VideoNode:
-    """
-    if get_depth(source) != 32:
-        clip = depth(source, 32)
-    else:
-        clip = source
-
-    denoise = core.knlm.KNLMeansCL(clip, a=2, h=h_y, d=3, device_type='gpu',
-                                   device_id=device_id, channels='Y')
-    denoise = core.knlm.KNLMeansCL(denoise, a=2, h=h_uv, d=3, device_type='gpu',
-                                   device_id=device_id, channels='UV')
-    if depth is not None:
-        denoise = depth(denoise, bits)
-
-    return denoise
-
-
 def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, original_grained: vs.VideoNode,
                        range_avg: Tuple[float, float] = (0.5, 0.4), luma_scaling: int = 28)-> vs.VideoNode:
     """Merge back the original grain below the lower range_avg value,
