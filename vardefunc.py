@@ -32,12 +32,19 @@ def fade_filter(source: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode
     length = end_f - start_f
 
     def _fade(n, clip_a, clip_b, length):
-        return core.std.Merge(clip_a, clip_b, n / length)
+        return core.std.Merge(clip_a, clip_b, n/length)
 
-    clip_fad = core.std.FrameEval(source[start_f:end_f+1],
-                                  partial(_fade, clip_a=clip_a[start_f:end_f+1],
-                                          clip_b=clip_b[start_f:end_f+1], length=length))
-    return source[:start_f] + clip_fad + source[end_f+1:]
+    function = partial(_fade, clip_a=clip_a[start_f:end_f+1], clip_b=clip_b[start_f:end_f+1], length=length)
+    clip_fad = core.std.FrameEval(source[start_f:end_f+1], function)
+
+    final = clip_fad
+
+    if start_f != 0:
+        final = source[:start_f] + final
+    if end_f+1 < source.num_frames:
+        final = final + source[end_f+1:]
+
+    return final
 
 
 def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, original_grained: vs.VideoNode,
