@@ -172,7 +172,7 @@ def fsrcnnx_upscale(source: vs.VideoNode, height: int, shader_file: str,
 
     scaled = downscaler(out, get_w(height, clip.width/clip.height), height)
 
-    if depth_src != 16:
+    if get_depth(scaled) != depth_src:
         scaled = depth(scaled, depth_src)
     return scaled
 
