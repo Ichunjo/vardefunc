@@ -240,7 +240,8 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[vs.VideoNode, vs.VideoNo
 
 def fsrcnnx_upscale(source: vs.VideoNode, height: int, shader_file: str,
                     downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Spline36,
-                    draft: bool = False, **nnargs)-> vs.VideoNode:
+                    upscaler_smooth: Callable[vs.VideoNode, vs.VideoNode] = None,
+                    draft: bool = False, **nnedi3_args)-> vs.VideoNode:
     """Upscale the given source clip with FSRCNNX to a given height and deal with the occasional ringing
        that can occur by replacing too bright pixels with a smoother nnedi3 upscale.
 
@@ -250,6 +251,8 @@ def fsrcnnx_upscale(source: vs.VideoNode, height: int, shader_file: str,
         shader_file (str): Path to the FSRCNNX shader file.
         downscaler (Callable[[vs.VideoNode, int, int], vs.VideoNode], optional): Resizer used to downscale the upscaled clip.
                                                                                  Defaults to core.resize.Spline36.
+        upscaler_smooth (Callable[vs.VideoNode, vs.VideoNode], optional): Resizer used to replace the smoother nnedi3 upscale.
+                                                                          Default no None which means nnedi3_upscale.
         draft (bool, optional): Allow to only output the FSRCNNX resized without the nnedi3 one. Defaults to False.
 
     Returns:
@@ -263,9 +266,12 @@ def fsrcnnx_upscale(source: vs.VideoNode, height: int, shader_file: str,
     fsrcnnx = placebo.shader(clip, clip.width*2, clip.height*2, shader_file)
 
     if not draft:
-        nnargs = nnargs or dict(nsize=4, nns=4, qual=2, pscrn=2)
-        smooth = clip.std.Transpose().nnedi3.nnedi3(0, True, **nnargs).std.Transpose().nnedi3.nnedi3(0, True, **nnargs)
-        smooth = core.resize.Spline36(smooth, src_top=.5, src_left=.5)
+        if upscaler_smooth is None:
+            nnargs: Dict[str, Any] = dict(nsize=4, nns=4, qual=2, pscrn=2)
+            nnargs.update(nnedi3_args)
+            smooth = nnedi3_upscale(clip, **nnargs)
+        else:
+            smooth = upscaler_smooth(clip)
         out = core.std.Expr([fsrcnnx, smooth], 'x y < x y ?')
     else:
         out = fsrcnnx
