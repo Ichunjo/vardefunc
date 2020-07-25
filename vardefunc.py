@@ -220,6 +220,24 @@ def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True, **args)-> vs.VideoNo
     return core.resize.Spline36(clip, src_top=.5, src_left=.5)
 
 
+def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[vs.VideoNode, vs.VideoNode] = core.resize.Spline36,
+                   correct_shift: bool = True, **nnedi3_args)-> vs.VideoNode:
+    """Classic based nnedi3 upscale.
+
+    Args:
+        clip (vs.VideoNode): Source clip.
+        scaler (Callable[vs.VideoNode, vs.VideoNode], optional): Resizer used to correct the shift. Defaults to core.resize.Spline36.
+        correct_shift (bool, optional): Defaults to True.
+
+    Returns:
+        vs.VideoNode: Upscaled clip.
+    """
+    nnargs: Dict[str, Any] = dict(nsize=4, nns=4, qual=2, pscrn=2)
+    nnargs.update(nnedi3_args)
+    clip = clip.std.Transpose().nnedi3.nnedi3(0, True, **nnargs).std.Transpose().nnedi3.nnedi3(0, True, **nnargs)
+    return scaler(clip, src_top=.5, src_left=.5) if correct_shift else clip
+
+
 def fsrcnnx_upscale(source: vs.VideoNode, height: int, shader_file: str,
                     downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Spline36,
                     draft: bool = False, **nnargs)-> vs.VideoNode:
