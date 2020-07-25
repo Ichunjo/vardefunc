@@ -3,7 +3,7 @@ Various functions I use.
 """
 import math
 import subprocess
-from typing import Tuple, Callable, Dict, Any
+from typing import Tuple, Callable, Dict, Any, cast
 from functools import partial
 
 import fvsfunc as fvf
@@ -63,19 +63,19 @@ def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, origin
     # pylint: disable=unused-argument
     def _diff(n: int, f: vs.VideoFrame, avg_max: float, avg_min: float,
               new: vs.VideoNode, adapt: vs.VideoNode) -> vs.VideoNode:
-        psa = f.props['PlaneStatsAverage']
+        psa = cast(float, f.props['PlaneStatsAverage'])
         if psa > avg_max:
             clip = new
         elif psa < avg_min:
             clip = adapt
         else:
             weight = (psa - avg_min) / (avg_max - avg_min)
-            clip = core.std.Merge(adapt, new, weight)
+            clip = core.std.Merge(adapt, new, [weight])
         return clip
 
     diff_function = partial(_diff, avg_max=avg_max, avg_min=avg_min, new=new_grained, adapt=adapt_grained)
 
-    return core.std.FrameEval(denoised, diff_function, avg)
+    return core.std.FrameEval(denoised, diff_function, [avg])
 
 
 
@@ -165,7 +165,7 @@ def fsrcnnx_upscale(source: vs.VideoNode, height: int, shader_file: str,
             nnargs.update(nnedi3_args)
             smooth = nnedi3_upscale(clip, **nnargs)
         else:
-            smooth = upscaler_smooth(clip)
+            smooth = upscaler_smooth(clip, ...)
         out = core.std.Expr([fsrcnnx, smooth], 'x y < x y ?')
     else:
         out = fsrcnnx
