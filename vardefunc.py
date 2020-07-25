@@ -114,13 +114,13 @@ def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True, **nnedi3_args)-> vs.
     return core.resize.Spline36(clip, src_top=.5, src_left=.5)
 
 
-def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[vs.VideoNode, vs.VideoNode] = core.resize.Spline36,
+def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.VideoNode] = core.resize.Spline36,
                    correct_shift: bool = True, **nnedi3_args)-> vs.VideoNode:
     """Classic based nnedi3 upscale.
 
     Args:
         clip (vs.VideoNode): Source clip.
-        scaler (Callable[vs.VideoNode, vs.VideoNode], optional): Resizer used to correct the shift. Defaults to core.resize.Spline36.
+        scaler (Callable[[vs.VideoNode, Any], vs.VideoNode], optional): Resizer used to correct the shift. Defaults to core.resize.Spline36.
         correct_shift (bool, optional): Defaults to True.
 
     Returns:
@@ -134,7 +134,7 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[vs.VideoNode, vs.VideoNo
 
 def fsrcnnx_upscale(source: vs.VideoNode, height: int, shader_file: str,
                     downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Spline36,
-                    upscaler_smooth: Callable[vs.VideoNode, vs.VideoNode] = None,
+                    upscaler_smooth: Callable[[vs.VideoNode, Any], vs.VideoNode] = None,
                     draft: bool = False, **nnedi3_args)-> vs.VideoNode:
     """Upscale the given source clip with FSRCNNX to a given height and deal with the occasional ringing
        that can occur by replacing too bright pixels with a smoother nnedi3 upscale.
@@ -145,7 +145,7 @@ def fsrcnnx_upscale(source: vs.VideoNode, height: int, shader_file: str,
         shader_file (str): Path to the FSRCNNX shader file.
         downscaler (Callable[[vs.VideoNode, int, int], vs.VideoNode], optional): Resizer used to downscale the upscaled clip.
                                                                                  Defaults to core.resize.Spline36.
-        upscaler_smooth (Callable[vs.VideoNode, vs.VideoNode], optional): Resizer used to replace the smoother nnedi3 upscale.
+        upscaler_smooth (Callable[[vs.VideoNode, Any], vs.VideoNode], optional): Resizer used to replace the smoother nnedi3 upscale.
                                                                           Default no None which means nnedi3_upscale.
         draft (bool, optional): Allow to only output the FSRCNNX resized without the nnedi3 one. Defaults to False.
 
