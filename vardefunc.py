@@ -10,7 +10,7 @@ import fvsfunc as fvf
 import havsfunc as hvf
 import placebo
 
-from vsutil import depth, get_depth, get_y, get_w, split
+from vsutil import depth, get_depth, get_y, get_w, split, iterate
 import vapoursynth as vs
 
 core = vs.core
@@ -298,6 +298,37 @@ def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.Vide
     if get_depth(source) != 8:
         credit_m = depth(credit_m, get_depth(source))
     return credit_m
+
+def edge_detect(clip: vs.VideoNode, mode: str, thr: int, mpand: Tuple[int, int],
+                **kwargs)-> vs.VideoNode:
+    """Generates edge mask based on convolution kernel.
+
+    Args:
+        clip (vs.VideoNode): Source clip.
+        mode (str): Chooses a predefined kernel used for the mask computing.
+                    Valid choices are "sobel", "prewitt", "scharr", "kirsch",
+                    "robinson", "roberts", "cartoon", "min/max", "laplace",
+                    "frei-chen", "kayyali", "LoG", "FDOG" and "TEdge".
+        thr (int): Binarize threshold.
+        mpand (Tuple[int, int]): Iterate numbers of expand and inpand.
+
+    Returns:
+        vs.VideoNode: Return edge mask
+    """
+    try:
+        import G41Fun as gf
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError("edge_detect: missing dependency 'G41Fun'")
+
+
+    mask = gf.EdgeDetect(clip, mode, **kwargs).std.Binarize(thr)
+
+    coord = [1, 2, 1, 2, 2, 1, 2, 1]
+    mask = iterate(mask, partial(core.std.Maximum, coordinates=coord), mpand[0])
+    mask = iterate(mask, partial(core.std.Minimum, coordinates=coord), mpand[1])
+
+    return mask.std.Inflate().std.Deflate()
+
 
 def region_mask(clip: vs.VideoNode,
                 left: int = 0, right: int = 0,
