@@ -133,18 +133,18 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.
 
 
 def fsrcnnx_upscale(source: vs.VideoNode, height: int, shader_file: str,
-                    downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Spline36,
+                    downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Bicubic,
                     upscaler_smooth: Callable[[vs.VideoNode, Any], vs.VideoNode] = None,
                     draft: bool = False, **nnedi3_args)-> vs.VideoNode:
     """Upscale the given source clip with FSRCNNX to a given height and deal with the occasional ringing
        that can occur by replacing too bright pixels with a smoother nnedi3 upscale.
 
     Args:
-        source (vs.VideoNode): Source clip.
+        source (vs.VideoNode): Source clip. Should be a GRAY16 clip.
         height (int): Target resolution height.
         shader_file (str): Path to the FSRCNNX shader file.
         downscaler (Callable[[vs.VideoNode, int, int], vs.VideoNode], optional): Resizer used to downscale the upscaled clip.
-                                                                                 Defaults to core.resize.Spline36.
+                                                                                 Defaults to core.resize.Bicubic.
         upscaler_smooth (Callable[[vs.VideoNode, Any], vs.VideoNode], optional): Resizer used to replace the smoother nnedi3 upscale.
                                                                           Default no None which means nnedi3_upscale.
         draft (bool, optional): Allow to only output the FSRCNNX resized without the nnedi3 one. Defaults to False.
