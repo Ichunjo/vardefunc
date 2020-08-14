@@ -136,7 +136,7 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int, height: int, shader_file: 
                     downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Bicubic,
                     upscaler_smooth: Callable[[vs.VideoNode, Any], vs.VideoNode] = partial(nnedi3_upscale, nsize=4, nns=4, qual=2, pscrn=2),
                     draft: bool = False)-> vs.VideoNode:
-    """Upscale the given luma source clip with FSRCNNX to a given height and deal with the occasional ringing
+    """Upscale the given luma source clip with FSRCNNX to a given width / height and deal with the occasional ringing
        that can occur by replacing too bright pixels with a smoother nnedi3 upscale.
 
     Args:
@@ -161,6 +161,10 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int, height: int, shader_file: 
         clip = depth(source, 16)
     else:
         clip = source
+
+    if width is None:
+        width = get_w(height, clip.width/clip.height)
+
 
 
     fsrcnnx = placebo.shader(clip, clip.width*2, clip.height*2, shader_file)
