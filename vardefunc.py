@@ -132,7 +132,7 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.
     return scaler(clip, src_top=.5, src_left=.5) if correct_shift else clip
 
 
-def fsrcnnx_upscale(source: vs.VideoNode, width: int, height: int, shader_file: str,
+def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080, shader_file: str = None,
                     downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Bicubic,
                     upscaler_smooth: Callable[[vs.VideoNode, Any], vs.VideoNode] = partial(nnedi3_upscale, nsize=4, nns=4, qual=2, pscrn=2),
                     draft: bool = False)-> vs.VideoNode:
@@ -141,9 +141,9 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int, height: int, shader_file: 
 
     Args:
         source (vs.VideoNode): Source clip.
-        width (int): Target resolution width.
-        height (int): Target resolution height.
-        shader_file (str): Path to the FSRCNNX shader file.
+        width (int): Target resolution width. Defaults to None.
+        height (int): Target resolution height. Defaults to 1080.
+        shader_file (str): Path to the FSRCNNX shader file. Defaults to None.
         luma_only (bool, optional): If process the luma only. Defaults to True.
         downscaler (Callable[[vs.VideoNode, int, int], vs.VideoNode], optional): Resizer used to downscale the upscaled clip.
                                                                                  Defaults to core.resize.Bicubic.
