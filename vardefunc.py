@@ -132,49 +132,59 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.
     return scaler(clip, src_top=.5, src_left=.5) if correct_shift else clip
 
 
-def fsrcnnx_upscale(source: vs.VideoNode, height: int, shader_file: str,
+def fsrcnnx_upscale(source: vs.VideoNode, width: int, height: int, shader_file: str,
                     downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Bicubic,
-                    upscaler_smooth: Callable[[vs.VideoNode, Any], vs.VideoNode] = None,
-                    draft: bool = False, **nnedi3_args)-> vs.VideoNode:
-    """Upscale the given source clip with FSRCNNX to a given height and deal with the occasional ringing
+                    upscaler_smooth: Callable[[vs.VideoNode, Any], vs.VideoNode] = partial(nnedi3_upscale, nsize=4, nns=4, qual=2, pscrn=2),
+                    draft: bool = False)-> vs.VideoNode:
+    """Upscale the given luma source clip with FSRCNNX to a given height and deal with the occasional ringing
        that can occur by replacing too bright pixels with a smoother nnedi3 upscale.
 
     Args:
-        source (vs.VideoNode): Source clip. Should be a GRAY16 clip.
+        source (vs.VideoNode): Source clip.
+        width (int): Target resolution width.
         height (int): Target resolution height.
         shader_file (str): Path to the FSRCNNX shader file.
+        luma_only (bool, optional): If process the luma only. Defaults to True.
         downscaler (Callable[[vs.VideoNode, int, int], vs.VideoNode], optional): Resizer used to downscale the upscaled clip.
                                                                                  Defaults to core.resize.Bicubic.
         upscaler_smooth (Callable[[vs.VideoNode, Any], vs.VideoNode], optional): Resizer used to replace the smoother nnedi3 upscale.
-                                                                          Default no None which means nnedi3_upscale.
+                                                                                 Defaults to partial(nnedi3_upscale, nsize=4, nns=4, qual=2, pscrn=2).
         draft (bool, optional): Allow to only output the FSRCNNX resized without the nnedi3 one. Defaults to False.
 
     Returns:
-        vs.VideoNode: Upscaled clip.
+        vs.VideoNode: Upscaled luma clip.
     """
+    if source.format.num_planes > 1:
+        source = get_y(source)
+
     if (depth_src := get_depth(source)) != 16:
         clip = depth(source, 16)
     else:
         clip = source
 
+
     fsrcnnx = placebo.shader(clip, clip.width*2, clip.height*2, shader_file)
 
-    if not draft:
-        if upscaler_smooth is None:
-            nnargs: Dict[str, Any] = dict(nsize=4, nns=4, qual=2, pscrn=2)
-            nnargs.update(nnedi3_args)
-            smooth = nnedi3_upscale(clip, **nnargs)
-        else:
-            smooth = upscaler_smooth(clip, ...)
-        out = core.std.Expr([fsrcnnx, smooth], 'x y < x y ?')
-    else:
-        out = fsrcnnx
 
-    scaled = downscaler(out, get_w(height, clip.width/clip.height), height)
+    if draft:
+        upscaled = fsrcnnx
+    else:
+        smooth = upscaler_smooth(clip)
+        upscaled = core.std.Expr([fsrcnnx, smooth], 'x y min')
+
+
+    if downscaler:
+        scaled = downscaler(upscaled, width, height)
+    else:
+        scaled = upscaled
+
 
     if get_depth(scaled) != depth_src:
-        scaled = depth(scaled, depth_src)
-    return scaled
+        out = depth(scaled, depth_src)
+    else:
+        out = scaled
+
+    return out
 
 
 def to_444(clip: vs.VideoNode, width: int = None, height: int = None, join_planes: bool = True)-> vs.VideoNode:
