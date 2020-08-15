@@ -3,7 +3,7 @@ Various functions I use.
 """
 import math
 import subprocess
-from typing import Tuple, Callable, Dict, Any, cast
+from typing import Tuple, Callable, Dict, Any, cast, Union
 from functools import partial
 
 import fvsfunc as fvf
@@ -541,7 +541,37 @@ def encode(clip: vs.VideoNode, binary: str, output_file: str, **args) -> None:
                 print(f"\rVapourSynth: {value}/{endvalue} ~ {100 * value // endvalue}% || Encoder: ", end=""))
     process.communicate()
 
+def set_ffms2_log_level(level: Union[str, int] = 0)-> None:
+    """A more friendly set of log level in ffms2
 
+    Args:
+        level (int, optional): The target level in ffms2.
+                               Valid choices are "quiet" or 0, "panic" or 1, "fatal" or 2, "error" or 3,
+                               "warning" or 4, "info" or 5, "verbose" or 6, "debug" or 7 and "trace" or 8.
+                               Defaults to 0.
+    """
+    level = level.lower()
+    levels = {
+        'quiet': -8,
+        'panic': 0,
+        'fatal': 8,
+        'error': 16,
+        'warning': 24,
+        'info': 32,
+        'verbose': 40,
+        'debug': 48,
+        'trace': 56,
+        '0': -8,
+        '1': 0,
+        '2': 8,
+        '3': 16,
+        '4': 24,
+        '5': 32,
+        '6': 40,
+        '7': 48,
+        '8': 56
+    }
+    core.ffms2.SetLogLevel(levels[level])
 
 
 # # # # # #
