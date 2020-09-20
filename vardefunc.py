@@ -313,6 +313,45 @@ def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.Vide
         credit_m = depth(credit_m, get_depth(source))
     return credit_m
 
+
+def luma_credit_mask(source: vs.VideoNode, thr: int = 230, mode: str = 'prewitt', draft: bool = False)-> vs.VideoNode:
+    """Creates a mask based on luma value and edges.
+
+    Args:
+        source (vs.VideoNode): Source clip.
+        thr (int, optional): Luma value assuming 8 bit input. Defaults to 230.
+        mode (str, optional): Chooses a predefined kernel used for the mask computing.
+                              Valid choices are "sobel", "prewitt", "scharr", "kirsch",
+                              "robinson", "roberts", "cartoon", "min/max", "laplace",
+                              "frei-chen", "kayyali", "LoG", "FDOG" and "TEdge".
+                              Defaults to 'prewitt'.
+        draft (bool, optional): Allow to output the mask without growing. Defaults to False.
+
+    Returns:
+        vs.VideoNode: Credit mask.
+    """
+    try:
+        import G41Fun as gf
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError("luma_credit_mask: missing dependency 'G41Fun'")
+
+    if not source.format.num_planes == 1:
+        clip = get_y(source)
+    else:
+        clip = source
+
+    edge_mask = gf.EdgeDetect(clip, mode).std.Maximum()
+    luma_mask = core.std.Expr(clip, f'x {thr} > x 0 ?')
+
+    credit_mask = core.std.Expr([edge_mask, luma_mask], 'x y min')
+
+    if not draft:
+        credit_mask = iterate(credit_mask, core.std.Maximum, 4)
+        credit_mask = iterate(credit_mask, core.std.Inflate, 2)
+
+    return credit_mask
+
+
 def edge_detect(clip: vs.VideoNode, mode: str, thr: int, mpand: Tuple[int, int],
                 **kwargs)-> vs.VideoNode:
     """Generates edge mask based on convolution kernel.
@@ -579,4 +618,5 @@ def set_ffms2_log_level(level: Union[str, int] = 0)-> None:
 
 drm = diff_rescale_mask
 dcm = diff_creditless_mask
+lcm = luma_credit_mask
 gk = generate_keyframes
