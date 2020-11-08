@@ -184,7 +184,7 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
     try:
         num = ['fast', 'old', 'slow'].index(profile.lower())
     except:
-        raise vs.Error('fsrcnnx_upscale: Defaults must be "fast" or "old" or "slow"')
+        raise vs.Error('fsrcnnx_upscale: profile must be "fast" or "old" or "slow"')
 
 
 
