@@ -139,21 +139,29 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.
 def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080, shader_file: str = None,
                     downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Bicubic,
                     upscaler_smooth: Callable[[vs.VideoNode, Any], vs.VideoNode] = partial(nnedi3_upscale, nsize=4, nns=4, qual=2, pscrn=2),
-                    draft: bool = False)-> vs.VideoNode:
-    """Upscale the given luma source clip with FSRCNNX to a given width / height and deal with the occasional ringing
-       that can occur by replacing too bright pixels with a smoother nnedi3 upscale.
+                    strength: float = 100.0, profile: str = 'slow',
+                    lmode: int = 1, overshoot: int = None, undershoot: int = None)-> vs.VideoNode:
+    """Upscale the given luma source clip with FSRCNNX to a given width / height while preventing FSRCNNX artifacts by limiting them.
 
     Args:
-        source (vs.VideoNode): Source clip.
+        source (vs.VideoNode): Source clip, assuming this one is perfectly descaled.
         width (int): Target resolution width. Defaults to None.
         height (int): Target resolution height. Defaults to 1080.
         shader_file (str): Path to the FSRCNNX shader file. Defaults to None.
-        luma_only (bool, optional): If process the luma only. Defaults to True.
         downscaler (Callable[[vs.VideoNode, int, int], vs.VideoNode], optional): Resizer used to downscale the upscaled clip.
                                                                                  Defaults to core.resize.Bicubic.
         upscaler_smooth (Callable[[vs.VideoNode, Any], vs.VideoNode], optional): Resizer used to replace the smoother nnedi3 upscale.
                                                                                  Defaults to partial(nnedi3_upscale, nsize=4, nns=4, qual=2, pscrn=2).
-        draft (bool, optional): Allow to only output the FSRCNNX resized without the nnedi3 one. Defaults to False.
+        strength (float): Only for profile='slow'. Strength between the smooth upscale and the fsrcnnx upscale where 0.0 means the full smooth clip
+                          and 100.0 means the full fsrcnnx clip. Negative and positive values are possible, but not recommended.
+        profile (str): Profile settings. Possible strings: "fast", "old" or "slow". "fast" is the old draft mode (the plain fsrcnnx clip returned),
+                       "old" is the old mode to deal with the bright pixels and "slow" is the new mode, more efficient.
+        lmode (int): Only for profile='slow':
+                     – (< 0): Limit with rgvs.Repair (ex: lmode=-1 --> rgvs.Repair(1), lmode=-5 --> rgvs.Repair(5) ...)
+                     – (= 0): No limit.
+                     – (= 1): Limit to over/undershoot.
+        overshoot (int): Limit for pixels that get brighter during upscaling.
+        undershoot (int): Limit for pixels that get darker during upscaling.
 
     Returns:
         vs.VideoNode: Upscaled luma clip.
@@ -168,23 +176,51 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
 
     if width is None:
         width = get_w(height, clip.width/clip.height)
+    if overshoot is None:
+        overshoot = strength / 100
+    if undershoot is None:
+        undershoot = overshoot
+
+    try:
+        num = ['fast', 'old', 'slow'].index(profile.lower())
+    except:
+        raise vs.Error('fsrcnnx_upscale: Defaults must be "fast" or "old" or "slow"')
+
 
 
 
     fsrcnnx = placebo.shader(clip, clip.width*2, clip.height*2, shader_file)
 
 
-    if draft:
-        upscaled = fsrcnnx
-    else:
+    if num >= 1:
+        # old or slow profile
         smooth = upscaler_smooth(clip)
-        upscaled = core.std.Expr([fsrcnnx, smooth], 'x y min')
+        if num == 1:
+            # old profile
+            limit = core.std.Expr([fsrcnnx, smooth], 'x y min')
+        else:
+            # slow profile
+            upscaled = core.std.Expr([fsrcnnx, smooth], 'x {strength} * y 1 {strength} - * +'.format(strength=strength/100))
+            if lmode < 0:
+                limit = core.rgvs.Repair(upscaled, smooth, abs(lmode))
+            elif lmode == 0:
+                limit = upscaled
+            elif lmode == 1:
+                dark_limit = core.std.Minimum(smooth)
+                bright_limit = core.std.Maximum(smooth)
+
+                limit = hvf.Clamp(upscaled, bright_limit, dark_limit, hvf.scale(overshoot, (1 << 16) - 1), hvf.scale(undershoot, (1 << 16) - 1))
+            else:
+                raise vs.Error('fsrcnnx_upscale: "lmode" must be < 0, 0 or 1')
+    else:
+        limit = fsrcnnx
+
 
 
     if downscaler:
-        scaled = downscaler(upscaled, width, height)
+        scaled = downscaler(limit, width, height)
     else:
-        scaled = upscaled
+        scaled = limit
 
 
     if get_depth(scaled) != depth_src:
