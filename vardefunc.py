@@ -184,7 +184,7 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
     try:
         num = ['fast', 'old', 'slow'].index(profile.lower())
     except:
-        raise vs.Error('fsrcnnx_upscale: profile must be "fast" or "old" or "slow"')
+        raise vs.Error('fsrcnnx_upscale: "profile" must be "fast", "old" or "slow"')
 
 
 
@@ -209,7 +209,9 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
                 dark_limit = core.std.Minimum(smooth)
                 bright_limit = core.std.Maximum(smooth)
 
-                limit = hvf.Clamp(upscaled, bright_limit, dark_limit, hvf.scale(overshoot, (1 << 16) - 1), hvf.scale(undershoot, (1 << 16) - 1))
+                limit = hvf.Clamp(upscaled, bright_limit, dark_limit,
+                                  hvf.scale(overshoot, (1 << 16) - 1),
+                                  hvf.scale(undershoot, (1 << 16) - 1))
             else:
                 raise vs.Error('fsrcnnx_upscale: "lmode" must be < 0, 0 or 1')
     else:
