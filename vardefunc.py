@@ -79,6 +79,42 @@ def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, origin
 
 
 
+# # # # # # # # # # # # #
+# Sharpening functions  #
+# # # # # # # # # # # # #
+def z4USM(clip: vs.VideoNode, radius: int = 1, strength: float = 100.0)-> vs.VideoNode:
+    """Zastin unsharp mask.
+
+    Args:
+        clip (vs.VideoNode): Source clip.
+        radius (int, optional): Radius setting, it could be 1 or 2. Defaults to 1.
+        strength (float, optional): Sharpening strength. Defaults to 100.0.
+
+    Returns:
+        vs.VideoNode: Sharpened clip.
+    """
+    if radius not in (1, 2):
+        raise vs.Error('z4USM: "radius" must be 1 or 2')
+
+    strength = max(1e-6, min(math.log2(3) * strength/100, math.log2(3)))
+    weight = 0.5 ** strength / ((1 - 0.5 ** strength) / 2)
+
+    if clip.format.sample_type == 0:
+        all_matrices = [[x] for x in range(1, 1024)]
+        for x in range(1023):
+            while len(all_matrices[x]) < radius * 2 + 1:
+                all_matrices[x].append(all_matrices[x][-1] / weight)
+        error = [sum([abs(x - round(x)) for x in matrix[1:]]) for matrix in all_matrices]
+        matrix = [round(x) for x in all_matrices[error.index(min(error))]]
+    else:
+        matrix = [1]
+        while len(matrix) < radius * 2 + 1:
+            matrix.append(matrix[-1] / weight)
+    
+    matrix = [matrix[x] for x in [(2, 1, 2, 1, 0, 1, 2, 1, 2), (4, 3, 2, 3, 4, 3, 2, 1, 2, 3, 2, 1, 0, 1, 2, 3, 2, 1, 2, 3, 4, 3, 2, 3, 4)][radius-1]]
+
+    return clip.std.MergeDiff(clip.std.MakeDiff(clip.std.Convolution(matrix)))
+
 
 # # # # # # # # # # # #
 # Upscaling functions #
@@ -136,11 +172,13 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.
     return scaler(clip, src_top=.5, src_left=.5) if correct_shift else clip
 
 
+
 def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080, shader_file: str = None,
                     downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Bicubic,
                     upscaler_smooth: Callable[[vs.VideoNode, Any], vs.VideoNode] = partial(nnedi3_upscale, nsize=4, nns=4, qual=2, pscrn=2),
                     strength: float = 100.0, profile: str = 'slow',
-                    lmode: int = 1, overshoot: int = None, undershoot: int = None)-> vs.VideoNode:
+                    lmode: int = 1, overshoot: int = None, undershoot: int = None,
+                    sharpener: Callable[[vs.VideoNode, Any], vs.VideoNode] = partial(z4USM, radius=2, strength=65))-> vs.VideoNode:
     """Upscale the given luma source clip with FSRCNNX to a given width / height while preventing FSRCNNX artifacts by limiting them.
 
     Args:
@@ -148,20 +186,33 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
         width (int): Target resolution width. Defaults to None.
         height (int): Target resolution height. Defaults to 1080.
         shader_file (str): Path to the FSRCNNX shader file. Defaults to None.
+
         downscaler (Callable[[vs.VideoNode, int, int], vs.VideoNode], optional): Resizer used to downscale the upscaled clip.
                                                                                  Defaults to core.resize.Bicubic.
+
         upscaler_smooth (Callable[[vs.VideoNode, Any], vs.VideoNode], optional): Resizer used to replace the smoother nnedi3 upscale.
                                                                                  Defaults to partial(nnedi3_upscale, nsize=4, nns=4, qual=2, pscrn=2).
+
         strength (float): Only for profile='slow'. Strength between the smooth upscale and the fsrcnnx upscale where 0.0 means the full smooth clip
                           and 100.0 means the full fsrcnnx clip. Negative and positive values are possible, but not recommended.
-        profile (str): Profile settings. Possible strings: "fast", "old" or "slow". "fast" is the old draft mode (the plain fsrcnnx clip returned),
-                       "old" is the old mode to deal with the bright pixels and "slow" is the new mode, more efficient.
+
+        profile (str): Profile settings. Possible strings: "fast", "old", "slow" or "zastin".
+                       – "fast" is the old draft mode (the plain fsrcnnx clip returned).
+                       – "old" is the old mode to deal with the bright pixels.
+                       – "slow" is the new mode, more efficient.
+                       – "zastin" is a combination between a sharpened nnedi3 upscale and a fsrcnnx upscale.
+                         The sharpener prevents the interior of lines from being brightened and fsrnncx (as a clamping clip without nnedi3) prevents artifacting (halos) from the sharpening.
+                         
         lmode (int): Only for profile='slow':
                      – (< 0): Limit with rgvs.Repair (ex: lmode=-1 --> rgvs.Repair(1), lmode=-5 --> rgvs.Repair(5) ...)
                      – (= 0): No limit.
                      – (= 1): Limit to over/undershoot.
+
         overshoot (int): Limit for pixels that get brighter during upscaling.
         undershoot (int): Limit for pixels that get darker during upscaling.
+
+        sharpener (Callable[[vs.VideoNode, Any], vs.VideoNode], optional): Sharpening function used to replace the sharped smoother nnedi3 upscale.
+                                                                           Defaults to partial(z4USM, radius=2, strength=65)
 
     Returns:
         vs.VideoNode: Upscaled luma clip.
@@ -182,9 +233,9 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
         undershoot = overshoot
 
     try:
-        num = ['fast', 'old', 'slow'].index(profile.lower())
+        num = ['fast', 'old', 'slow', 'zastin'].index(profile.lower())
     except:
-        raise vs.Error('fsrcnnx_upscale: "profile" must be "fast", "old" or "slow"')
+        raise vs.Error('fsrcnnx_upscale: "profile" must be "fast", "old", "slow" or "zastin"')
 
 
 
@@ -198,7 +249,7 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
         if num == 1:
             # old profile
             limit = core.std.Expr([fsrcnnx, smooth], 'x y min')
-        else:
+        elif num == 2:
             # slow profile
             upscaled = core.std.Expr([fsrcnnx, smooth], 'x {strength} * y 1 {strength} - * +'.format(strength=strength/100))
             if lmode < 0:
@@ -214,6 +265,10 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
                                   hvf.scale(undershoot, (1 << 16) - 1))
             else:
                 raise vs.Error('fsrcnnx_upscale: "lmode" must be < 0, 0 or 1')
+        else:
+            # zastin profile
+            smooth_sharp = sharpener(smooth)
+            limit = core.std.Expr([smooth, fsrcnnx, smooth_sharp], 'x y z min max y z max min')
     else:
         limit = fsrcnnx
 
