@@ -167,7 +167,7 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.
     clip = clip.std.Transpose().nnedi3.nnedi3(0, True, **nnargs).std.Transpose().nnedi3.nnedi3(0, True, **nnargs)
 
     if scaler is None:
-        scaler = core.resize.Spline36
+        scaler = core.resize.Bicubic
 
     return scaler(clip, src_top=.5, src_left=.5) if correct_shift else clip
 
