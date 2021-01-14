@@ -285,6 +285,9 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
     else:
         out = scaled
 
+    if (chromaloc := source.get_frame(0).props['_ChromaLocation']) is not None:
+        out = core.std.SetFrameProp(out, '_ChromaLocation', intval=chromaloc)
+
     return out
 
 
