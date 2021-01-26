@@ -3,18 +3,17 @@ Various functions I use.
 """
 import math
 import subprocess
-from typing import Tuple, Callable, Dict, Any, cast, Union
 from functools import partial
+from typing import Any, Callable, Dict, Tuple, Union, cast
 
 import fvsfunc as fvf
 import havsfunc as hvf
+import vapoursynth as vs
+from vsutil import depth, get_depth, get_w, get_y, iterate, split
+
 import placebo
 
-from vsutil import depth, get_depth, get_y, get_w, split, iterate
-import vapoursynth as vs
-
 core = vs.core
-
 
 
 # # # # # # # # # #
@@ -22,7 +21,7 @@ core = vs.core
 # # # # # # # # # #
 
 def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, original_grained: vs.VideoNode,
-                       range_avg: Tuple[float, float] = (0.5, 0.4), luma_scaling: int = 28)-> vs.VideoNode:
+                       range_avg: Tuple[float, float] = (0.5, 0.4), luma_scaling: int = 28) -> vs.VideoNode:
     """Merge back the original grain below the lower range_avg value,
        apply the new grain clip above the higher range_avg value
        and weight both of them between the range_avg values for a smooth merge.
@@ -78,11 +77,10 @@ def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, origin
     return core.std.FrameEval(denoised, diff_function, [avg])
 
 
-
 # # # # # # # # # # # # #
 # Sharpening functions  #
 # # # # # # # # # # # # #
-def z4USM(clip: vs.VideoNode, radius: int = 1, strength: float = 100.0)-> vs.VideoNode:
+def z4USM(clip: vs.VideoNode, radius: int = 1, strength: float = 100.0) -> vs.VideoNode:
     """Zastin unsharp mask.
 
     Args:
@@ -110,8 +108,11 @@ def z4USM(clip: vs.VideoNode, radius: int = 1, strength: float = 100.0)-> vs.Vid
         matrix = [1]
         while len(matrix) < radius * 2 + 1:
             matrix.append(matrix[-1] / weight)
-    
-    matrix = [matrix[x] for x in [(2, 1, 2, 1, 0, 1, 2, 1, 2), (4, 3, 2, 3, 4, 3, 2, 1, 2, 3, 2, 1, 0, 1, 2, 3, 2, 1, 2, 3, 4, 3, 2, 3, 4)][radius-1]]
+
+    matrix = [
+        matrix[x] for x in [(2, 1, 2, 1, 0, 1, 2, 1, 2),
+                            (4, 3, 2, 3, 4, 3, 2, 1, 2, 3, 2, 1, 0, 1, 2, 3, 2, 1, 2, 3, 4, 3, 2, 3, 4)]
+                           [radius-1]]
 
     return clip.std.MergeDiff(clip.std.MakeDiff(clip.std.Convolution(matrix)))
 
@@ -120,7 +121,7 @@ def z4USM(clip: vs.VideoNode, radius: int = 1, strength: float = 100.0)-> vs.Vid
 # Upscaling functions #
 # # # # # # # # # # # #
 
-def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True, **nnedi3_args)-> vs.VideoNode:
+def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True, **nnedi3_args) -> vs.VideoNode:
     """Double the clip using nnedi3 for even frames and nnedi3cl for odd frames
        Intended to speed up encoding speed without hogging the GPU either
 
@@ -151,12 +152,13 @@ def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True, **nnedi3_args)-> vs.
 
 
 def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.VideoNode] = None,
-                   correct_shift: bool = True, **nnedi3_args)-> vs.VideoNode:
+                   correct_shift: bool = True, **nnedi3_args) -> vs.VideoNode:
     """Classic based nnedi3 upscale.
 
     Args:
         clip (vs.VideoNode): Source clip.
-        scaler (Callable[[vs.VideoNode, Any], vs.VideoNode], optional): Resizer used to correct the shift. Defaults to core.resize.Spline36.
+        scaler (Callable[[vs.VideoNode, Any], vs.VideoNode], optional):
+            Resizer used to correct the shift. Defaults to core.resize.Spline36.
         correct_shift (bool, optional): Defaults to True.
 
     Returns:
@@ -172,14 +174,16 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.
     return scaler(clip, src_top=.5, src_left=.5) if correct_shift else clip
 
 
-
 def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080, shader_file: str = None,
                     downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Bicubic,
                     upscaler_smooth: Callable[[vs.VideoNode, Any], vs.VideoNode] = partial(nnedi3_upscale, nsize=4, nns=4, qual=2, pscrn=2),
                     strength: float = 100.0, profile: str = 'slow',
                     lmode: int = 1, overshoot: int = None, undershoot: int = None,
-                    sharpener: Callable[[vs.VideoNode, Any], vs.VideoNode] = partial(z4USM, radius=2, strength=65))-> vs.VideoNode:
-    """Upscale the given luma source clip with FSRCNNX to a given width / height while preventing FSRCNNX artifacts by limiting them.
+                    sharpener: Callable[[vs.VideoNode, Any], vs.VideoNode] = partial(z4USM, radius=2, strength=65)
+                    ) -> vs.VideoNode:
+    """
+    Upscale the given luma source clip with FSRCNNX to a given width / height
+    while preventing FSRCNNX artifacts by limiting them.
 
     Args:
         source (vs.VideoNode): Source clip, assuming this one is perfectly descaled.
@@ -187,22 +191,26 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
         height (int): Target resolution height. Defaults to 1080.
         shader_file (str): Path to the FSRCNNX shader file. Defaults to None.
 
-        downscaler (Callable[[vs.VideoNode, int, int], vs.VideoNode], optional): Resizer used to downscale the upscaled clip.
-                                                                                 Defaults to core.resize.Bicubic.
+        downscaler (Callable[[vs.VideoNode, int, int], vs.VideoNode], optional):
+            Resizer used to downscale the upscaled clip. Defaults to core.resize.Bicubic.
 
-        upscaler_smooth (Callable[[vs.VideoNode, Any], vs.VideoNode], optional): Resizer used to replace the smoother nnedi3 upscale.
-                                                                                 Defaults to partial(nnedi3_upscale, nsize=4, nns=4, qual=2, pscrn=2).
+        upscaler_smooth (Callable[[vs.VideoNode, Any], vs.VideoNode], optional):
+            Resizer used to replace the smoother nnedi3 upscale.
+            Defaults to partial(nnedi3_upscale, nsize=4, nns=4, qual=2, pscrn=2).
 
-        strength (float): Only for profile='slow'. Strength between the smooth upscale and the fsrcnnx upscale where 0.0 means the full smooth clip
-                          and 100.0 means the full fsrcnnx clip. Negative and positive values are possible, but not recommended.
+        strength (float):
+            Only for profile='slow'.
+            Strength between the smooth upscale and the fsrcnnx upscale where 0.0 means the full smooth clip
+            and 100.0 means the full fsrcnnx clip. Negative and positive values are possible, but not recommended.
 
         profile (str): Profile settings. Possible strings: "fast", "old", "slow" or "zastin".
                        – "fast" is the old draft mode (the plain fsrcnnx clip returned).
                        – "old" is the old mode to deal with the bright pixels.
                        – "slow" is the new mode, more efficient.
                        – "zastin" is a combination between a sharpened nnedi3 upscale and a fsrcnnx upscale.
-                         The sharpener prevents the interior of lines from being brightened and fsrnncx (as a clamping clip without nnedi3) prevents artifacting (halos) from the sharpening.
-                         
+                         The sharpener prevents the interior of lines from being brightened and fsrnncx
+                         (as a clamping clip without nnedi3) prevents artifacting (halos) from the sharpening.
+
         lmode (int): Only for profile='slow':
                      – (< 0): Limit with rgvs.Repair (ex: lmode=-1 --> rgvs.Repair(1), lmode=-5 --> rgvs.Repair(5) ...)
                      – (= 0): No limit.
@@ -211,8 +219,9 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
         overshoot (int): Limit for pixels that get brighter during upscaling.
         undershoot (int): Limit for pixels that get darker during upscaling.
 
-        sharpener (Callable[[vs.VideoNode, Any], vs.VideoNode], optional): Sharpening function used to replace the sharped smoother nnedi3 upscale.
-                                                                           Defaults to partial(z4USM, radius=2, strength=65)
+        sharpener (Callable[[vs.VideoNode, Any], vs.VideoNode], optional):
+            Sharpening function used to replace the sharped smoother nnedi3 upscale.
+            Defaults to partial(z4USM, radius=2, strength=65)
 
     Returns:
         vs.VideoNode: Upscaled luma clip.
@@ -232,16 +241,12 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
     if undershoot is None:
         undershoot = overshoot
 
-    try:
-        num = ['fast', 'old', 'slow', 'zastin'].index(profile.lower())
-    except:
+    profiles = ['fast', 'old', 'slow', 'zastin']
+    if profile not in profiles:
         raise vs.Error('fsrcnnx_upscale: "profile" must be "fast", "old", "slow" or "zastin"')
-
-
-
+    num = profiles.index(profile.lower())
 
     fsrcnnx = placebo.shader(clip, clip.width*2, clip.height*2, shader_file)
-
 
     if num >= 1:
         # old or slow profile
@@ -272,13 +277,10 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
     else:
         limit = fsrcnnx
 
-
-
     if downscaler:
         scaled = downscaler(limit, width, height)
     else:
         scaled = limit
-
 
     if get_depth(scaled) != depth_src:
         out = depth(scaled, depth_src)
@@ -288,7 +290,7 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
     return out
 
 
-def to_444(clip: vs.VideoNode, width: int = None, height: int = None, join_planes: bool = True)-> vs.VideoNode:
+def to_444(clip: vs.VideoNode, width: int = None, height: int = None, join_planes: bool = True) -> vs.VideoNode:
     """Zastin’s nnedi3 chroma upscaler
 
     Args:
@@ -319,15 +321,13 @@ def to_444(clip: vs.VideoNode, width: int = None, height: int = None, join_plane
     return core.std.ShufflePlanes([clip] + chroma, [0]*3, vs.YUV) if join_planes else chroma
 
 
-
-
 # # # # # # # # # # #
 # Masking functions #
 # # # # # # # # # # #
 
 def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bicubic',
                       b: float = 0, c: float = 1/2, mthr: int = 55,
-                      mode: str = 'ellipse', sw: int = 2, sh: int = 2)-> vs.VideoNode:
+                      mode: str = 'ellipse', sw: int = 2, sh: int = 2) -> vs.VideoNode:
     """Modified version of Atomchtools for generate a mask with a rescaled difference.
        Its alias is vardefunc.drm
 
@@ -369,7 +369,7 @@ def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bi
 
 
 def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.VideoNode,
-                         start: int, end: int, sw: int = 2, sh: int = 2)-> vs.VideoNode:
+                         start: int, end: int, sw: int = 2, sh: int = 2) -> vs.VideoNode:
     """Modified version of Atomchtools for generate a mask with with a NC
        Its alias is vardefunc.dcm
 
@@ -411,7 +411,7 @@ def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.Vide
     return credit_m
 
 
-def luma_credit_mask(source: vs.VideoNode, thr: int = 230, mode: str = 'prewitt', draft: bool = False)-> vs.VideoNode:
+def luma_credit_mask(source: vs.VideoNode, thr: int = 230, mode: str = 'prewitt', draft: bool = False) -> vs.VideoNode:
     """Creates a mask based on luma value and edges.
 
     Args:
@@ -450,7 +450,7 @@ def luma_credit_mask(source: vs.VideoNode, thr: int = 230, mode: str = 'prewitt'
 
 
 def edge_detect(clip: vs.VideoNode, mode: str, thr: int, mpand: Tuple[int, int],
-                **kwargs)-> vs.VideoNode:
+                **kwargs) -> vs.VideoNode:
     """Generates edge mask based on convolution kernel.
 
     Args:
@@ -470,7 +470,6 @@ def edge_detect(clip: vs.VideoNode, mode: str, thr: int, mpand: Tuple[int, int],
     except ModuleNotFoundError:
         raise ModuleNotFoundError("edge_detect: missing dependency 'G41Fun'")
 
-
     mask = gf.EdgeDetect(clip, mode, **kwargs).std.Binarize(thr)
 
     coord = [1, 2, 1, 2, 2, 1, 2, 1]
@@ -482,7 +481,7 @@ def edge_detect(clip: vs.VideoNode, mode: str, thr: int, mpand: Tuple[int, int],
 
 def region_mask(clip: vs.VideoNode,
                 left: int = 0, right: int = 0,
-                top: int = 0, bottom: int = 0)-> vs.VideoNode:
+                top: int = 0, bottom: int = 0) -> vs.VideoNode:
     """Crop your mask
 
     Args:
@@ -499,14 +498,12 @@ def region_mask(clip: vs.VideoNode,
     return core.std.AddBorders(crop, left, right, top, bottom)
 
 
-
-
 # # # # # # # # # # # # # # # # # # #
 # Utility / calculation functions  #
 # # # # # # # # # # # # # # # # # # #
 
 def fade_filter(source: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode,
-                start_f: int, end_f: int)-> vs.VideoNode:
+                start_f: int, end_f: int) -> vs.VideoNode:
     """Apply a filter with a fade
 
     Args:
@@ -537,7 +534,7 @@ def fade_filter(source: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode
     return final
 
 
-def merge_chroma(luma: vs.VideoNode, ref: vs.VideoNode)-> vs.VideoNode:
+def merge_chroma(luma: vs.VideoNode, ref: vs.VideoNode) -> vs.VideoNode:
     """Merge chroma from ref with luma
 
     Args:
@@ -550,7 +547,7 @@ def merge_chroma(luma: vs.VideoNode, ref: vs.VideoNode)-> vs.VideoNode:
     return core.std.ShufflePlanes([luma, ref], [0, 1, 2], vs.YUV)
 
 
-def get_chroma_shift(src_h: int, dst_h: int, aspect_ratio: float = 16/9)-> float:
+def get_chroma_shift(src_h: int, dst_h: int, aspect_ratio: float = 16/9) -> float:
     """Intended to calculate the right value for chroma shifting
 
     Args:
@@ -569,7 +566,7 @@ def get_chroma_shift(src_h: int, dst_h: int, aspect_ratio: float = 16/9)-> float
     return ch_shift
 
 
-def get_bicubic_params(cubic_filter: str)-> Tuple:
+def get_bicubic_params(cubic_filter: str) -> Tuple:
     """Return the parameter b and c for the bicubic filter
        Source: https://www.imagemagick.org/discourse-server/viewtopic.php?f=22&t=19823
                https://www.imagemagick.org/Usage/filter/#mitchell
@@ -584,18 +581,18 @@ def get_bicubic_params(cubic_filter: str)-> Tuple:
     def _sqrt(var):
         return math.sqrt(var)
 
-    def _get_robidoux_soft()-> Tuple:
+    def _get_robidoux_soft() -> Tuple:
         b = (9-3*_sqrt(2))/7
         c = (1-b)/2
         return b, c
 
-    def _get_robidoux()-> Tuple:
+    def _get_robidoux() -> Tuple:
         sqrt2 = _sqrt(2)
         b = 12/(19+9*sqrt2)
         c = 113/(58+216*sqrt2)
         return b, c
 
-    def _get_robidoux_sharp()-> Tuple:
+    def _get_robidoux_sharp() -> Tuple:
         sqrt2 = _sqrt(2)
         b = 6/(13+7*sqrt2)
         c = 7/(2+12*sqrt2)
@@ -633,7 +630,7 @@ def generate_keyframes(clip: vs.VideoNode, out_path: str) -> None:
     out_txt = ""
     for i in range(clip.num_frames):
         if clip.get_frame(i).props["_SceneChangePrev"] == 1 \
-            or clip.get_frame(i).props["Scenechange"] == 1:
+                or clip.get_frame(i).props["Scenechange"] == 1:
             out_txt += "%d I -1\n" % i
         if i % 2000 == 0:
             print(i)
@@ -667,7 +664,7 @@ def encode(clip: vs.VideoNode, binary: str, output_file: str, **args) -> None:
         i = "--" + i if i[:2] != "--" else i
         i = i.replace("_", "-")
         if i in cmd:
-            cmd[cmd.index(i)+ 1] = str(v)
+            cmd[cmd.index(i) + 1] = str(v)
         else:
             cmd.extend([i, str(v)])
 
@@ -677,7 +674,8 @@ def encode(clip: vs.VideoNode, binary: str, output_file: str, **args) -> None:
                 print(f"\rVapourSynth: {value}/{endvalue} ~ {100 * value // endvalue}% || Encoder: ", end=""))
     process.communicate()
 
-def set_ffms2_log_level(level: Union[str, int] = 0)-> None:
+
+def set_ffms2_log_level(level: Union[str, int] = 0) -> None:
     """A more friendly set of log level in ffms2
 
     Args:
