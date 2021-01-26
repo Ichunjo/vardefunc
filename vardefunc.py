@@ -176,12 +176,11 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.
 
 def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080, shader_file: str = None,
                     downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Bicubic,
-                    upscaler_smooth: Callable[[vs.VideoNode, Any], vs.VideoNode]
-                    = partial(nnedi3_upscale, nsize=4, nns=4, qual=2, pscrn=2),
+                    upscaler_smooth: Callable[[vs.VideoNode, Any], vs.VideoNode] = partial(nnedi3_upscale, nsize=4, nns=4, qual=2, pscrn=2),
                     strength: float = 100.0, profile: str = 'slow',
                     lmode: int = 1, overshoot: int = None, undershoot: int = None,
-                    sharpener: Callable[[vs.VideoNode, Any], vs.VideoNode]
-                    = partial(z4USM, radius=2, strength=65)) -> vs.VideoNode:
+                    sharpener: Callable[[vs.VideoNode, Any], vs.VideoNode] = partial(z4USM, radius=2, strength=65)
+                    ) -> vs.VideoNode:
     """
     Upscale the given luma source clip with FSRCNNX to a given width / height
     while preventing FSRCNNX artifacts by limiting them.
@@ -257,8 +256,7 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
             limit = core.std.Expr([fsrcnnx, smooth], 'x y min')
         elif num == 2:
             # slow profile
-            upscaled = core.std.Expr([fsrcnnx, smooth], 'x {strength} * y 1 {strength} - * +'
-                                     .format(strength=strength/100))
+            upscaled = core.std.Expr([fsrcnnx, smooth], 'x {strength} * y 1 {strength} - * +'.format(strength=strength/100))
             if lmode < 0:
                 limit = core.rgvs.Repair(upscaled, smooth, abs(lmode))
             elif lmode == 0:
@@ -292,11 +290,7 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
     return out
 
 
-def to_444(clip: vs.VideoNode,
-           width: int = None,
-           height: int = None,
-           join_planes: bool = True
-           ) -> vs.VideoNode:
+def to_444(clip: vs.VideoNode, width: int = None, height: int = None, join_planes: bool = True) -> vs.VideoNode:
     """Zastin’s nnedi3 chroma upscaler
 
     Args:
