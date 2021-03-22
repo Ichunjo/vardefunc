@@ -156,7 +156,7 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.
 
     Args:
         clip (vs.VideoNode): Source clip.
-        scaler (Callable[[vs.VideoNode, Any], vs.VideoNode], optional): Resizer used to correct the shift. Defaults to core.resize.Spline36.
+        scaler (Callable[[vs.VideoNode, Any], vs.VideoNode], optional): Resizer used to correct the shift. Defaults to core.resize.Bicubic.
         correct_shift (bool, optional): Defaults to True.
 
     Returns:
