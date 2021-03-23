@@ -158,7 +158,7 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.
     Args:
         clip (vs.VideoNode): Source clip.
         scaler (Callable[[vs.VideoNode, Any], vs.VideoNode], optional):
-            Resizer used to correct the shift. Defaults to core.resize.Spline36.
+            Resizer used to correct the shift. Defaults to core.resize.Bicubic.
         correct_shift (bool, optional): Defaults to True.
 
     Returns:
@@ -175,8 +175,10 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.
 
 
 def eedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.VideoNode] = None,
-                  correct_shift: bool = True, nnedi3_args: Dict[str, Any] = None, eedi3_args: Dict[str, Any] = None)-> vs.VideoNode:
-    """Upscale function using the power of eedi3 and nnedi3. Eedi3 default values are the safest and should work for anything without introducing any artifacts.
+                  correct_shift: bool = True, nnedi3_args: Dict[str, Any] = None, eedi3_args: Dict[str, Any] = None) -> vs.VideoNode:
+    """
+    Upscale function using the power of eedi3 and nnedi3.
+    Eedi3 default values are the safest and should work for anything without introducing any artifacts.
 
     Args:
         clip (vs.VideoNode): Source clip.
