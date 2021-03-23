@@ -191,9 +191,11 @@ def eedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.V
         vs.VideoNode: Upscaled clip.
     """
     nnargs: Dict[str, Any] = dict(nsize=4, nns=4, qual=2, etype=1, pscrn=1)
-    nnargs.update(nnedi3_args)
+    if nnedi3_args:
+        nnargs.update(nnedi3_args)
     eeargs: Dict[str, Any] = dict(alpha=0.2, beta=0.8, gamma=1000, nrad=1, mdis=15)
-    eeargs.update(eedi3_args)
+    if eedi3_args:
+        eeargs.update(eedi3_args)
 
     clip = clip.std.Transpose()
     clip = clip.eedi3m.EEDI3(0, True, sclip=clip.nnedi3.nnedi3(0, True, **nnargs), **eeargs)
