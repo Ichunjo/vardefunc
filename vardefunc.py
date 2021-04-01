@@ -4,7 +4,7 @@ Various functions I use.
 import math
 import subprocess
 from functools import partial
-from typing import Any, Callable, Dict, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Tuple, Union, cast
 
 import fvsfunc as fvf
 import havsfunc as hvf
@@ -19,6 +19,96 @@ core = vs.core
 # # # # # # # # # #
 # Noise functions #
 # # # # # # # # # #
+
+def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
+           min_in: Union[int, float] = None, max_in: Union[int, float] = None, gamma: float = 1.0,
+           protect_mask: vs.VideoNode = None, prefilter: bool = True,
+           planes: List[int] = None, show_mask: bool = False) -> vs.VideoNode:
+    """Denoising function using Bilateral intended to decrease the filesize
+       by just blurring the invisible grain above max_in and keeping all of it
+       below min_in. The range in between is progressive.
+
+    Args:
+        clip (vs.VideoNode): Source clip.
+
+        sigmaS (float, optional): Bilateral parameter.
+            Sigma of Gaussian function to calculate spatial weight. Defaults to 10.0.
+
+        sigmaR (float, optional): Bilateral parameter.
+            Sigma of Gaussian function to calculate range weight. Defaults to 0.009.
+
+        min_in (Union[int, float], optional):
+            Minimum pixel value below which the grain is kept. Defaults to None.
+
+        max_in (Union[int, float], optional):
+            Maximum pixel value above which the grain is blurred. Defaults to None.
+
+        gamma (float, optional):
+            Controls the degree of non-linearity of the conversion. Defaults to 1.0.
+
+        protect_mask (vs.VideoNode, optional):
+            Mask that includes all the details that should not be blurred.
+            If None, it uses the default one.
+
+        prefilter (bool, optional): Blurs the luma as reference or not. Defaults to True.
+    
+        planes (List[int], optional): Defaults to all planes.
+
+        show_mask (bool, optional): Returns the mask.
+
+    Returns:
+        vs.VideoNode: Denoised clip.
+    
+    Example:
+        import vardefunc as vdf
+
+        clip = depth(clip, 16)
+        clip = vdf.decsiz(clip, min_in=128<<8, max_in=200<<8)
+    """
+
+    bits = clip.format.bits_per_sample
+    peak = (1 << bits) - 1
+    gamma = 1 / gamma
+    if clip.format.color_family == vs.GRAY:
+        planes = [0]
+    else:
+        planes = [0, 1, 2] if not planes else planes
+
+
+    if not protect_mask:
+        try:
+            import G41Fun as gf
+            import debandshit as dbs
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError("decsiz: missing dependency 'G41Fun' or 'debandshit'")
+
+        clip16 = depth(clip, 16)
+        masks = split(
+            dbs.rangemask(clip16, 3, 2).resize.Bilinear(format=vs.YUV444P16)
+        ) + [
+            gf.EdgeDetect(clip16, 'FDOG').std.Maximum().std.Minimum()
+        ]
+        protect_mask = core.std.Expr(masks, 'x y max z max 3250 < 0 65535 ? a max 8192 < 0 65535 ?') \
+            .std.BoxBlur(hradius=1, vradius=1, hpasses=2, vpasses=2)
+
+
+    clip_y = get_y(clip)
+    if prefilter:
+        pre = clip_y.std.BoxBlur(hradius=2, vradius=2, hpasses=4, vpasses=4)
+    else:
+        pre = clip_y
+
+    denoise_mask = core.std.Expr(pre, f'x {min_in} max {max_in} min {min_in} - {max_in} {min_in} - / {gamma} pow 0 max 1 min {peak} *')
+    mask = core.std.Expr([depth(protect_mask, bits), denoise_mask], 'y x -')
+
+    if show_mask:
+        return mask
+
+
+    denoise = core.bilateral.Bilateral(clip, sigmaS=sigmaS, sigmaR=sigmaR, planes=planes, algorithm=0)
+
+    return core.std.MaskedMerge(clip, denoise, mask, planes)
+
 
 def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, original_grained: vs.VideoNode,
                        range_avg: Tuple[float, float] = (0.5, 0.4), luma_scaling: int = 28) -> vs.VideoNode:
