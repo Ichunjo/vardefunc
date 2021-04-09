@@ -51,14 +51,14 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
             If None, it uses the default one.
 
         prefilter (bool, optional): Blurs the luma as reference or not. Defaults to True.
-    
+
         planes (List[int], optional): Defaults to all planes.
 
         show_mask (bool, optional): Returns the mask.
 
     Returns:
         vs.VideoNode: Denoised clip.
-    
+
     Example:
         import vardefunc as vdf
 
