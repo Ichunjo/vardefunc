@@ -360,7 +360,7 @@ def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True,
 
 
 def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.VideoNode] = None,
-                   correct_shift: bool = True, **nnedi3_args) -> vs.VideoNode:
+                   correct_shift: bool = True, znedi: bool = False, **nnedi3_args) -> vs.VideoNode:
     """Classic based nnedi3 upscale.
 
     Args:
@@ -368,13 +368,18 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.
         scaler (Callable[[vs.VideoNode, Any], vs.VideoNode], optional):
             Resizer used to correct the shift. Defaults to core.resize.Bicubic.
         correct_shift (bool, optional): Defaults to True.
+        znedi (bool, optional): Use znedi3 or not. Defaults to False.
 
     Returns:
         vs.VideoNode: Upscaled clip.
     """
     nnargs: Dict[str, Any] = dict(nsize=4, nns=4, qual=2, pscrn=2)
     nnargs.update(nnedi3_args)
-    clip = clip.std.Transpose().nnedi3.nnedi3(0, True, **nnargs).std.Transpose().nnedi3.nnedi3(0, True, **nnargs)
+
+    if znedi:
+        clip = clip.std.Transpose().znedi3.nnedi3(0, True, **nnargs).std.Transpose().znedi3.nnedi3(0, True, **nnargs)
+    else:
+        clip = clip.std.Transpose().nnedi3.nnedi3(0, True, **nnargs).std.Transpose().nnedi3.nnedi3(0, True, **nnargs)
 
     if scaler is None:
         scaler = core.resize.Bicubic
