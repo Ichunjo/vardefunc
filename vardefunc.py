@@ -15,6 +15,8 @@ import placebo
 
 core = vs.core
 
+# pylint: disable=unused-argument
+
 
 # # # # # # # # # #
 # Noise functions #
@@ -149,7 +151,6 @@ def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, origin
     avg_max = max(range_avg)
     avg_min = min(range_avg)
 
-    # pylint: disable=unused-argument
     def _diff(n: int, f: vs.VideoFrame, avg_max: float, avg_min: float,
               new: vs.VideoNode, adapt: vs.VideoNode) -> vs.VideoNode:
         psa = cast(float, f.props['PlaneStatsAverage'])
