@@ -200,7 +200,7 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
                 – 1: Take 2 pixels as reference pixel. Reference pixels are in the same column of current pixel.
                 – 2: Take 4 pixels as reference pixel. Reference pixels are in the square around current pixel.
                 – 3: Take 2 pixels as reference pixel. Reference pixels are in the same row of current pixel.
-                – 3: Arithmetic mean of 1 and 3.
+                – 4: Arithmetic mean of 1 and 3.
             Reference points are randomly picked within the range. Defaults to 2.
 
         use_neo (bool, optional): Use neo_f3kdb.Deband. Defaults to False.
