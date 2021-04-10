@@ -176,7 +176,11 @@ def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, origin
 def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
              strength: Union[int, List[int]] = 30, grain: Union[int, List[int]] = 0,
              sample_mode: int = 2, use_neo: bool = False, **kwargs) -> vs.VideoNode:
-    """[summary]
+    """
+        "f3kdb but better".
+        Both f3kdb and neo_f3kdb actually change strength at 1 + 16 * n for sample_mode=2
+        and 1 + 32 * n for sample_mode=1, 3 or 4. This function is aiming to average n and n + 1 strength
+        for a better accuracy.
 
     Args:
         clip (vs.VideoNode): Source clip.
