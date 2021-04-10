@@ -181,6 +181,7 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
         Both f3kdb and neo_f3kdb actually change strength at 1 + 16 * n for sample_mode=2
         and 1 + 32 * n for sample_mode=1, 3 or 4. This function is aiming to average n and n + 1 strength
         for a better accuracy.
+        Original function written by Z4ST1N, modified by Vardë.
         https://f3kdb.readthedocs.io/en/latest/index.html
         https://github.com/HomeOfAviSynthPlusEvolution/neo_f3kdb
 
