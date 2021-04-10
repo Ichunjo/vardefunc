@@ -174,7 +174,7 @@ def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, origin
 # # # # # # # # # # # #
 
 def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
-             strength: Union[int, List[int]] = 30, grain: Union[int, List[int]] = 0,
+             threshold: Union[int, List[int]] = 30, grain: Union[int, List[int]] = 0,
              sample_mode: int = 2, use_neo: bool = False, **kwargs) -> vs.VideoNode:
     """
         "f3kdb but better".
@@ -190,7 +190,7 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
 
         radius (int, optional): Banding detection range. Defaults to 16.
 
-        strength (Union[int, List[int]], optional):
+        threshold (Union[int, List[int]], optional):
             Banding detection threshold(s) for planes.
             If difference between current pixel and reference pixel is less than threshold,
             it will be considered as banded. Defaults to 30.
@@ -212,14 +212,14 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
         vs.VideoNode: Debanded clip.
     """
 
-    if isinstance(strength, int):
-        strength = [cast(int, strength)]
+    if isinstance(threshold, int):
+        threshold = [cast(int, threshold)]
 
-    strength = cast(List[int], strength)
+    threshold = cast(List[int], threshold)
 
-    while len(strength) < 3:
-        strength.append(strength[len(strength) - 1])
-    thy, thcb, thcr = strength
+    while len(threshold) < 3:
+        threshold.append(threshold[len(threshold) - 1])
+    thy, thcb, thcr = threshold
 
 
     if isinstance(grain, int):
