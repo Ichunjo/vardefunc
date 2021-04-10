@@ -167,6 +167,98 @@ def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, origin
     return core.std.FrameEval(denoised, diff_function, [avg])
 
 
+
+
+# # # # # # # # # # # #
+# Debanding functions #
+# # # # # # # # # # # #
+
+def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
+             strength: Union[int, List[int]] = 30, grain: Union[int, List[int]] = 0,
+             sample_mode: int = 2, use_neo: bool = False, **kwargs) -> vs.VideoNode:
+    """[summary]
+
+    Args:
+        clip (vs.VideoNode): Source clip.
+
+        radius (int, optional): Banding detection range. Defaults to 16.
+
+        strength (Union[int, List[int]], optional):
+            Banding detection threshold(s) for planes.
+            If difference between current pixel and reference pixel is less than threshold,
+            it will be considered as banded. Defaults to 30.
+
+        grain (Union[int, List[int]], optional):
+            Specifies amount of grains added in the last debanding stage. Defaults to 0.
+
+        sample_mode (int, optional):
+            Valid modes are:
+                – 1: Take 2 pixels as reference pixel. Reference pixels are in the same column of current pixel.
+                – 2: Take 4 pixels as reference pixel. Reference pixels are in the square around current pixel.
+                – 3: Take 2 pixels as reference pixel. Reference pixels are in the same row of current pixel.
+                – 3: Arithmetic mean of 1 and 3.
+            Reference points are randomly picked within the range. Defaults to 2.
+
+        use_neo (bool, optional): Use neo_f3kdb.Deband. Defaults to False.
+
+    Returns:
+        vs.VideoNode: Debanded clip.
+    """
+
+    if isinstance(strength, int):
+        strength = [cast(int, strength)]
+
+    strength = cast(List[int], strength)
+
+    while len(strength) < 3:
+        strength.append(strength[len(strength) - 1])
+    thy, thcb, thcr = strength
+
+
+    if isinstance(grain, int):
+        grain = [cast(int, grain)]
+
+    grain = cast(List[int], grain)
+
+    while len(grain) < 2:
+        grain.append(grain[len(grain) - 1])
+    gry, grc = grain
+
+
+    if sample_mode > 2 and not use_neo:
+        raise ValueError('dumb3kdb: "sample_mode" argument should be less or equal to 2 when "use_neo" is false.')
+
+    if sample_mode == 2:
+        step = 16
+    else:
+        step = 32
+
+
+    if use_neo:
+        f3kdb = core.neo_f3kdb.Deband
+    else:
+        f3kdb = core.f3kdb.Deband
+
+
+    f3kdb_args: Dict[str, Any] = dict(keep_tv_range=True, output_depth=16)
+    f3kdb_args.update(kwargs)
+
+    if thy % step == 1 and thcb % step == 1 and thcr % step == 1:
+        deband = f3kdb(clip, radius, thy, thcb, thcr, gry, grc, sample_mode, **f3kdb_args)
+    else:
+        loy, locb, locr = thy // step * step + 1, thcb // step * step + 1, thcr // step * step + 1
+        hiy, hicb, hicr = loy + step, locb + step, locr + step
+
+        lo_clip = f3kdb(clip, radius, loy, locb, locr, gry, grc, sample_mode, **f3kdb_args)
+        hi_clip = f3kdb(clip, radius, hiy, hicb, hicr, gry, grc, sample_mode, **f3kdb_args)
+
+        deband = core.std.Merge(lo_clip, hi_clip, [(thy - loy) / step, (thcb - locb) / step, (thcr - locr) / step])
+
+    return deband
+
+
+
+
 # # # # # # # # # # # # #
 # Sharpening functions  #
 # # # # # # # # # # # # #
