@@ -836,22 +836,21 @@ def get_bicubic_params(cubic_filter: str) -> Tuple:
     Returns:
         Tuple: b/c combo
     """
-    def _sqrt(var):
-        return math.sqrt(var)
+    sqrt = math.sqrt
 
     def _get_robidoux_soft() -> Tuple:
-        b = (9-3*_sqrt(2))/7
+        b = (9-3*sqrt(2))/7
         c = (1-b)/2
         return b, c
 
     def _get_robidoux() -> Tuple:
-        sqrt2 = _sqrt(2)
+        sqrt2 = sqrt(2)
         b = 12/(19+9*sqrt2)
         c = 113/(58+216*sqrt2)
         return b, c
 
     def _get_robidoux_sharp() -> Tuple:
-        sqrt2 = _sqrt(2)
+        sqrt2 = sqrt(2)
         b = 6/(13+7*sqrt2)
         c = 7/(2+12*sqrt2)
         return b, c
