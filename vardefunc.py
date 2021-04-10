@@ -320,18 +320,23 @@ def z4USM(clip: vs.VideoNode, radius: int = 1, strength: float = 100.0) -> vs.Vi
 # Upscaling functions #
 # # # # # # # # # # # #
 
-def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True, **nnedi3_args) -> vs.VideoNode:
+def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True,
+                    scaler: Callable[[vs.VideoNode, Any], vs.VideoNode] = None,
+                    correct_shift: bool = True, **nnedi3_args) -> vs.VideoNode:
     """Double the clip using nnedi3 for even frames and nnedi3cl for odd frames
        Intended to speed up encoding speed without hogging the GPU either
 
     Args:
         clip (vs.VideoNode): Source clip.
         znedi (bool, optional): Use znedi3 or not. Defaults to True.
+        scaler (Callable[[vs.VideoNode, Any], vs.VideoNode], optional):
+            Resizer used to correct the shift. Defaults to core.resize.Bicubic.
+        correct_shift (bool, optional): Defaults to True.
 
     Returns:
         vs.VideoNode:
     """
-    nnargs: Dict[str, Any] = dict(nsize=0, nns=4, qual=2, pscrn=2)
+    nnargs: Dict[str, Any] = dict(nsize=4, nns=4, qual=2, pscrn=2)
     nnargs.update(nnedi3_args)
 
     def _nnedi3(clip):
@@ -347,7 +352,11 @@ def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True, **nnedi3_args) -> vs
         return clip.nnedi3cl.NNEDI3CL(0, True, True, **nnargs)
 
     clip = core.std.Interleave([_nnedi3(clip[::2]), _nnedi3cl(clip[1::2])])
-    return core.resize.Spline36(clip, src_top=.5, src_left=.5)
+
+    if scaler is None:
+        scaler = core.resize.Bicubic
+
+    return scaler(clip, src_top=.5, src_left=.5) if correct_shift else clip
 
 
 def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.VideoNode] = None,
