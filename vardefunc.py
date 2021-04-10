@@ -386,7 +386,8 @@ def eedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.V
                   correct_shift: bool = True, nnedi3_args: Dict[str, Any] = None, eedi3_args: Dict[str, Any] = None) -> vs.VideoNode:
     """
     Upscale function using the power of eedi3 and nnedi3.
-    Eedi3 default values are the safest and should work for anything without introducing any artifacts.
+    Eedi3 default values are the safest and should work for anything without introducing any artifacts
+    except for very specific shrinking pattern.
 
     Args:
         clip (vs.VideoNode): Source clip.
