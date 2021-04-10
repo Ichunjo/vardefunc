@@ -213,6 +213,12 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
         vs.VideoNode: Debanded clip.
     """
 
+    # neo_f3kdb nukes frame props
+    def _trf(n: int, f: List[vs.VideoFrame]) -> vs.VideoFrame:
+        (fout := f[0].copy()).props.update(f[1].props)
+        return fout
+
+
     if isinstance(threshold, int):
         threshold = [cast(int, threshold)]
 
@@ -261,6 +267,9 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
         hi_clip = f3kdb(clip, radius, hiy, hicb, hicr, gry, grc, sample_mode, **f3kdb_args)
 
         deband = core.std.Merge(lo_clip, hi_clip, [(thy - loy) / step, (thcb - locb) / step, (thcr - locr) / step])
+
+    if use_neo:
+        deband = core.std.ModifyFrame(deband, [deband, clip], selector=_trf)
 
     return deband
 
