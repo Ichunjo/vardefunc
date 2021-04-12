@@ -260,7 +260,7 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
     if thy % step == 1 and thcb % step == 1 and thcr % step == 1:
         deband = f3kdb(clip, radius, thy, thcb, thcr, gry, grc, sample_mode, **f3kdb_args)
     else:
-        loy, locb, locr = [th // step * step + 1 for th in [thy, thcb, thcr]]
+        loy, locb, locr = [(th - 1) // step * step + 1 for th in [thy, thcb, thcr]]
         hiy, hicb, hicr = [lo + step for lo in [loy, locb, locr]]
 
         lo_clip = f3kdb(clip, radius, loy, locb, locr, gry, grc, sample_mode, **f3kdb_args)
