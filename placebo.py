@@ -9,7 +9,7 @@ core = vs.core
 
 def deband(clip: vs.VideoNode, radius: float = 16.0,
            threshold: Union[float, List[float]] = 4.0, iterations: int = 1,
-           grain: Union[int, List[int]] = 4, chroma: bool = True, **kwargs)-> vs.VideoNode:
+           grain: Union[int, List[int]] = 6, chroma: bool = True, **kwargs)-> vs.VideoNode:
     """Wrapper for placebo.Deband
 
     Args:
