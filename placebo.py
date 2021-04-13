@@ -46,29 +46,30 @@ def deband(clip: vs.VideoNode, radius: float = 16.0,
         vs.VideoNode: Debanded clip.
     """
     if chroma:
-        if isinstance(threshold, int):
-            threshold = [cast(int, threshold)]
+        if isinstance(threshold, (float, int)):
+            threshold = [cast(float, threshold)]
 
-        threshold = cast(List[int], threshold)
+        threshold = cast(List[float], threshold)
 
         while len(threshold) < 3:
             threshold.append(threshold[len(threshold) - 1])
 
 
-        if isinstance(grain, int):
-            grain = [cast(int, grain)]
+        if isinstance(grain, (float, int)):
+            grain = [cast(float, grain)]
 
-        grain = cast(List[int], grain)
+        grain = cast(List[float], grain)
 
         while len(grain) < 3:
             grain.append(grain[len(grain) - 1])
 
 
-        values = dict(zip(threshold, grain))
+
+        values = zip(threshold, grain)
 
         planes = split(clip)
 
-        for i, (thr, gra) in enumerate(values.items()):
+        for i, (thr, gra) in enumerate(values):
             planes[i] = planes[i].placebo.Deband(1, iterations, thr, radius, gra, **kwargs)
         clip = join(planes)
     else:
