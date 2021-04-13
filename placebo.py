@@ -9,13 +9,13 @@ core = vs.core
 
 def deband(clip: vs.VideoNode, radius: float = 16.0,
            threshold: Union[float, List[float]] = 4.0, iterations: int = 1,
-           grain: Union[int, List[int]] = 6, chroma: bool = True, **kwargs)-> vs.VideoNode:
+           grain: Union[float, List[float]] = 6.0, chroma: bool = True, **kwargs)-> vs.VideoNode:
     """Wrapper for placebo.Deband
 
     Args:
         clip (vs.VideoNode): Source clip.
 
-        radius (int, optional):
+        radius (float, optional):
             The debanding filter's initial radius. The radius increases linearly for each iteration.
             A higher radius will find more gradients, but a lower radius will smooth more aggressively.
             Defaults to 16.0.
@@ -30,7 +30,7 @@ def deband(clip: vs.VideoNode, radius: float = 16.0,
             but takes time to compute. Note that the strength of each step falls off very quickly,
             so high numbers (>4) are practically useless. Defaults to 1.
 
-        grain (Union[int, List[int]], optional):
+        grain (Union[float, List[float]], optional):
             Add some extra noise to the image.
             This significantly helps cover up remaining quantization artifacts.
             Higher numbers add more noise.
