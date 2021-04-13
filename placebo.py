@@ -1,3 +1,7 @@
+"""
+Placebo wrapper
+"""
+from typing import List, Union, cast
 from vsutil import depth, join, split, get_depth, get_y
 import vapoursynth as vs
 core = vs.core
