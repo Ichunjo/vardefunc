@@ -60,7 +60,7 @@ def deband(clip: vs.VideoNode, radius: float = 16.0,
 
         grain = cast(List[int], grain)
 
-        while len(grain) < 2:
+        while len(grain) < 3:
             grain.append(grain[len(grain) - 1])
 
 
