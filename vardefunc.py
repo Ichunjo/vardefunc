@@ -266,7 +266,12 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
         lo_clip = f3kdb(clip, radius, loy, locb, locr, gry, grc, sample_mode, **f3kdb_args)
         hi_clip = f3kdb(clip, radius, hiy, hicb, hicr, gry, grc, sample_mode, **f3kdb_args)
 
-        deband = core.std.Merge(lo_clip, hi_clip, [(thy - loy) / step, (thcb - locb) / step, (thcr - locr) / step])
+        if clip.format.color_family == vs.GRAY:
+            weight = (thy - loy) / step
+        else:
+            weight = [(thy - loy) / step, (thcb - locb) / step, (thcr - locr) / step]
+    
+        deband = core.std.Merge(lo_clip, hi_clip, weight)
 
     if use_neo:
         deband = core.std.ModifyFrame(deband, [deband, clip], selector=_trf)
