@@ -40,12 +40,13 @@ def deband(clip: vs.VideoNode, radius: float = 16.0,
             It's recommended to either scale this value down or disable it entirely for HDR.
             Defaults to 6.0, which is very mild.
 
-        chroma (bool, optional): Process chroma planes or not. Defaults to True.
+        chroma (bool, optional): Process chroma planes or not.
+            Defaults to True if the input clip has chroma planes.
 
     Returns:
         vs.VideoNode: Debanded clip.
     """
-    if chroma:
+    if chroma and clip.format.num_planes > 1:
         if isinstance(threshold, (float, int)):
             threshold = [cast(float, threshold)]
 
