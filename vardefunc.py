@@ -631,47 +631,76 @@ def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bi
     return mask
 
 
-def diff_creditless_mask(source: vs.VideoNode, titles: vs.VideoNode, nc: vs.VideoNode,
-                         start: int, end: int, sw: int = 2, sh: int = 2) -> vs.VideoNode:
-    """Modified version of Atomchtools for generate a mask with with a NC
-       Its alias is vardefunc.dcm
+def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_clip: vs.VideoNode,
+                         start_frame: int, thr: int, sw: int = 2, sh: int = 2, *,
+                         prefilter: bool = False, bilateral_args: Dict[str, Any] = {}) -> vs.VideoNode:
+    """Makes a mask based on difference from 2 clips.
 
     Args:
-        source (vs.VideoNode): Source clip.
-        titles (vs.VideoNode): Credit clip.
-        nc (vs.VideoNode): Non credit clip.
-        start (int, optional): Start frame.
-        end (int, optional): End frame. Defaults to None.
-        sw (int, optional): Growing/shrinking shape width. 0 is allowed. Defaults to 2.
-        sh (int, optional): Growing/shrinking shape height. 0 is allowed. Defaults to 2.
+        src_clip (vs.VideoNode): Source clip.
+
+        credit_clip (vs.VideoNode): Credit clip.
+            It will be resample according to the src_clip.
+
+        nc_clip (vs.VideoNode): Creditless clip.
+            It will be resample according to the src_clip.
+
+        start_frame (int): Start frame.
+
+        thr (int): Binarize threshold.
+            25 is a good starting value in 8 bit.
+
+        sw (int, optional): Growing/shrinking shape width.
+            0 is allowed. Defaults to 2.
+
+        sh (int, optional): Growing/shrinking shape height.
+            0 is allowed. Defaults to 2.
+
+        prefilter (bool, optional):
+            Blurs the credit_clip and nc_clip to avoid false posivive such as noise and compression artifacts.
+            Defaults to False.
+
+        bilateral_args (Dict[str, Any], optional):
+            Additionnal and overrided Bilateral parameters if prefilter=True. Defaults to {}.
 
     Returns:
-        vs.VideoNode:
+        vs.VideoNode: Credit mask clip.
+
+    Example:
+        import vardefunc as vdf
+
+        opstart, opend = 792, 2948
+
+        opmask = diff_creditless_mask(clip, clip[opstart:opend+1], ncop[:opend+1-opstart], opstart, thr=25, prefilter=True)
     """
-    if get_depth(titles) != 8:
-        titles = depth(titles, 8)
-    if get_depth(nc) != 8:
-        nc = depth(nc, 8)
+    if prefilter:
+        bilargs: Dict[str, Any] = dict(sigmaS=((5 ** 2 - 1) / 12) ** 0.5, sigmaR=0.5)
+        bilargs.update(bilateral_args)
+        credit_clip, nc_clip = [c.bilateral.Bilateral(**bilargs) for c in [credit_clip, nc_clip]]
 
-    diff = core.std.MakeDiff(titles, nc, [0])
-    diff = get_y(diff)
-    diff = diff.std.Prewitt().std.Expr('x 25 < 0 x ?').std.Expr('x 2 *')
-    diff = core.rgvs.RemoveGrain(diff, 4).std.Expr('x 30 > 255 x ?')
 
-    credit_m = hvf.mt_expand_multi(diff, sw=sw, sh=sh)
+    credit_clip, nc_clip = [
+        c.resize.Bicubic(
+            format=src_clip.format.replace(
+                bits_per_sample=get_depth(src_clip), subsampling_w=0, subsampling_h=0)
+        ) for c in [credit_clip, nc_clip]]
 
-    blank = core.std.BlankClip(source, format=vs.GRAY8)
+    diff = core.std.Expr(
+        split(credit_clip) + split(nc_clip),
+        'x a - abs y b - abs max z c - abs max', # MAE
+        # 'x a - 2 pow sqrt y b - 2 pow sqrt max z c - 2 pow sqrt max', # RMSE
+        format=src_clip.format.replace(color_family=vs.GRAY)
+    )
 
-    if start == 0:
-        credit_m = credit_m+blank[end+1:]
-    elif end == source.num_frames-1:
-        credit_m = blank[:start]+credit_m
-    else:
-        credit_m = blank[:start]+credit_m+blank[end+1:]
+    mask = core.std.Prewitt(diff).std.Binarize(thr)
+    mask = iterate(mask, partial(core.std.Maximum, coordinates=[0, 0, 0, 1, 1, 0, 0, 0]), sw)
+    mask = iterate(mask, partial(core.std.Maximum, coordinates=[0, 1, 0, 0, 0, 0, 1, 0]), sh)
 
-    if get_depth(source) != 8:
-        credit_m = depth(credit_m, get_depth(source))
-    return credit_m
+    blank = core.std.BlankClip(src_clip, format=src_clip.format.replace(
+        color_family=vs.GRAY, subsampling_w=0, subsampling_h=0))
+    mask = insert_clip(blank, mask, start_frame)
+
+    return mask
 
 
 def luma_credit_mask(source: vs.VideoNode, thr: int = 230, mode: str = 'prewitt', draft: bool = False) -> vs.VideoNode:
