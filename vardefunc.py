@@ -218,25 +218,9 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
         (fout := f[0].copy()).props.update(f[1].props)
         return fout
 
+    thy, thcb, thcr = [threshold] * 3 if isinstance(threshold, int) else threshold + [threshold[-1]] * (3 - len(threshold))
 
-    if isinstance(threshold, int):
-        threshold = [cast(int, threshold)]
-
-    threshold = cast(List[int], threshold)
-
-    while len(threshold) < 3:
-        threshold.append(threshold[len(threshold) - 1])
-    thy, thcb, thcr = threshold
-
-
-    if isinstance(grain, int):
-        grain = [cast(int, grain)]
-
-    grain = cast(List[int], grain)
-
-    while len(grain) < 2:
-        grain.append(grain[len(grain) - 1])
-    gry, grc = grain
+    gry, grc = [grain] * 2 if isinstance(grain, int) else grain + [grain[-1]] * (2 - len(threshold))
 
 
     if sample_mode > 2 and not use_neo:
@@ -270,7 +254,7 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
             weight = (thy - loy) / step
         else:
             weight = [(thy - loy) / step, (thcb - locb) / step, (thcr - locr) / step]
-    
+
         deband = core.std.Merge(lo_clip, hi_clip, weight)
 
     if use_neo:
