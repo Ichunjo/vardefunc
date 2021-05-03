@@ -1,7 +1,7 @@
 """
 Placebo wrapper
 """
-from typing import List, Union, cast
+from typing import List, Union
 from vsutil import depth, join, split, get_depth, get_y
 import vapoursynth as vs
 core = vs.core
@@ -9,8 +9,9 @@ core = vs.core
 
 def deband(clip: vs.VideoNode, radius: float = 16.0,
            threshold: Union[float, List[float]] = 4.0, iterations: int = 1,
-           grain: Union[float, List[float]] = 6.0, chroma: bool = True, **kwargs)-> vs.VideoNode:
+           grain: Union[float, List[float]] = 6.0, chroma: bool = True, **kwargs) -> vs.VideoNode:
     """Wrapper for placebo.Deband
+       https://github.com/Lypheo/vs-placebo#vs-placebo
 
     Args:
         clip (vs.VideoNode): Source clip.
@@ -47,30 +48,12 @@ def deband(clip: vs.VideoNode, radius: float = 16.0,
         vs.VideoNode: Debanded clip.
     """
     if chroma and clip.format.num_planes > 1:
-        if isinstance(threshold, (float, int)):
-            threshold = [cast(float, threshold)]
-
-        threshold = cast(List[float], threshold)
-
-        while len(threshold) < 3:
-            threshold.append(threshold[len(threshold) - 1])
-
-
-        if isinstance(grain, (float, int)):
-            grain = [cast(float, grain)]
-
-        grain = cast(List[float], grain)
-
-        while len(grain) < 3:
-            grain.append(grain[len(grain) - 1])
-
-
-
-        values = zip(threshold, grain)
+        threshold = [threshold] * 3 if isinstance(threshold, float) else threshold + [threshold[-1]] * (3 - len(threshold))
+        grain = [grain] * 3 if isinstance(grain, float) else grain + [grain[-1]] * (3 - len(grain))
 
         planes = split(clip)
 
-        for i, (thr, gra) in enumerate(values):
+        for i, (thr, gra) in enumerate(zip(threshold, grain)):
             planes[i] = planes[i].placebo.Deband(1, iterations, thr, radius, gra, **kwargs)
         clip = join(planes)
     else:
@@ -80,17 +63,25 @@ def deband(clip: vs.VideoNode, radius: float = 16.0,
 
 
 
-def shader(clip: vs.VideoNode, width: int, height: int, shader_file: str, luma_only: bool = True, **args)-> vs.VideoNode:
+def shader(clip: vs.VideoNode, width: int, height: int, shader_file: str, luma_only: bool = True, **kwargs) -> vs.VideoNode:
     """Wrapper for placebo.Resample
+       https://github.com/Lypheo/vs-placebo#vs-placebo
 
     Args:
-        clip (vs.VideoNode): Source clip
-        width (int): Destination width
-        height (int): Destination height
-        shader_file (str): Shader used into Resample
-        luma_only (bool, optional): If process the luma only. Defaults to True.
+        clip (vs.VideoNode): Source clip/
+
+        width (int): Destination width.
+
+        height (int): Destination height.
+
+        shader_file (str):
+            Path to shader file used into placebo.Shader.
+
+        luma_only (bool, optional):
+            If process the luma only. Defaults to True.
+
     Returns:
-        vs.VideoNode:
+        vs.VideoNode: Shader'd clip.
     """
     if get_depth(clip) != 16:
         clip = depth(clip, 16)
@@ -100,11 +91,11 @@ def shader(clip: vs.VideoNode, width: int, height: int, shader_file: str, luma_o
             if width > clip.width or height > clip.height:
                 clip = clip.resize.Point(format=vs.YUV444P16)
             else:
-                blank = core.std.BlankClip(clip, clip.width/4, clip.height/4, vs.GRAY16)
+                blank = core.std.BlankClip(clip, clip.width / 4, clip.height / 4, vs.GRAY16)
                 clip = join([clip, blank, blank])
     else:
         filter_shader = 'ewa_lanczos'
 
-    clip = core.placebo.Shader(clip, shader_file, width, height, filter=filter_shader, **args)
+    clip = core.placebo.Shader(clip, shader_file, width, height, filter=filter_shader, **kwargs)
 
     return get_y(clip) if luma_only is True else clip
