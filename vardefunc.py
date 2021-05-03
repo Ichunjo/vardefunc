@@ -8,8 +8,8 @@ from typing import Any, Callable, Dict, List, Tuple, Union, cast
 
 import fvsfunc as fvf
 import havsfunc as hvf
+from vsutil import depth, get_depth, get_w, get_y, insert_clip, iterate, split
 import vapoursynth as vs
-from vsutil import depth, get_depth, get_w, get_y, iterate, split
 
 import placebo
 
@@ -21,7 +21,6 @@ core = vs.core
 # # # # # # # # # #
 # Noise functions #
 # # # # # # # # # #
-
 def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
            min_in: Union[int, float] = None, max_in: Union[int, float] = None, gamma: float = 1.0,
            protect_mask: vs.VideoNode = None, prefilter: bool = True,
@@ -168,12 +167,9 @@ def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, origin
     return core.std.FrameEval(denoised, diff_function, [avg])
 
 
-
-
 # # # # # # # # # # # #
 # Debanding functions #
 # # # # # # # # # # # #
-
 def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
              threshold: Union[int, List[int]] = 30, grain: Union[int, List[int]] = 0,
              sample_mode: int = 2, use_neo: bool = False, **kwargs) -> vs.VideoNode:
@@ -263,8 +259,6 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
     return deband
 
 
-
-
 # # # # # # # # # # # # #
 # Sharpening functions  #
 # # # # # # # # # # # # #
@@ -282,7 +276,7 @@ def z4USM(clip: vs.VideoNode, radius: int = 1, strength: float = 100.0) -> vs.Vi
     if radius not in (1, 2):
         raise vs.Error('z4USM: "radius" must be 1 or 2')
 
-    strength = max(1e-6, min(math.log2(3) * strength/100, math.log2(3)))
+    strength = max(1e-6, min(math.log2(3) * strength / 100, math.log2(3)))
     weight = 0.5 ** strength / ((1 - 0.5 ** strength) / 2)
 
     if clip.format.sample_type == 0:
@@ -300,7 +294,7 @@ def z4USM(clip: vs.VideoNode, radius: int = 1, strength: float = 100.0) -> vs.Vi
     matrix = [
         matrix[x] for x in [(2, 1, 2, 1, 0, 1, 2, 1, 2),
                             (4, 3, 2, 3, 4, 3, 2, 1, 2, 3, 2, 1, 0, 1, 2, 3, 2, 1, 2, 3, 4, 3, 2, 3, 4)]
-                           [radius-1]]
+                           [radius - 1]]
 
     return clip.std.MergeDiff(clip.std.MakeDiff(clip.std.Convolution(matrix)))
 
@@ -411,7 +405,6 @@ def eedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.V
     return scaler(clip, src_top=.5, src_left=.5) if correct_shift else clip
 
 
-
 def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080, shader_file: str = None,
                     downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Bicubic,
                     upscaler_smooth: Callable[[vs.VideoNode, Any], vs.VideoNode] = partial(nnedi3_upscale, nsize=4, nns=4, qual=2, pscrn=2),
@@ -473,7 +466,7 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
         clip = source
 
     if width is None:
-        width = get_w(height, clip.width/clip.height)
+        width = get_w(height, clip.width / clip.height)
     if overshoot is None:
         overshoot = strength / 100
     if undershoot is None:
@@ -484,7 +477,7 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
         raise vs.Error('fsrcnnx_upscale: "profile" must be "fast", "old", "slow" or "zastin"')
     num = profiles.index(profile.lower())
 
-    fsrcnnx = placebo.shader(clip, clip.width*2, clip.height*2, shader_file)
+    fsrcnnx = placebo.shader(clip, clip.width * 2, clip.height * 2, shader_file)
 
     if num >= 1:
         # old or slow profile
@@ -494,7 +487,7 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
             limit = core.std.Expr([fsrcnnx, smooth], 'x y min')
         elif num == 2:
             # slow profile
-            upscaled = core.std.Expr([fsrcnnx, smooth], 'x {strength} * y 1 {strength} - * +'.format(strength=strength/100))
+            upscaled = core.std.Expr([fsrcnnx, smooth], 'x {strength} * y 1 {strength} - * +'.format(strength=strength / 100))
             if lmode < 0:
                 limit = core.rgvs.Repair(upscaled, smooth, abs(lmode))
             elif lmode == 0:
@@ -565,15 +558,14 @@ def to_444(clip: vs.VideoNode,
     else:
         chroma = [scaler(c, width, height, src_top=0.5) for c in chroma]
 
-    return core.std.ShufflePlanes([clip] + chroma, [0]*3, vs.YUV) if join_planes else chroma
+    return core.std.ShufflePlanes([clip] + chroma, [0] * 3, vs.YUV) if join_planes else chroma
 
 
 # # # # # # # # # # #
 # Masking functions #
 # # # # # # # # # # #
-
 def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bicubic',
-                      b: float = 0, c: float = 1/2, mthr: int = 55,
+                      b: float = 0, c: float = 1 / 2, mthr: int = 55,
                       mode: str = 'ellipse', sw: int = 2, sh: int = 2) -> vs.VideoNode:
     """Modified version of Atomchtools for generate a mask with a rescaled difference.
        Its alias is vardefunc.drm
@@ -671,8 +663,8 @@ def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_c
 
     diff = core.std.Expr(
         split(credit_clip) + split(nc_clip),
-        'x a - abs y b - abs max z c - abs max', # MAE
-        # 'x a - 2 pow sqrt y b - 2 pow sqrt max z c - 2 pow sqrt max', # RMSE
+        'x a - abs y b - abs max z c - abs max',  # MAE
+        # 'x a - 2 pow sqrt y b - 2 pow sqrt max z c - 2 pow sqrt max',  # RMSE
         format=src_clip.format.replace(color_family=vs.GRAY)
     )
 
@@ -795,17 +787,17 @@ def fade_filter(source: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode
     length = end_f - start_f
 
     def _fade(n, clip_a, clip_b, length):
-        return core.std.Merge(clip_a, clip_b, n/length)
+        return core.std.Merge(clip_a, clip_b, n / length)
 
-    function = partial(_fade, clip_a=clip_a[start_f:end_f+1], clip_b=clip_b[start_f:end_f+1], length=length)
-    clip_fad = core.std.FrameEval(source[start_f:end_f+1], function)
+    function = partial(_fade, clip_a=clip_a[start_f:end_f + 1], clip_b=clip_b[start_f:end_f + 1], length=length)
+    clip_fad = core.std.FrameEval(source[start_f:end_f + 1], function)
 
     final = clip_fad
 
     if start_f != 0:
         final = source[:start_f] + final
-    if end_f+1 < source.num_frames:
-        final = final + source[end_f+1:]
+    if end_f + 1 < source.num_frames:
+        final = final + source[end_f + 1:]
 
     return final
 
@@ -823,7 +815,7 @@ def merge_chroma(luma: vs.VideoNode, ref: vs.VideoNode) -> vs.VideoNode:
     return core.std.ShufflePlanes([luma, ref], [0, 1, 2], vs.YUV)
 
 
-def get_chroma_shift(src_h: int, dst_h: int, aspect_ratio: float = 16/9) -> float:
+def get_chroma_shift(src_h: int, dst_h: int, aspect_ratio: float = 16 / 9) -> float:
     """Intended to calculate the right value for chroma shifting
 
     Args:
@@ -857,20 +849,20 @@ def get_bicubic_params(cubic_filter: str) -> Tuple:
     sqrt = math.sqrt
 
     def _get_robidoux_soft() -> Tuple:
-        b = (9-3*sqrt(2))/7
-        c = (1-b)/2
+        b = (9 - 3 * sqrt(2)) / 7
+        c = (1 - b) / 2
         return b, c
 
     def _get_robidoux() -> Tuple:
         sqrt2 = sqrt(2)
-        b = 12/(19+9*sqrt2)
-        c = 113/(58+216*sqrt2)
+        b = 12 / (19 + 9 * sqrt2)
+        c = 113 / (58 + 216 * sqrt2)
         return b, c
 
     def _get_robidoux_sharp() -> Tuple:
         sqrt2 = sqrt(2)
-        b = 6/(13+7*sqrt2)
-        c = 7/(2+12*sqrt2)
+        b = 6 / (13 + 7 * sqrt2)
+        c = 7 / (2 + 12 * sqrt2)
         return b, c
 
     cubic_filter = cubic_filter.lower().replace(' ', '_').replace('-', '_')
@@ -878,10 +870,10 @@ def get_bicubic_params(cubic_filter: str) -> Tuple:
         'spline': (1, 0),
         'b_spline': (1, 0),
         'hermite': (0, 0),
-        'mitchell_netravali': (1/3, 1/3),
-        'mitchell': (1/3, 1/3),
-        'catmull_rom': (0, 1/2),
-        'catrom': (0, 1/2),
+        'mitchell_netravali': (1 / 3, 1 / 3),
+        'mitchell': (1 / 3, 1 / 3),
+        'catmull_rom': (0, 1 / 2),
+        'catrom': (0, 1 / 2),
         'bicubic_sharp': (0, 1),
         'sharp_bicubic': (0, 1),
         'robidoux_soft': _get_robidoux_soft(),
