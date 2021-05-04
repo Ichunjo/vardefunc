@@ -616,10 +616,10 @@ def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_c
         src_clip (vs.VideoNode): Source clip.
 
         credit_clip (vs.VideoNode): Credit clip.
-            It will be resample according to the src_clip.
+            It will be resampled according to the src_clip.
 
         nc_clip (vs.VideoNode): Creditless clip.
-            It will be resample according to the src_clip.
+            It will be resampled according to the src_clip.
 
         start_frame (int): Start frame.
 
@@ -649,20 +649,22 @@ def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_c
 
         opmask = diff_creditless_mask(clip, clip[opstart:opend+1], ncop[:opend+1-opstart], opstart, thr=25, prefilter=True)
     """
+    clips = [credit_clip, nc_clip]
+
     if prefilter:
         bilargs: Dict[str, Any] = dict(sigmaS=((5 ** 2 - 1) / 12) ** 0.5, sigmaR=0.5)
         bilargs.update(bilateral_args)
-        credit_clip, nc_clip = [c.bilateral.Bilateral(**bilargs) for c in [credit_clip, nc_clip]]
+        clips = [c.bilateral.Bilateral(**bilargs) for c in clips]
 
 
-    credit_clip, nc_clip = [
+    clips = [
         c.resize.Bicubic(
             format=src_clip.format.replace(
                 bits_per_sample=get_depth(src_clip), subsampling_w=0, subsampling_h=0)
-        ) for c in [credit_clip, nc_clip]]
+        ) for c in clips]
 
     diff = core.std.Expr(
-        split(credit_clip) + split(nc_clip),
+        sum(map(split, clips), []),
         'x a - abs y b - abs max z c - abs max',  # MAE
         # 'x a - 2 pow sqrt y b - 2 pow sqrt max z c - 2 pow sqrt max',  # RMSE
         format=src_clip.format.replace(color_family=vs.GRAY)
