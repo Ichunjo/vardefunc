@@ -148,7 +148,7 @@ class LoG(EdgeDetect):
 
 
 class Roberts(EdgeDetect):
-    """Lawrence Roberts operator. 2x2 matrixes computed in 3x3 matrixes."""
+    """Lawrence Roberts operator. 2x2 matrices computed in 3x3 matrices."""
     def _get_matrices(self) -> List[List[int]]:
         return [[0, 0, 0, 0, 1, 0, 0, 0, -1],
                 [0, 1, 0, -1, 0, 0, 0, 0, 0]]
@@ -158,7 +158,7 @@ class Roberts(EdgeDetect):
 
 
 class Prewitt(EdgeDetect):
-    """Judith M. S. Prewitt operator. 3x3 matrixes."""
+    """Judith M. S. Prewitt operator. 3x3 matrices."""
     def _get_matrices(self) -> List[List[int]]:
         return [[1, 0, -1, 1, 0, -1, 1, 0, -1],
                 [1, 1, 1, 0, 0, 0, -1, -1, -1]]
@@ -168,7 +168,7 @@ class Prewitt(EdgeDetect):
 
 
 class ExPrewitt(EdgeDetect):
-    """Extended Judith M. S. Prewitt operator. 5x5 matrixes."""
+    """Extended Judith M. S. Prewitt operator. 5x5 matrices."""
     def _get_matrices(self) -> List[List[int]]:
         return [[2, 1, 0, -1, -2, 2, 1, 0, -1, -2, 2, 1, 0, -1, -2, 2, 1, 0, -1, -2, 2, 1, 0, -1, -2],
                 [2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, -2, -2, -2, -2, -2]]
@@ -178,7 +178,7 @@ class ExPrewitt(EdgeDetect):
 
 
 class Sobel(EdgeDetect):
-    """Sobel–Feldman operator. 3x3 matrixes."""
+    """Sobel–Feldman operator. 3x3 matrices."""
     def _get_matrices(self) -> List[List[int]]:
         return [[1, 0, -1, 2, 0, -2, 1, 0, -1],
                 [1, 2, 1, 0, 0, 0, -1, -2, -1]]
@@ -188,7 +188,7 @@ class Sobel(EdgeDetect):
 
 
 class ExSobel(EdgeDetect):
-    """Extended Sobel–Feldman operator. 5x5 matrixes."""
+    """Extended Sobel–Feldman operator. 5x5 matrices."""
     def _get_matrices(self) -> List[List[int]]:
         return [[2, 1, 0, -1, -2, 2, 1, 0, -1, -2, 4, 2, 0, -2, -4, 2, 1, 0, -1, -2, 2, 1, 0, -1, -2],
                 [2, 2, 4, 2, 2, 1, 1, 2, 1, 1, 0, 0, 0, 0, 0, -1, -1, -2, -1, -1, -2, -2, -4, -2, -2]]
@@ -198,7 +198,7 @@ class ExSobel(EdgeDetect):
 
 
 class Scharr(EdgeDetect):
-    """H. Scharr optimized operator. 3x3 matrixes."""
+    """H. Scharr optimized operator. 3x3 matrices."""
     def _get_matrices(self) -> List[List[int]]:
         return [[-3, 0, 3, -10, 0, 10, -3, 0, 3],
                 [-3, -10, -3, 0, 0, 0, 3, 10, 3]]
@@ -208,7 +208,7 @@ class Scharr(EdgeDetect):
 
 
 class FDOG(EdgeDetect):
-    """Flow-based Difference Of Gaussian operator. 3x3 matrixes from G41Fun."""
+    """Flow-based Difference Of Gaussian operator. 3x3 matrices from G41Fun."""
     def _get_matrices(self) -> List[List[int]]:
         return [[1, 1, 0, -1, -1, 2, 2, 0, -2, -2, 3, 3, 0, -3, -3, 2, 2, 0, -2, -2, 1, 1, 0, -1, -1],
                 [1, 2, 3, 2, 1, 1, 2, 3, 2, 1, 0, 0, 0, 0, 0, -1, -2, -3, -2, -1, -1, -2, -3, -2, -1]]
@@ -221,7 +221,7 @@ class FDOG(EdgeDetect):
 
 
 class Kroon(EdgeDetect):
-    """Dirk-Jan Kroon operator. 3x3 matrixes."""
+    """Dirk-Jan Kroon operator. 3x3 matrices."""
     def _get_matrices(self) -> List[List[int]]:
         return [[-17, 0, 17, -61, 0, 61, -17, 0, 17],
                 [-17, -61, -17, 0, 0, 0, 17, 61, 17]]
@@ -231,7 +231,7 @@ class Kroon(EdgeDetect):
 
 
 class FreyChen(EdgeDetect):
-    """Chen Frei operator. 3x3 matrixes properly implemented."""
+    """Chen Frei operator. 3x3 matrices properly implemented."""
     def _get_matrices(self) -> List[List[int]]:
         sqrt2 = math.sqrt(2)
         return [[1, sqrt2, 1, 0, 0, 0, -1, -sqrt2, -1],
@@ -258,7 +258,7 @@ class FreyChen(EdgeDetect):
 
 
 class FreyChenG41(EdgeDetect):
-    """"Chen Frei" operator. 3x3 matrixes from G41Fun."""
+    """"Chen Frei" operator. 3x3 matrices from G41Fun."""
     def _get_matrices(self) -> List[List[int]]:
         return [[-7, 0, 7, -10, 0, 10, -7, 0, 7],
                 [-7, -10, -7, 0, 0, 0, 7, 10, 7]]
@@ -271,7 +271,7 @@ class FreyChenG41(EdgeDetect):
 
 
 class TEdge(EdgeDetect):
-    """(TEdgeMasktype=2) Avisynth plugin. 3x3 matrixes."""
+    """(TEdgeMasktype=2) Avisynth plugin. 3x3 matrices."""
     def _get_matrices(self) -> List[List[int]]:
         return [[12, -74, 0, 74, -12],
                 [-12, 74, 0, -74, 12]]
@@ -287,7 +287,7 @@ class TEdge(EdgeDetect):
 
 
 class Robinson3(EdgeDetect):
-    """Robinson compass operator level 3. 3x3 matrixes."""
+    """Robinson compass operator level 3. 3x3 matrices."""
     def _get_matrices(self) -> List[List[int]]:
         return [[1, 1, 1, 0, 0, 0, -1, -1, -1],
                 [1, 1, 0, 1, 0, -1, 0, -1, -1],
@@ -299,7 +299,7 @@ class Robinson3(EdgeDetect):
 
 
 class Robinson5(EdgeDetect):
-    """Robinson compass operator level 5. 3x3 matrixes."""
+    """Robinson compass operator level 5. 3x3 matrices."""
     def _get_matrices(self) -> List[List[int]]:
         return [[1, 2, 1, 0, 0, 0, -1, -2, -1],
                 [2, 1, 0, 1, 0, -1, 0, -1, -2],
@@ -311,7 +311,7 @@ class Robinson5(EdgeDetect):
 
 
 class Kirsch(EdgeDetect):
-    """Russell Kirsch compass operator. 3x3 matrixes."""
+    """Russell Kirsch compass operator. 3x3 matrices."""
     def _get_matrices(self) -> List[List[int]]:
         return [[5, 5, 5, -3, 0, -3, -3, -3, -3],
                 [5, 5, -3, 5, 0, -3, -3, -3, -3],
@@ -327,7 +327,7 @@ class Kirsch(EdgeDetect):
 
 
 class ExKirsch(EdgeDetect):
-    """Extended Russell Kirsch compass operator. 5x5 matrixes."""
+    """Extended Russell Kirsch compass operator. 5x5 matrices."""
     def _get_matrices(self) -> List[List[int]]:
         return [[9, 9, 9, 9, 9, 9, 5, 5, 5, 9, -7, -3, 0, -3, -7, -7, -3, -3, -3, -7, -7, -7, -7, -7, -7],
                 [9, 9, 9, 9, -7, 9, 5, 5, -3, -7, 9, 5, 0, -3, -7, 9, -3, -3, -3, -7, -7, -7, -7, -7, -7],
