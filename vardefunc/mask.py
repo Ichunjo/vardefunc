@@ -71,7 +71,7 @@ class EdgeDetect(ABC):
 
 
     def _get_divisors(self) -> List[float]:
-        return [0] * len(self._get_matrices())
+        return [0.0] * len(self._get_matrices())
 
     def _get_mode_types(self) -> List[str]:
         return ['s'] * len(self._get_matrices())
@@ -83,73 +83,73 @@ class EdgeDetect(ABC):
         return clip
 
     @abstractmethod
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         pass
 
 
 class Laplacian1(EdgeDetect):
     """Pierre-Simon de Laplace operator 1st implementation. 3x3 matrix."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[0, -1, 0, -1, 4, -1, 0, -1, 0]]
 
 
 class Laplacian2(EdgeDetect):
     """Pierre-Simon de Laplace operator 2nd implementation. 3x3 matrix."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[1, -2, 1, -2, 4, -2, 1, -2, 1]]
 
 
 class Laplacian3(EdgeDetect):
     """Pierre-Simon de Laplace operator 3rd implementation. 3x3 matrix."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[2, -1, 2, -1, -4, -1, 2, -1, 2]]
 
 
 class Laplacian4(EdgeDetect):
     """Pierre-Simon de Laplace operator 4th implementation. 3x3 matrix."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[-1, -1, -1, -1, 8, -1, -1, -1, -1]]
 
 
 class ExLaplacian1(EdgeDetect):
     """Extended Pierre-Simon de Laplace operator 1st implementation. 5x5 matrix."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[0, 0, -1, 0, 0, 0, 0, -1, 0, 0, -1, -1, 8, -1, -1, 0, 0, -1, 0, 0, 0, 0, -1, 0, 0]]
 
 
 class ExLaplacian2(EdgeDetect):
     """Extended Pierre-Simon de Laplace operator 2nd implementation. 5x5 matrix."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[0, 1, -1, 1, 0, 1, 1, -4, 1, 1, -1, -4, 8, -4, -1, 1, 1, -4, 1, 1, 0, 1, -1, 1, 0]]
 
 
 class ExLaplacian3(EdgeDetect):
     """Extended Pierre-Simon de Laplace operator 3rd implementation. 5x5 matrix."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[-1, 1, -1, 1, -1, 1, 2, -4, 2, 1, -1, -4, 8, -4, -1, 1, 2, -4, 2, 1, -1, 1, -1, 1, -1]]
 
 
 class ExLaplacian4(EdgeDetect):
     """Extended Pierre-Simon de Laplace operator 4th implementation. 5x5 matrix."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 24, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]]
 
 
 class Kayyali(EdgeDetect):
     """Kayyali operator. 3x3 matrix."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[6, 0, -6, 0, 0, 0, -6, 0, 6]]
 
 
 class LoG(EdgeDetect):
     """Laplacian of Gaussian. 5x5 matrix."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[0, 0, -1, 0, 0, 0, -1, -2, -1, 0, -1, -2, 16, -2, -1, 0, -1, -2, -1, 0, 0, 0, -1, 0, 0]]
 
 
 class Roberts(EdgeDetect):
     """Lawrence Roberts operator. 2x2 matrices computed in 3x3 matrices."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[0, 0, 0, 0, 1, 0, 0, 0, -1],
                 [0, 1, 0, -1, 0, 0, 0, 0, 0]]
 
@@ -159,7 +159,7 @@ class Roberts(EdgeDetect):
 
 class Prewitt(EdgeDetect):
     """Judith M. S. Prewitt operator. 3x3 matrices."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[1, 0, -1, 1, 0, -1, 1, 0, -1],
                 [1, 1, 1, 0, 0, 0, -1, -1, -1]]
 
@@ -188,7 +188,7 @@ class PrewittStd(EdgeDetect):
 
 class ExPrewitt(EdgeDetect):
     """Extended Judith M. S. Prewitt operator. 5x5 matrices."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[2, 1, 0, -1, -2, 2, 1, 0, -1, -2, 2, 1, 0, -1, -2, 2, 1, 0, -1, -2, 2, 1, 0, -1, -2],
                 [2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, -1, -1, -1, -1, -1, -2, -2, -2, -2, -2]]
 
@@ -198,7 +198,7 @@ class ExPrewitt(EdgeDetect):
 
 class Sobel(EdgeDetect):
     """Sobel–Feldman operator. 3x3 matrices."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[1, 0, -1, 2, 0, -2, 1, 0, -1],
                 [1, 2, 1, 0, 0, 0, -1, -2, -1]]
 
@@ -227,7 +227,7 @@ class SobelStd(EdgeDetect):
 
 class ExSobel(EdgeDetect):
     """Extended Sobel–Feldman operator. 5x5 matrices."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[2, 1, 0, -1, -2, 2, 1, 0, -1, -2, 4, 2, 0, -2, -4, 2, 1, 0, -1, -2, 2, 1, 0, -1, -2],
                 [2, 2, 4, 2, 2, 1, 1, 2, 1, 1, 0, 0, 0, 0, 0, -1, -1, -2, -1, -1, -2, -2, -4, -2, -2]]
 
@@ -237,7 +237,7 @@ class ExSobel(EdgeDetect):
 
 class Scharr(EdgeDetect):
     """H. Scharr optimized operator. 3x3 matrices."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[-3, 0, 3, -10, 0, 10, -3, 0, 3],
                 [-3, -10, -3, 0, 0, 0, 3, 10, 3]]
 
@@ -247,11 +247,11 @@ class Scharr(EdgeDetect):
 
 class FDOG(EdgeDetect):
     """Flow-based Difference Of Gaussian operator. 3x3 matrices from G41Fun."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[1, 1, 0, -1, -1, 2, 2, 0, -2, -2, 3, 3, 0, -3, -3, 2, 2, 0, -2, -2, 1, 1, 0, -1, -1],
                 [1, 2, 3, 2, 1, 1, 2, 3, 2, 1, 0, 0, 0, 0, 0, -1, -2, -3, -2, -1, -1, -2, -3, -2, -1]]
 
-    def _get_divisors(self) -> List[int]:
+    def _get_divisors(self) -> List[Union[int, float]]:
         return [2, 2]
 
     def _get_expr(self) -> Optional[str]:
@@ -260,7 +260,7 @@ class FDOG(EdgeDetect):
 
 class Kroon(EdgeDetect):
     """Dirk-Jan Kroon operator. 3x3 matrices."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[-17, 0, 17, -61, 0, 61, -17, 0, 17],
                 [-17, -61, -17, 0, 0, 0, 17, 61, 17]]
 
@@ -270,7 +270,7 @@ class Kroon(EdgeDetect):
 
 class FreyChen(EdgeDetect):
     """Chen Frei operator. 3x3 matrices properly implemented."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         sqrt2 = math.sqrt(2)
         return [[1, sqrt2, 1, 0, 0, 0, -1, -sqrt2, -1],
                 [1, 0, -1, sqrt2, 0, -sqrt2, 1, 0, -1],
@@ -282,7 +282,7 @@ class FreyChen(EdgeDetect):
                 [-2, 1, -2, 1, 4, 1, -2, 1, -2],
                 [1, 1, 1, 1, 1, 1, 1, 1, 1]]
 
-    def _get_divisors(self) -> List[int]:
+    def _get_divisors(self) -> List[Union[int, float]]:
         sqrt2 = math.sqrt(2)
         return [2 * sqrt2, 2 * sqrt2, 2 * sqrt2, 2 * sqrt2, 2, 2, 6, 6, 3]
 
@@ -297,11 +297,11 @@ class FreyChen(EdgeDetect):
 
 class FreyChenG41(EdgeDetect):
     """"Chen Frei" operator. 3x3 matrices from G41Fun."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[-7, 0, 7, -10, 0, 10, -7, 0, 7],
                 [-7, -10, -7, 0, 0, 0, 7, 10, 7]]
 
-    def _get_divisors(self) -> List[int]:
+    def _get_divisors(self) -> List[Union[int, float]]:
         return [7, 7]
 
     def _get_expr(self) -> Optional[str]:
@@ -310,11 +310,11 @@ class FreyChenG41(EdgeDetect):
 
 class TEdge(EdgeDetect):
     """(TEdgeMasktype=2) Avisynth plugin. 3x3 matrices."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[12, -74, 0, 74, -12],
                 [-12, 74, 0, -74, 12]]
 
-    def _get_divisors(self) -> List[int]:
+    def _get_divisors(self) -> List[Union[int, float]]:
         return [62, 62]
 
     def _get_mode_types(self) -> List[str]:
@@ -326,7 +326,7 @@ class TEdge(EdgeDetect):
 
 class Robinson3(EdgeDetect):
     """Robinson compass operator level 3. 3x3 matrices."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[1, 1, 1, 0, 0, 0, -1, -1, -1],
                 [1, 1, 0, 1, 0, -1, 0, -1, -1],
                 [1, 0, -1, 1, 0, -1, 1, 0, -1],
@@ -338,7 +338,7 @@ class Robinson3(EdgeDetect):
 
 class Robinson5(EdgeDetect):
     """Robinson compass operator level 5. 3x3 matrices."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[1, 2, 1, 0, 0, 0, -1, -2, -1],
                 [2, 1, 0, 1, 0, -1, 0, -1, -2],
                 [1, 0, -1, 2, 0, -2, 1, 0, -1],
@@ -350,7 +350,7 @@ class Robinson5(EdgeDetect):
 
 class Kirsch(EdgeDetect):
     """Russell Kirsch compass operator. 3x3 matrices."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[5, 5, 5, -3, 0, -3, -3, -3, -3],
                 [5, 5, -3, 5, 0, -3, -3, -3, -3],
                 [5, -3, -3, 5, 0, -3, 5, -3, -3],
@@ -366,7 +366,7 @@ class Kirsch(EdgeDetect):
 
 class ExKirsch(EdgeDetect):
     """Extended Russell Kirsch compass operator. 5x5 matrices."""
-    def _get_matrices(self) -> List[List[int]]:
+    def _get_matrices(self) -> List[List[Union[int, float]]]:
         return [[9, 9, 9, 9, 9, 9, 5, 5, 5, 9, -7, -3, 0, -3, -7, -7, -3, -3, -3, -7, -7, -7, -7, -7, -7],
                 [9, 9, 9, 9, -7, 9, 5, 5, -3, -7, 9, 5, 0, -3, -7, 9, -3, -3, -3, -7, -7, -7, -7, -7, -7],
                 [9, 9, -7, -7, -7, 9, 5, -3, -3, -7, 9, 5, 0, -3, -7, 9, 5, -3, -3, -7, 9, 9, -7, -7, -7],
@@ -476,22 +476,26 @@ def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_c
     clips = [
         c.resize.Bicubic(
             format=src_clip.format.replace(
-                bits_per_sample=get_depth(src_clip), subsampling_w=0, subsampling_h=0)
+                bits_per_sample=get_depth(src_clip),
+                subsampling_w=0, subsampling_h=0).id
         ) for c in clips]
 
     diff = core.std.Expr(
         sum(map(split, clips), []),
         'x a - abs y b - abs max z c - abs max',  # MAE
         # 'x a - 2 pow sqrt y b - 2 pow sqrt max z c - 2 pow sqrt max',  # RMSE
-        format=src_clip.format.replace(color_family=vs.GRAY)
+        format=src_clip.format.replace(color_family=vs.GRAY).id
     )
 
     mask = core.std.Prewitt(diff).std.Binarize(thr)
     mask = iterate(mask, partial(core.std.Maximum, coordinates=[0, 0, 0, 1, 1, 0, 0, 0]), sw)
     mask = iterate(mask, partial(core.std.Maximum, coordinates=[0, 1, 0, 0, 0, 0, 1, 0]), sh)
 
-    blank = core.std.BlankClip(src_clip, format=src_clip.format.replace(
-        color_family=vs.GRAY, subsampling_w=0, subsampling_h=0))
+    blank = core.std.BlankClip(
+        src_clip, format=src_clip.format.replace(
+            color_family=vs.GRAY, subsampling_w=0, subsampling_h=0
+        ).id
+    )
     mask = insert_clip(blank, mask, start_frame)
 
     return mask
