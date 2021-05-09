@@ -1,17 +1,18 @@
 """Functions for masking functions"""
 import math
-
 from abc import ABC, abstractmethod
 from functools import partial
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import fvsfunc as fvf
 import havsfunc as hvf
 
-from vsutil import depth, get_depth, get_w, get_y, insert_clip, iterate, split, Range
+from vsutil import (Range, depth, get_depth, get_w, get_y, insert_clip,
+                    iterate, split)
+
 import vapoursynth as vs
 
-from .util import get_sample_type, max_expr
+from .util import copy_docstring_from, get_sample_type, max_expr
 
 core = vs.core
 
