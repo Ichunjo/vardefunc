@@ -206,6 +206,25 @@ class Sobel(EdgeDetect):
         return 'x x * y y * + sqrt'
 
 
+class SobelStd(EdgeDetect):
+    """Sobel–Feldman Vapoursynth plugin operator. 3x3 matrices."""
+    @copy_docstring_from(EdgeDetect.get_mask)
+    def get_mask(self, clip: vs.VideoNode, lthr: int = 0, hthr: Optional[float] = None, multi: float = 1.0) -> vs.VideoNode:
+        bits = get_depth(clip)
+        peak = 1.0 if get_sample_type(clip) == vs.FLOAT else (1 << bits) - 1
+        hthr = peak if hthr is None else hthr
+
+        mask = core.std.Sobel(clip, scale=multi)
+
+        if lthr > 0 or hthr < peak:
+            mask = core.std.Expr(mask, f'x {hthr} > {peak} x {lthr} <= 0 x ? ?')
+
+        return mask
+
+    def _get_matrices(self) -> None:
+        pass
+
+
 class ExSobel(EdgeDetect):
     """Extended Sobel–Feldman operator. 5x5 matrices."""
     def _get_matrices(self) -> List[List[int]]:
