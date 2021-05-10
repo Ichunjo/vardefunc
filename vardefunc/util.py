@@ -1,4 +1,6 @@
 """Helper functions for the main functions in the script."""
+from typing import Any, Callable, List
+
 from string import ascii_lowercase
 import vapoursynth as vs
 
