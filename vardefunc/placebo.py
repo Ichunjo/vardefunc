@@ -2,7 +2,7 @@
 Placebo wrapper
 """
 from typing import List, Union
-from vsutil import depth, join, split, get_depth, get_y
+from vsutil import depth, join, split, get_y
 import vapoursynth as vs
 core = vs.core
 
@@ -47,8 +47,8 @@ def deband(clip: vs.VideoNode, radius: float = 16.0,
     Returns:
         vs.VideoNode: Debanded clip.
     """
-        threshold = [threshold] * 3 if isinstance(threshold, float) else threshold + [threshold[-1]] * (3 - len(threshold))
-        grain = [grain] * 3 if isinstance(grain, float) else grain + [grain[-1]] * (3 - len(grain))
+    threshold = [threshold] * 3 if isinstance(threshold, float) else threshold + [threshold[-1]] * (3 - len(threshold))
+    grain = [grain] * 3 if isinstance(grain, float) else grain + [grain[-1]] * (3 - len(grain))
 
     if chroma and clip.format.num_planes > 1:
         planes = split(clip)
@@ -83,9 +83,9 @@ def shader(clip: vs.VideoNode, width: int, height: int, shader_file: str, luma_o
     Returns:
         vs.VideoNode: Shader'd clip.
     """
-    if get_depth(clip) != 16:
-        clip = depth(clip, 16)
-    if luma_only is True:
+    clip = depth(clip, 16)
+
+    if luma_only:
         filter_shader = 'box'
         if clip.format.num_planes == 1:
             if width > clip.width or height > clip.height:
@@ -103,4 +103,4 @@ def shader(clip: vs.VideoNode, width: int, height: int, shader_file: str, luma_o
 
     clip = core.placebo.Shader(clip, shader_file, width, height, filter=filter_shader, **kwargs)
 
-    return get_y(clip) if luma_only is True else clip
+    return get_y(clip) if luma_only else clip
