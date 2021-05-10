@@ -477,7 +477,8 @@ def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_c
     """Makes a mask based on difference from 2 clips.
 
     Args:
-        src_clip (vs.VideoNode): Source clip.
+        src_clip (vs.VideoNode):
+            Source clip. Can be Gray, YUV or RGB.
 
         credit_clip (vs.VideoNode): Credit clip.
             It will be resampled according to the src_clip.
@@ -497,7 +498,8 @@ def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_c
             0 is allowed. Defaults to 2.
 
         prefilter (bool, optional):
-            Blurs the credit_clip and nc_clip to avoid false posivive such as noise and compression artifacts.
+            Blurs the credit_clip and nc_clip with Bilateral to avoid false posivive
+            such as noise and compression artifacts.
             Defaults to False.
 
         bilateral_args (Dict[str, Any], optional):
@@ -513,6 +515,7 @@ def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_c
 
         opmask = diff_creditless_mask(clip, clip[opstart:opend+1], ncop[:opend+1-opstart], opstart, thr=25, prefilter=True)
     """
+    gray_only = src_clip.format.num_planes == 1
     clips = [credit_clip, nc_clip]
 
     if prefilter:
@@ -530,8 +533,7 @@ def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_c
 
     diff = core.std.Expr(
         sum(map(split, clips), []),
-        'x a - abs y b - abs max z c - abs max',  # MAE
-        # 'x a - 2 pow sqrt y b - 2 pow sqrt max z c - 2 pow sqrt max',  # RMSE
+        mae_expr(gray_only),
         format=src_clip.format.replace(color_family=vs.GRAY).id
     )
 
