@@ -47,17 +47,17 @@ def deband(clip: vs.VideoNode, radius: float = 16.0,
     Returns:
         vs.VideoNode: Debanded clip.
     """
-    if chroma and clip.format.num_planes > 1:
         threshold = [threshold] * 3 if isinstance(threshold, float) else threshold + [threshold[-1]] * (3 - len(threshold))
         grain = [grain] * 3 if isinstance(grain, float) else grain + [grain[-1]] * (3 - len(grain))
 
+    if chroma and clip.format.num_planes > 1:
         planes = split(clip)
 
         for i, (thr, gra) in enumerate(zip(threshold, grain)):
             planes[i] = planes[i].placebo.Deband(1, iterations, thr, radius, gra, **kwargs)
         clip = join(planes)
     else:
-        clip = clip.placebo.Deband(1, iterations, threshold, radius, grain, **kwargs)
+        clip = clip.placebo.Deband(1, iterations, threshold[0], radius, grain[0], **kwargs)
 
     return clip
 
@@ -91,7 +91,12 @@ def shader(clip: vs.VideoNode, width: int, height: int, shader_file: str, luma_o
             if width > clip.width or height > clip.height:
                 clip = clip.resize.Point(format=vs.YUV444P16)
             else:
-                blank = core.std.BlankClip(clip, clip.width / 4, clip.height / 4, vs.GRAY16)
+                if width % 4 == 0 or height % 4 == 0:
+                    blank = core.std.BlankClip(clip, int(clip.width / 4), int(clip.height / 4), vs.GRAY16)
+                elif width % 2 == 0 or height % 2 == 0:
+                    blank = core.std.BlankClip(clip, int(clip.width / 2), int(clip.height / 2), vs.GRAY16)
+                else:
+                    blank = core.std.BlankClip(clip, vs.GRAY16)
                 clip = join([clip, blank, blank])
     else:
         filter_shader = 'ewa_lanczos'
