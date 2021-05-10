@@ -14,13 +14,21 @@ def load_operators_expr() -> List[str]:
     """Returns clip loads operators for std.Expr as a list of string."""
     abcd = list(ascii_lowercase)
     return abcd[-3:] + abcd[:-3]
+
+
+def max_expr(n: int) -> str:
+    """Dynamic variable max string to be integrated in std.Expr.
+
     Args:
-        clip (vs.VideoNode): [description]
+        n (int): Number of elements.
 
     Returns:
-        [type]: [description]
+        str: Expression.
     """
-    return clip.format.sample_type
+    return 'x y max ' + ' max '.join(
+        load_operators_expr()[i] for i in range(2, n)
+    ) + ' max'
+
 
 def mae_expr(gray_only: bool = True) -> str:
     """Mean Absolute Error string to be integrated in std.Expr.
