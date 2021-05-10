@@ -9,6 +9,11 @@ def get_sample_type(clip: vs.VideoNode) -> vs.SampleType:
     """Returns the sample type of a VideoNode as an SampleType."""
     return clip.format.sample_type
 
+
+def load_operators_expr() -> List[str]:
+    """Returns clip loads operators for std.Expr as a list of string."""
+    abcd = list(ascii_lowercase)
+    return abcd[-3:] + abcd[:-3]
     Args:
         clip (vs.VideoNode): [description]
 
