@@ -68,7 +68,7 @@ def shader(clip: vs.VideoNode, width: int, height: int, shader_file: str, luma_o
        https://github.com/Lypheo/vs-placebo#vs-placebo
 
     Args:
-        clip (vs.VideoNode): Source clip/
+        clip (vs.VideoNode): Source clip.
 
         width (int): Destination width.
 
