@@ -33,15 +33,20 @@ def load_operators_expr() -> str:
     return abcd[-3:] + abcd[:-3]
 
 
-def max_expr(n: int) -> str:
-    """Dynamic max string to be integrated in std.Expr.
+def rmse_expr(gray_only: bool = True) -> str:
+    """Root Mean Squared Error string to be integrated in std.Expr.
 
     Args:
-        n (int): Number of elements.
+        gray_only (bool, optional):
+            If both actual observation and prediction are one plane each.
+            Defaults to True.
 
     Returns:
         str: Expression.
     """
+    return 'x y - dup * sqrt' if gray_only else 'x a - dup * sqrt y b - dup * sqrt max z c - dup * sqrt max'
+
+
 def copy_docstring_from(source: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator intended to copy the docstring from an other function
 
