@@ -591,14 +591,22 @@ def region_mask(clip: vs.VideoNode,
     """Crop your mask
 
     Args:
-        clip (vs.VideoNode): Source clip.
-        left (int, optional): Left parameter in std.CropRel or std.Crop. Defaults to 0.
-        right (int, optional): Right parameter in std.CropRel or std.Crop. Defaults to 0.
-        top (int, optional): Top parameter in std.CropRel or std.Crop. Defaults to 0.
-        bottom (int, optional): Bottom parameter in std.CropRel or std.Crop. Defaults to 0.
+        clip (vs.VideoNode):
+            Source clip.
+        left (int, optional):
+            Left parameter in std.CropRel or std.Crop. Defaults to 0.
+
+        right (int, optional):
+            Right parameter in std.CropRel or std.Crop. Defaults to 0.
+
+        top (int, optional):
+            Top parameter in std.CropRel or std.Crop. Defaults to 0.
+
+        bottom (int, optional):
+            Bottom parameter in std.CropRel or std.Crop. Defaults to 0.
 
     Returns:
-        vs.VideoNode: Cropped clip
+        vs.VideoNode: Cropped clip.
     """
     crop = core.std.Crop(clip, left, right, top, bottom)
     return core.std.AddBorders(crop, left, right, top, bottom)
