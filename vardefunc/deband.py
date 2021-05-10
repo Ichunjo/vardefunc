@@ -49,24 +49,16 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
         (fout := f[0].copy()).props.update(f[1].props)
         return fout
 
-    thy, thcb, thcr = [threshold] * 3 if isinstance(threshold, int) else threshold + [threshold[-1]] * (3 - len(threshold))
-
-    gry, grc = [grain] * 2 if isinstance(grain, int) else grain + [grain[-1]] * (2 - len(grain))
-
-
     if sample_mode > 2 and not use_neo:
         raise ValueError('dumb3kdb: "sample_mode" argument should be less or equal to 2 when "use_neo" is false.')
 
-    if sample_mode == 2:
-        step = 16
-    else:
-        step = 32
+
+    thy, thcb, thcr = [threshold] * 3 if isinstance(threshold, int) else threshold + [threshold[-1]] * (3 - len(threshold))
+    gry, grc = [grain] * 2 if isinstance(grain, int) else grain + [grain[-1]] * (2 - len(grain))
 
 
-    if use_neo:
-        f3kdb = core.neo_f3kdb.Deband
-    else:
-        f3kdb = core.f3kdb.Deband
+    step = 16 if sample_mode == 2 else 32
+    f3kdb = core.neo_f3kdb.Deband if use_neo else core.f3kdb.Deband
 
 
     f3kdb_args: Dict[str, Any] = dict(keep_tv_range=True, output_depth=16)
