@@ -413,47 +413,62 @@ class ExKirsch(EdgeDetect):
         return max_expr(8)
 
 
-def diff_rescale_mask(source: vs.VideoNode, height: int = 720, kernel: str = 'bicubic',
-                      b: float = 0, c: float = 1 / 2, mthr: int = 55,
-                      mode: str = 'ellipse', sw: int = 2, sh: int = 2) -> vs.VideoNode:
-    """Modified version of Atomchtools for generate a mask with a rescaled difference.
-       Its alias is vardefunc.drm
+def diff_rescale_mask(clip: vs.VideoNode, height: int = 720,
+                      kernel: lvsfunc.kernels.Kernel = lvsfunc.kernels.Bicubic(b=0, c=0.5),
+                      thr: Union[int, float] = 55,
+                      sw: int = 2, sh: int = 2) -> vs.VideoNode:
+    """Makes a mask based on rescaled difference.
+       Modified version of Atomchtools.
 
     Args:
-        source (vs.VideoNode): Source clip.
-        height (int, optional): Defaults to 720.
-        kernel (str, optional): Defaults to bicubic.
-        b (float, optional): Defaults to 0.
-        c (float, optional): Defaults to 1/2.
-        mthr (int, optional): Defaults to 55.
-        mode (str, optional): Can be 'rectangle', 'losange' or 'ellipse' . Defaults to 'ellipse'.
-        sw (int, optional): Growing/shrinking shape width. 0 is allowed. Defaults to 2.
-        sh (int, optional): Growing/shrinking shape height. 0 is allowed. Defaults to 2.
+        clip (vs.VideoNode):
+            Source clip. Can be Gray, YUV or RGB.
+            Keep in mind that descale plugin will descale all planes
+            after conversion to GRAYS, YUV444PS and RGBS respectively.
+
+        height (int, optional):
+            Height to descale to. Defaults to 720.
+
+        kernel (lvsfunc.kernels.Kernel, optional):
+            Kernel used to descale. Defaults to lvsfunc.kernels.Bicubic(b=0, c=0.5).
+
+        thr (Union[int, float], optional):
+            Binarization threshold. Defaults to 55.
+
+        sw (int, optional):
+            Growing/shrinking shape width. 0 is allowed. Defaults to 2.
+
+        sh (int, optional):
+            Growing/shrinking shape height. 0 is allowed. Defaults to 2.
 
     Returns:
-        vs.VideoNode:
+        vs.VideoNode: Rescaled mask.
     """
-    if not source.format.num_planes == 1:
-        clip = get_y(source)
-    else:
-        clip = source
+    bits = get_depth(clip)
+    gray_only = clip.format.num_planes == 1
+    thr = scale_value(thr, bits, 32, scale_offsets=True)
 
-    if get_depth(source) != 8:
-        clip = depth(clip, 8)
+    pre = core.resize.Bicubic(
+        clip, format=clip.format.replace(
+            bits_per_sample=32, sample_type=vs.FLOAT, subsampling_w=0, subsampling_h=0
+        ).id
+    )
+    descale = kernel.descale(pre, get_w(height), height)
+    rescale = kernel.scale(descale, clip.width, clip.height)
 
-    width = get_w(height)
-    desc = fvf.Resize(clip, width, height, kernel=kernel, a1=b, a2=c, invks=True)
-    upsc = depth(fvf.Resize(desc, source.width, source.height, kernel=kernel, a1=b, a2=c), 8)
+    diff = core.std.Expr(sum(map(split, [pre, rescale]), []), mae_expr(gray_only))
 
-    diff = core.std.MakeDiff(clip, upsc)
-    mask = diff.rgvs.RemoveGrain(2).rgvs.RemoveGrain(2).hist.Luma()
-    mask = mask.std.Expr(f'x {mthr} < 0 x ?')
-    mask = mask.std.Prewitt().std.Maximum().std.Maximum().std.Deflate()
-    mask = hvf.mt_expand_multi(mask, mode=mode, sw=sw, sh=sh)
+    mask = iterate(diff, lambda x: core.rgsf.RemoveGrain(x, 2), 2)
+    mask = core.std.Expr(mask, f'x 2 4 pow * {thr} < 0 1 ?')
 
-    if get_depth(source) != 8:
-        mask = depth(mask, get_depth(source))
-    return mask
+    mask = iterate(mask, partial(core.std.Maximum, coordinates=[0, 0, 0, 1, 1, 0, 0, 0]), 2 + sw)
+    mask = iterate(mask, partial(core.std.Maximum, coordinates=[0, 1, 0, 0, 0, 0, 1, 0]), 2 + sh)
+    mask = mask.std.Deflate()
+
+    return mask.resize.Point(
+        format=clip.format.replace(color_family=vs.GRAY, subsampling_w=0, subsampling_h=0).id,
+        dither_type='none'
+    )
 
 
 def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_clip: vs.VideoNode,
