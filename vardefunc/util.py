@@ -42,6 +42,16 @@ def max_expr(n: int) -> str:
     Returns:
         str: Expression.
     """
-    return 'x y max ' + ' max '.join(
-        load_operators_expr()[i] for i in range(2, n)
-    ) + ' max'
+def copy_docstring_from(source: Callable[..., Any]) -> Callable[..., Any]:
+    """Decorator intended to copy the docstring from an other function
+
+    Args:
+        source (Callable[..., Any]): Source function.
+
+    Returns:
+        Callable[..., Any]: Function decorated
+    """
+    def wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
+        func.__doc__ = source.__doc__
+        return func
+    return wrapper
