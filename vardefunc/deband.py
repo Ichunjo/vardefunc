@@ -51,7 +51,7 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
 
     thy, thcb, thcr = [threshold] * 3 if isinstance(threshold, int) else threshold + [threshold[-1]] * (3 - len(threshold))
 
-    gry, grc = [grain] * 2 if isinstance(grain, int) else grain + [grain[-1]] * (2 - len(threshold))
+    gry, grc = [grain] * 2 if isinstance(grain, int) else grain + [grain[-1]] * (2 - len(grain))
 
 
     if sample_mode > 2 and not use_neo:
