@@ -22,15 +22,18 @@ def load_operators_expr() -> List[str]:
     """
     return clip.format.sample_type
 
+def mae_expr(gray_only: bool = True) -> str:
+    """Mean Absolute Error string to be integrated in std.Expr.
 
-def load_operators_expr() -> str:
-    """[summary]
+    Args:
+        gray_only (bool, optional):
+            If both actual observation and prediction are one plane each.
+            Defaults to True.
 
     Returns:
-        str: [description]
+        str: Expression.
     """
-    abcd = list(ascii_lowercase)
-    return abcd[-3:] + abcd[:-3]
+    return 'x y - abs' if gray_only else 'x a - abs y b - abs max z c - abs max'
 
 
 def rmse_expr(gray_only: bool = True) -> str:
