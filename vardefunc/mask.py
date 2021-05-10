@@ -551,33 +551,29 @@ def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_c
     return mask
 
 
-def luma_credit_mask(source: vs.VideoNode, thr: int = 230, mode: str = 'prewitt', draft: bool = False) -> vs.VideoNode:
-    """Creates a mask based on luma value and edges.
+def luma_credit_mask(clip: vs.VideoNode, thr: int = 230,
+                     edgemask: EdgeDetect = Prewitt(), draft: bool = False) -> vs.VideoNode:
+    """Makes a mask based on luma value and edges.
 
     Args:
-        source (vs.VideoNode): Source clip.
-        thr (int, optional): Luma value assuming 8 bit input. Defaults to 230.
-        mode (str, optional): Chooses a predefined kernel used for the mask computing.
-                              Valid choices are "sobel", "prewitt", "scharr", "kirsch",
-                              "robinson", "roberts", "cartoon", "min/max", "laplace",
-                              "frei-chen", "kayyali", "LoG", "FDOG" and "TEdge".
-                              Defaults to 'prewitt'.
-        draft (bool, optional): Allow to output the mask without growing. Defaults to False.
+        clip (vs.VideoNode):
+            Source clip.
+
+        thr (int, optional):
+            Luma value assuming 8 bit input. Defaults to 230.
+
+        edgemask (EdgeDetect, optional):
+            Edge mask used with thr. Defaults to Prewitt().
+
+        draft (bool, optional):
+            Allow to output the mask without growing. Defaults to False.
 
     Returns:
         vs.VideoNode: Credit mask.
     """
-    try:
-        import G41Fun as gf
-    except ModuleNotFoundError:
-        raise ModuleNotFoundError("luma_credit_mask: missing dependency 'G41Fun'")
+    clip = get_y(clip)
 
-    if not source.format.num_planes == 1:
-        clip = get_y(source)
-    else:
-        clip = source
-
-    edge_mask = gf.EdgeDetect(clip, mode).std.Maximum()
+    edge_mask = edgemask.get_mask(clip)
     luma_mask = core.std.Expr(clip, f'x {thr} > x 0 ?')
 
     credit_mask = core.std.Expr([edge_mask, luma_mask], 'x y min')
