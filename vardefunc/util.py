@@ -6,7 +6,8 @@ core = vs.core
 
 
 def get_sample_type(clip: vs.VideoNode) -> vs.SampleType:
-    """[summary]
+    """Returns the sample type of a VideoNode as an SampleType."""
+    return clip.format.sample_type
 
     Args:
         clip (vs.VideoNode): [description]
