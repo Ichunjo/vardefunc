@@ -1,8 +1,7 @@
-"""
-Placebo wrapper
-"""
+"""Placebo wrapper"""
 from typing import List, Union
 from vsutil import depth, join, split, get_y
+
 import vapoursynth as vs
 core = vs.core
 
