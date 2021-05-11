@@ -12,6 +12,8 @@ from .mask import FDOG
 core = vs.core
 
 
+@disallow_variable_format
+@disallow_variable_resolution
 def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
            min_in: Union[int, float] = None, max_in: Union[int, float] = None, gamma: float = 1.0,
            protect_mask: vs.VideoNode = None, prefilter: bool = True,
