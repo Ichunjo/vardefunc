@@ -11,7 +11,7 @@ from vsutil import (Range, depth, disallow_variable_format,
 
 import vapoursynth as vs
 
-from .util import get_sample_type, max_expr, mae_expr
+from .util import get_sample_type, mae_expr, max_expr
 
 core = vs.core
 
