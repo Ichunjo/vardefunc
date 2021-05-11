@@ -253,8 +253,9 @@ def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, s
 def to_444(clip: vs.VideoNode,
            width: int = None, height: int = None,
            join_planes: bool = True, znedi: bool = True,
-           scaler: Callable[[vs.VideoNode, Any], vs.VideoNode] = None) -> vs.VideoNode:
-    """Zastin’s nnedi3 chroma upscaler. Modified by Vardë.
+           scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Bicubic()) -> Union[vs.VideoNode, List[vs.VideoNode]]:
+    """Zastin’s nnedi3 chroma upscaler.
+       Modified by Vardë.
 
     Args:
         clip ([type]): Source clip
@@ -268,7 +269,7 @@ def to_444(clip: vs.VideoNode,
     Returns:
         vs.VideoNode: 444’d clip.
     """
-    def _nnedi3x2(clip):
+    def _nnedi3x2(clip: vs.VideoNode) -> vs.VideoNode:
         if znedi:
             clip = clip.std.Transpose().znedi3.nnedi3(1, 1, 0, 0, 4, 2) \
                 .std.Transpose().znedi3.nnedi3(0, 1, 0, 0, 4, 2)
@@ -279,12 +280,11 @@ def to_444(clip: vs.VideoNode,
 
     chroma = [_nnedi3x2(c) for c in split(clip)[1:]]
 
-    if scaler is None:
-        scaler = core.resize.Bicubic
+    if not width:
+        width = chroma[0].width
+    if not height:
+        height = chroma[0].height
 
-    if width in (None, clip.width) and height in (None, clip.height):
-        chroma = [scaler(c, src_top=0.5) for c in chroma]
-    else:
-        chroma = [scaler(c, width, height, src_top=0.5) for c in chroma]
+    chroma = [scaler.scale(c, width, height, (.5, 0)) for c in chroma]
 
     return core.std.ShufflePlanes([clip] + chroma, [0] * 3, vs.YUV) if join_planes else chroma
