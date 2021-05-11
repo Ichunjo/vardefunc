@@ -5,9 +5,9 @@ from functools import partial
 from typing import Any, Dict, List, Optional, Union
 
 import lvsfunc
-
-from vsutil import (Range, depth, get_depth, get_w, get_y, insert_clip,
-                    iterate, scale_value, split)
+from vsutil import (Range, depth, disallow_variable_format,
+                    disallow_variable_resolution, get_depth, get_w, get_y,
+                    insert_clip, iterate, scale_value, split)
 
 import vapoursynth as vs
 
@@ -423,6 +423,8 @@ class ExKirsch(EdgeDetect):
         return max_expr(8)
 
 
+@disallow_variable_format
+@disallow_variable_resolution
 def diff_rescale_mask(clip: vs.VideoNode, height: int = 720,
                       kernel: lvsfunc.kernels.Kernel = lvsfunc.kernels.Bicubic(b=0, c=0.5),
                       thr: Union[int, float] = 55,
@@ -481,6 +483,8 @@ def diff_rescale_mask(clip: vs.VideoNode, height: int = 720,
     )
 
 
+@disallow_variable_format
+@disallow_variable_resolution
 def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_clip: vs.VideoNode,
                          start_frame: int, thr: int, sw: int = 2, sh: int = 2, *,
                          prefilter: bool = False, bilateral_args: Dict[str, Any] = {}) -> vs.VideoNode:
@@ -561,6 +565,8 @@ def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_c
     return mask
 
 
+@disallow_variable_format
+@disallow_variable_resolution
 def luma_credit_mask(clip: vs.VideoNode, thr: int = 230,
                      edgemask: EdgeDetect = Prewitt(), draft: bool = False) -> vs.VideoNode:
     """Makes a mask based on luma value and edges.
@@ -595,6 +601,8 @@ def luma_credit_mask(clip: vs.VideoNode, thr: int = 230,
     return credit_mask
 
 
+@disallow_variable_format
+@disallow_variable_resolution
 def region_mask(clip: vs.VideoNode,
                 left: int = 0, right: int = 0,
                 top: int = 0, bottom: int = 0) -> vs.VideoNode:
