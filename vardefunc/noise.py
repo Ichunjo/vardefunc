@@ -1,9 +1,14 @@
-"""Functions for noising/denoising functions"""
+"""Noising/denoising functions"""
 from functools import partial
 from typing import List, Tuple, Union, cast
 
-from vsutil import depth, get_y, split
+from vsutil import (Dither, Range, depth, disallow_variable_format,
+                    disallow_variable_resolution, get_y, split)
+
 import vapoursynth as vs
+
+from .mask import FDOG
+
 core = vs.core
 
 
