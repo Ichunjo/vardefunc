@@ -1,4 +1,4 @@
-"""Functions for masking functions"""
+"""Wrappers and masks for denoising, debanding, rescaling etc."""
 import math
 from abc import ABC, abstractmethod
 from functools import partial
