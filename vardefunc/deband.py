@@ -1,10 +1,14 @@
 """Functions for debanding functions"""
 from typing import Any, Dict, List, Union
 
+from vsutil import disallow_variable_format, disallow_variable_resolution
+
 import vapoursynth as vs
 core = vs.core
 
 
+@disallow_variable_format
+@disallow_variable_resolution
 def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
              threshold: Union[int, List[int]] = 30, grain: Union[int, List[int]] = 0,
              sample_mode: int = 2, use_neo: bool = False, **kwargs) -> vs.VideoNode:
