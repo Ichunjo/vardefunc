@@ -70,7 +70,7 @@ def get_chroma_shift(src_h: int, dst_h: int, aspect_ratio: float = 16 / 9) -> fl
     return ch_shift
 
 
-def get_bicubic_params(cubic_filter: str) -> Tuple:
+def get_bicubic_params(cubic_filter: str) -> Tuple[float, float]:
     """Return the parameter b and c for the bicubic filter
        Source: https://www.imagemagick.org/discourse-server/viewtopic.php?f=22&t=19823
                https://www.imagemagick.org/Usage/filter/#mitchell
@@ -84,18 +84,18 @@ def get_bicubic_params(cubic_filter: str) -> Tuple:
     """
     sqrt = math.sqrt
 
-    def _get_robidoux_soft() -> Tuple:
+    def _get_robidoux_soft() -> Tuple[float, float]:
         b = (9 - 3 * sqrt(2)) / 7
         c = (1 - b) / 2
         return b, c
 
-    def _get_robidoux() -> Tuple:
+    def _get_robidoux() -> Tuple[float, float]:
         sqrt2 = sqrt(2)
         b = 12 / (19 + 9 * sqrt2)
         c = 113 / (58 + 216 * sqrt2)
         return b, c
 
-    def _get_robidoux_sharp() -> Tuple:
+    def _get_robidoux_sharp() -> Tuple[float, float]:
         sqrt2 = sqrt(2)
         b = 6 / (13 + 7 * sqrt2)
         c = 7 / (2 + 12 * sqrt2)
@@ -103,15 +103,15 @@ def get_bicubic_params(cubic_filter: str) -> Tuple:
 
     cubic_filter = cubic_filter.lower().replace(' ', '_').replace('-', '_')
     cubic_filters = {
-        'spline': (1, 0),
-        'b_spline': (1, 0),
-        'hermite': (0, 0),
+        'spline': (1.0, 0.0),
+        'b_spline': (1.0, 0.0),
+        'hermite': (0.0, 0.0),
         'mitchell_netravali': (1 / 3, 1 / 3),
         'mitchell': (1 / 3, 1 / 3),
-        'catmull_rom': (0, 1 / 2),
-        'catrom': (0, 1 / 2),
-        'bicubic_sharp': (0, 1),
-        'sharp_bicubic': (0, 1),
+        'catmull_rom': (0.0, 0.5),
+        'catrom': (0.0, 0.5),
+        'bicubic_sharp': (0.0, 1.0),
+        'sharp_bicubic': (0.0, 1.0),
         'robidoux_soft': _get_robidoux_soft(),
         'robidoux': _get_robidoux(),
         'robidoux_sharp': _get_robidoux_sharp()
