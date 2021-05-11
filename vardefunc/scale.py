@@ -1,4 +1,4 @@
-"""Functions for scaling functions"""
+"""(Up/De)scaling functions"""
 from functools import partial
 from typing import Any, Callable, Dict
 
