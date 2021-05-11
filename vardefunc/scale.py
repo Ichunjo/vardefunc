@@ -123,22 +123,29 @@ def eedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.k
     return scaler.scale(clip, clip.width, clip.height, shift=(.5, .5)) if correct_shift else clip
 
 
-def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080, shader_file: str = None,
+def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, shader_file: str = None,
                     downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Bicubic,
-                    upscaler_smooth: Callable[[vs.VideoNode, Any], vs.VideoNode] = partial(nnedi3_upscale, nsize=4, nns=4, qual=2, pscrn=2),
+                    upscaler_smooth: Callable[[vs.VideoNode], vs.VideoNode] = partial(nnedi3_upscale, nsize=4, nns=4, qual=2, pscrn=2),
                     strength: float = 100.0, profile: str = 'slow',
-                    lmode: int = 1, overshoot: int = None, undershoot: int = None,
-                    sharpener: Callable[[vs.VideoNode, Any], vs.VideoNode] = partial(z4USM, radius=2, strength=65)
+                    lmode: int = 1, overshoot: float = None, undershoot: float = None,
+                    sharpener: Callable[[vs.VideoNode], vs.VideoNode] = partial(z4usm, radius=2, strength=65)
                     ) -> vs.VideoNode:
     """
     Upscale the given luma source clip with FSRCNNX to a given width / height
     while preventing FSRCNNX artifacts by limiting them.
 
     Args:
-        source (vs.VideoNode): Source clip, assuming this one is perfectly descaled.
-        width (int): Target resolution width. Defaults to None.
-        height (int): Target resolution height. Defaults to 1080.
-        shader_file (str): Path to the FSRCNNX shader file. Defaults to None.
+        source (vs.VideoNode):
+            Source clip, assuming this one is perfectly descaled.
+
+        width (int):
+            Target resolution width (if None, auto-calculated). Defaults to None.
+
+        height (int):
+            Target resolution height. Defaults to 1080.
+
+        shader_file (str):
+            Path to the FSRCNNX shader file. Defaults to None.
 
         downscaler (Callable[[vs.VideoNode, int, int], vs.VideoNode], optional):
             Resizer used to downscale the upscaled clip. Defaults to core.resize.Bicubic.
@@ -155,7 +162,7 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
         profile (str): Profile settings. Possible strings: "fast", "old", "slow" or "zastin".
                        – "fast" is the old draft mode (the plain fsrcnnx clip returned).
                        – "old" is the old mode to deal with the bright pixels.
-                       – "slow" is the new mode, more efficient.
+                       – "slow" is the new mode, more efficient, using clamping.
                        – "zastin" is a combination between a sharpened nnedi3 upscale and a fsrcnnx upscale.
                          The sharpener prevents the interior of lines from being brightened and fsrnncx
                          (as a clamping clip without nnedi3) prevents artifacting (halos) from the sharpening.
@@ -165,23 +172,26 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
                      – (= 0): No limit.
                      – (= 1): Limit to over/undershoot.
 
-        overshoot (int): Limit for pixels that get brighter during upscaling.
-        undershoot (int): Limit for pixels that get darker during upscaling.
+        overshoot (int):
+            Only for profile='slow'.
+            Limit for pixels that get brighter during upscaling.
+
+        undershoot (int):
+            Only for profile='slow'.
+            Limit for pixels that get darker during upscaling.
 
         sharpener (Callable[[vs.VideoNode, Any], vs.VideoNode], optional):
+            Only for profile='zastin'.
             Sharpening function used to replace the sharped smoother nnedi3 upscale.
             Defaults to partial(z4USM, radius=2, strength=65)
 
     Returns:
         vs.VideoNode: Upscaled luma clip.
     """
-    if source.format.num_planes > 1:
-        source = get_y(source)
+    bits = get_depth(clip)
 
-    if (depth_src := get_depth(source)) != 16:
-        clip = depth(source, 16)
-    else:
-        clip = source
+    clip = get_y(clip)
+    clip = depth(clip, 16)
 
     if width is None:
         width = get_w(height, clip.width / clip.height)
@@ -195,7 +205,10 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
         raise vs.Error('fsrcnnx_upscale: "profile" must be "fast", "old", "slow" or "zastin"')
     num = profiles.index(profile.lower())
 
-    fsrcnnx = placebo.shader(clip, clip.width * 2, clip.height * 2, shader_file)
+    if not shader_file:
+        raise vs.Error('fsrcnnx_upscale: You must set a string path for "shader_file"')
+
+    fsrcnnx = shader(clip, clip.width * 2, clip.height * 2, shader_file)
 
     if num >= 1:
         # old or slow profile
@@ -214,9 +227,12 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
                 dark_limit = core.std.Minimum(smooth)
                 bright_limit = core.std.Maximum(smooth)
 
-                limit = hvf.Clamp(upscaled, bright_limit, dark_limit,
-                                  hvf.scale(overshoot, (1 << 16) - 1),
-                                  hvf.scale(undershoot, (1 << 16) - 1))
+                overshoot = scale_value(overshoot, 8, 16, range_in=Range.FULL, range=Range.FULL)
+                undershoot = scale_value(undershoot, 8, 16, range_in=Range.FULL, range=Range.FULL)
+                limit = core.std.Expr(
+                    [upscaled, bright_limit, dark_limit],
+                    f'x y {overshoot} + > y {overshoot} + x ? z {undershoot} - < z {undershoot} - x y {overshoot} + > y {overshoot} + x ? ?'
+                )
             else:
                 raise vs.Error('fsrcnnx_upscale: "lmode" must be < 0, 0 or 1')
         else:
@@ -231,12 +247,7 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
     else:
         scaled = limit
 
-    if get_depth(scaled) != depth_src:
-        out = depth(scaled, depth_src)
-    else:
-        out = scaled
-
-    return out
+    return depth(scaled, bits)
 
 
 def to_444(clip: vs.VideoNode,
