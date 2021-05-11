@@ -1,45 +1,41 @@
 """Miscellaneous functions and wrappers that didn't really have a place in any other submodules."""
 import math
-import subprocess
 from functools import partial
 from typing import Tuple, Union
 
-from vsutil import get_w
+from vsutil import get_w, insert_clip
 import vapoursynth as vs
 
 core = vs.core
 
 
-def fade_filter(source: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode,
+def fade_filter(clip: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode,
                 start_f: int, end_f: int) -> vs.VideoNode:
-    """Apply a filter with a fade
+    """Applies a filter by fading clip_a to clip_b.
 
     Args:
-        source (vs.VideoNode): Source clip
-        clip_a (vs.VideoNode): Fade in clip
-        clip_b (vs.VideoNode): Fade out clip
+        clip (vs.VideoNode): Source clip
+
+        clip_a (vs.VideoNode): Fade in clip.
+
+        clip_b (vs.VideoNode): Fade out clip.
+
         start_f (int): Start frame.
+
         end_f (int): End frame.
 
     Returns:
-        vs.VideoNode:
+        vs.VideoNode: Faded clip.
     """
     length = end_f - start_f
 
-    def _fade(n, clip_a, clip_b, length):
+    def _fade(n: int, clip_a: vs.VideoNode, clip_b: vs.VideoNode, length: int) -> vs.VideoNode:
         return core.std.Merge(clip_a, clip_b, n / length)
 
-    function = partial(_fade, clip_a=clip_a[start_f:end_f + 1], clip_b=clip_b[start_f:end_f + 1], length=length)
-    clip_fad = core.std.FrameEval(source[start_f:end_f + 1], function)
+    func = partial(_fade, clip_a=clip_a[start_f:end_f + 1], clip_b=clip_b[start_f:end_f + 1], length=length)
+    clip_fad = core.std.FrameEval(clip[start_f:end_f + 1], func)
 
-    final = clip_fad
-
-    if start_f != 0:
-        final = source[:start_f] + final
-    if end_f + 1 < source.num_frames:
-        final = final + source[end_f + 1:]
-
-    return final
+    return insert_clip(clip, clip_fad, start_f)
 
 
 def merge_chroma(luma: vs.VideoNode, ref: vs.VideoNode) -> vs.VideoNode:
