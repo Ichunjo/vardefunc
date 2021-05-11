@@ -1,4 +1,4 @@
-"""Functions for sharpening functions"""
+"""Sharpening functions"""
 import math
 import vapoursynth as vs
 core = vs.core
