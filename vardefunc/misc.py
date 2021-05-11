@@ -142,42 +142,6 @@ def generate_keyframes(clip: vs.VideoNode, out_path: str) -> None:
     text_file.close()
 
 
-def encode(clip: vs.VideoNode, binary: str, output_file: str, **args) -> None:
-    """Stolen from lyfunc
-    Args:
-        clip (vs.VideoNode): Source filtered clip
-        binary (str): Path to x264 binary.
-        output_file (str): Path to the output file.
-    """
-    cmd = [binary,
-           "--demuxer", "y4m",
-           "--frames", f"{clip.num_frames}",
-           "--sar", "1:1",
-           "--output-depth", "10",
-           "--output-csp", "i420",
-           "--colormatrix", "bt709",
-           "--colorprim", "bt709",
-           "--transfer", "bt709",
-           "--no-fast-pskip",
-           "--no-dct-decimate",
-           "--partitions", "all",
-           "-o", output_file,
-           "-"]
-    for i, v in args.items():
-        i = "--" + i if i[:2] != "--" else i
-        i = i.replace("_", "-")
-        if i in cmd:
-            cmd[cmd.index(i) + 1] = str(v)
-        else:
-            cmd.extend([i, str(v)])
-
-    print("Encoder command: ", " ".join(cmd), "\n")
-    process = subprocess.Popen(cmd, stdin=subprocess.PIPE)
-    clip.output(process.stdin, y4m=True, progress_update=lambda value, endvalue:
-                print(f"\rVapourSynth: {value}/{endvalue} ~ {100 * value // endvalue}% || Encoder: ", end=""))
-    process.communicate()
-
-
 def set_ffms2_log_level(level: Union[str, int] = 0) -> None:
     """A more friendly set of log level in ffms2
 
