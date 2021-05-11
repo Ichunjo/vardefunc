@@ -1,4 +1,4 @@
-"""Functions for debanding functions"""
+"""Debanding functions"""
 from typing import Any, Dict, List, Union
 
 from vsutil import disallow_variable_format, disallow_variable_resolution
@@ -24,7 +24,8 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
     Args:
         clip (vs.VideoNode): Source clip.
 
-        radius (int, optional): Banding detection range. Defaults to 16.
+        radius (int, optional):
+            Banding detection range. Defaults to 16.
 
         threshold (Union[int, List[int]], optional):
             Banding detection threshold(s) for planes.
