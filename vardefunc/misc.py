@@ -39,11 +39,11 @@ def fade_filter(clip: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode,
 
 
 def merge_chroma(luma: vs.VideoNode, ref: vs.VideoNode) -> vs.VideoNode:
-    """Merge chroma from ref with luma
+    """Merges chroma from ref with luma.
 
     Args:
-        luma (vs.VideoNode): Source luma clip
-        ref (vs.VideoNode): Source chroma clip
+        luma (vs.VideoNode): Source luma clip.
+        ref (vs.VideoNode): Source chroma clip.
 
     Returns:
         vs.VideoNode:
@@ -52,7 +52,7 @@ def merge_chroma(luma: vs.VideoNode, ref: vs.VideoNode) -> vs.VideoNode:
 
 
 def get_chroma_shift(src_h: int, dst_h: int, aspect_ratio: float = 16 / 9) -> float:
-    """Intended to calculate the right value for chroma shifting
+    """Intended to calculate the right value for chroma shifting when doing subsampled scaling.
 
     Args:
         src_h (int): Source height.
