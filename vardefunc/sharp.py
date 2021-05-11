@@ -4,7 +4,7 @@ import vapoursynth as vs
 core = vs.core
 
 
-def z4USM(clip: vs.VideoNode, radius: int = 1, strength: float = 100.0) -> vs.VideoNode:
+def z4usm(clip: vs.VideoNode, radius: int = 1, strength: float = 100.0) -> vs.VideoNode:
     """Zastin unsharp mask.
 
     Args:
@@ -16,20 +16,22 @@ def z4USM(clip: vs.VideoNode, radius: int = 1, strength: float = 100.0) -> vs.Vi
         vs.VideoNode: Sharpened clip.
     """
     if radius not in (1, 2):
-        raise vs.Error('z4USM: "radius" must be 1 or 2')
+        raise vs.Error('z4usm: "radius" must be 1 or 2')
 
     strength = max(1e-6, min(math.log2(3) * strength / 100, math.log2(3)))
     weight = 0.5 ** strength / ((1 - 0.5 ** strength) / 2)
 
     if clip.format.sample_type == 0:
-        all_matrices = [[x] for x in range(1, 1024)]
+        all_matrices = range(1, 1024)
+        all_matrices = list(map(lambda x: [float(x)], all_matrices))
+
         for x in range(1023):
             while len(all_matrices[x]) < radius * 2 + 1:
                 all_matrices[x].append(all_matrices[x][-1] / weight)
         error = [sum([abs(x - round(x)) for x in matrix[1:]]) for matrix in all_matrices]
         matrix = [round(x) for x in all_matrices[error.index(min(error))]]
     else:
-        matrix = [1]
+        matrix = [1.0]
         while len(matrix) < radius * 2 + 1:
             matrix.append(matrix[-1] / weight)
 
