@@ -73,7 +73,7 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
         masks = split(
             dbs.rangemask(clip16, 3, 2).resize.Bilinear(format=vs.YUV444P16)
         ) + [
-            gf.EdgeDetect(clip16, 'FDOG').std.Maximum().std.Minimum()
+            FDOG().get_mask(get_y(clip16)).std.Maximum().std.Minimum()
         ]
         protect_mask = core.std.Expr(masks, 'x y max z max 3250 < 0 65535 ? a max 8192 < 0 65535 ?') \
             .std.BoxBlur(hradius=1, vradius=1, hpasses=2, vpasses=2)
