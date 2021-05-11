@@ -349,6 +349,16 @@ class TEdge(EdgeDetect):
         return 'x x * y y * + sqrt'
 
 
+class TEdgeTedgemask(EdgeDetect):
+    """(tedgemask.TEdgeMask(threshold=0.0, type=2)) Vapoursynth plugin. 3x3 matrices."""
+    def _get_matrices(self) -> None:
+        pass
+
+    @staticmethod
+    def _compute_mask(clip: vs.VideoNode) -> vs.VideoNode:
+        return core.tedgemask.TEdgeMask(clip, threshold=0, type=2)
+
+
 class Robinson3(EdgeDetect):
     """Robinson compass operator level 3. 3x3 matrices."""
     @staticmethod
