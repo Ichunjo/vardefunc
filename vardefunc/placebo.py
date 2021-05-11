@@ -91,9 +91,9 @@ def shader(clip: vs.VideoNode, width: int, height: int, shader_file: str, luma_o
             if width > clip.width or height > clip.height:
                 clip = clip.resize.Point(format=vs.YUV444P16)
             else:
-                if width % 4 == 0 or height % 4 == 0:
+                if width % 4 == 0 and height % 4 == 0:
                     blank = core.std.BlankClip(clip, int(clip.width / 4), int(clip.height / 4), vs.GRAY16)
-                elif width % 2 == 0 or height % 2 == 0:
+                elif width % 2 == 0 and height % 2 == 0:
                     blank = core.std.BlankClip(clip, int(clip.width / 2), int(clip.height / 2), vs.GRAY16)
                 else:
                     blank = core.std.BlankClip(clip, vs.GRAY16)
