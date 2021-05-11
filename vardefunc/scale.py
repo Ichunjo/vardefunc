@@ -86,40 +86,41 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.
     return scaler.scale(clip, clip.width, clip.height, shift=(.5, .5)) if correct_shift else clip
 
 
-
-def eedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.VideoNode] = None,
-                  correct_shift: bool = True, nnedi3_args: Dict[str, Any] = None, eedi3_args: Dict[str, Any] = None) -> vs.VideoNode:
-    """
-    Upscale function using the power of eedi3 and nnedi3.
-    Eedi3 default values are the safest and should work for anything without introducing any artifacts
-    except for very specific shrinking pattern.
+def eedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Bicubic(),
+                  correct_shift: bool = True, nnedi3_args: Dict[str, Any] = {}, eedi3_args: Dict[str, Any] = {}) -> vs.VideoNode:
+    """Upscale function using the power of eedi3 and nnedi3.
+       Eedi3 default values are the safest and should work for anything without introducing any artifacts
+       except for very specific shrinking pattern.
 
     Args:
         clip (vs.VideoNode): Source clip.
-        scaler (Callable[[vs.VideoNode, Any], vs.VideoNode], optional): Resizer used to correct the shift. Defaults to core.resize.Bicubic.
-        correct_shift (bool, optional): Defaults to True.
-        nnedi3_args (Dict[str, Any], optional): Defaults to dict(nsize=4, nns=4, qual=2, etype=1, pscrn=1).
-        eedi3_args (Dict[str, Any], optional): Defaults to dict(alpha=0.2, beta=0.8, gamma=1000, nrad=1, mdis=15).
+
+        scaler (lvsfunc.kernels.Kernel, optional):
+            Resizer used to correct the shift. Defaults to lvsfunc.kernels.Bicubic().
+
+        correct_shift (bool, optional):
+            Corrects the shift introduced by nnedi3 or not. Defaults to True.
+
+        nnedi3_args (Dict[str, Any], optional):
+            Additionnal and overrided nnedi3 parameters. Defaults to {}.
+
+        eedi3_args (Dict[str, Any], optional):
+            Additionnal and overrided eedi3 parameters. Defaults to {}.
 
     Returns:
-        vs.VideoNode: Upscaled clip.
+        vs.VideoNode: Doubled clip.
     """
     nnargs: Dict[str, Any] = dict(nsize=4, nns=4, qual=2, etype=1, pscrn=1)
-    if nnedi3_args:
-        nnargs.update(nnedi3_args)
+    nnargs.update(nnedi3_args)
     eeargs: Dict[str, Any] = dict(alpha=0.2, beta=0.8, gamma=1000, nrad=1, mdis=15)
-    if eedi3_args:
-        eeargs.update(eedi3_args)
+    eeargs.update(eedi3_args)
 
     clip = clip.std.Transpose()
     clip = clip.eedi3m.EEDI3(0, True, sclip=clip.nnedi3.nnedi3(0, True, **nnargs), **eeargs)
     clip = clip.std.Transpose()
     clip = clip.eedi3m.EEDI3(0, True, sclip=clip.nnedi3.nnedi3(0, True, **nnargs), **eeargs)
 
-    if scaler is None:
-        scaler = core.resize.Bicubic
-
-    return scaler(clip, src_top=.5, src_left=.5) if correct_shift else clip
+    return scaler.scale(clip, clip.width, clip.height, shift=(.5, .5)) if correct_shift else clip
 
 
 def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080, shader_file: str = None,
