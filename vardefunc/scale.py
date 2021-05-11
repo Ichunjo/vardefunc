@@ -13,27 +13,32 @@ from .sharp import z4usm
 core = vs.core
 
 
-def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True,
-                    scaler: Callable[[vs.VideoNode, Any], vs.VideoNode] = None,
-                    correct_shift: bool = True, **nnedi3_args) -> vs.VideoNode:
+def nnedi3cl_double(clip: vs.VideoNode,
+                    scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Bicubic(),
+                    correct_shift: bool = True, use_znedi: bool = False, **nnedi3_args) -> vs.VideoNode:
     """Double the clip using nnedi3 for even frames and nnedi3cl for odd frames
-       Intended to speed up encoding speed without hogging the GPU either
+       Intended to speed up encoding speed without hogging the GPU either.
 
     Args:
         clip (vs.VideoNode): Source clip.
-        znedi (bool, optional): Use znedi3 or not. Defaults to True.
-        scaler (Callable[[vs.VideoNode, Any], vs.VideoNode], optional):
-            Resizer used to correct the shift. Defaults to core.resize.Bicubic.
-        correct_shift (bool, optional): Defaults to True.
+
+        scaler (lvsfunc.kernels.Kernel, optional):
+            Resizer used to correct the shift. Defaults to lvsfunc.kernels.Bicubic().
+
+        correct_shift (bool, optional):
+            Corrects the shift introduced by nnedi3 or not. Defaults to True.
+
+        use_znedi (bool, optional):
+            Uses znedi3 or not. Defaults to False.
 
     Returns:
-        vs.VideoNode:
+        vs.VideoNode: Doubled clip.
     """
     nnargs: Dict[str, Any] = dict(nsize=4, nns=4, qual=2, pscrn=2)
     nnargs.update(nnedi3_args)
 
-    def _nnedi3(clip):
-        if znedi:
+    def _nnedi3(clip: vs.VideoNode) -> vs.VideoNode:
+        if use_znedi:
             clip = clip.std.Transpose().znedi3.nnedi3(0, True, **nnargs) \
                 .std.Transpose().znedi3.nnedi3(0, True, **nnargs)
         else:
@@ -41,15 +46,13 @@ def nnedi3cl_double(clip: vs.VideoNode, znedi: bool = True,
                 .std.Transpose().nnedi3.nnedi3(0, True, **nnargs)
         return clip
 
-    def _nnedi3cl(clip):
+    def _nnedi3cl(clip: vs.VideoNode) -> vs.VideoNode:
         return clip.nnedi3cl.NNEDI3CL(0, True, True, **nnargs)
 
     clip = core.std.Interleave([_nnedi3(clip[::2]), _nnedi3cl(clip[1::2])])
 
-    if scaler is None:
-        scaler = core.resize.Bicubic
+    return scaler.scale(clip, clip.width, clip.height, shift=(.5, .5)) if correct_shift else clip
 
-    return scaler(clip, src_top=.5, src_left=.5) if correct_shift else clip
 
 
 def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.VideoNode] = None,
