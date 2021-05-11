@@ -86,7 +86,10 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
         pre = clip_y
 
     denoise_mask = core.std.Expr(pre, f'x {min_in} max {max_in} min {min_in} - {max_in} {min_in} - / {gamma} pow 0 max 1 min {peak} *')
-    mask = core.std.Expr([depth(protect_mask, bits), denoise_mask], 'y x -')
+    mask = core.std.Expr(
+        [depth(protect_mask, bits, range=Range.FULL, range_in=Range.FULL, dither_type=Dither.NONE), denoise_mask],
+        'y x -'
+    )
 
     if show_mask:
         return mask
