@@ -54,33 +54,37 @@ def nnedi3cl_double(clip: vs.VideoNode,
     return scaler.scale(clip, clip.width, clip.height, shift=(.5, .5)) if correct_shift else clip
 
 
-
-def nnedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.VideoNode] = None,
-                   correct_shift: bool = True, znedi: bool = False, **nnedi3_args) -> vs.VideoNode:
+def nnedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Bicubic(),
+                   correct_shift: bool = True, use_znedi: bool = False, **nnedi3_args) -> vs.VideoNode:
     """Classic based nnedi3 upscale.
 
     Args:
         clip (vs.VideoNode): Source clip.
-        scaler (Callable[[vs.VideoNode, Any], vs.VideoNode], optional):
-            Resizer used to correct the shift. Defaults to core.resize.Bicubic.
-        correct_shift (bool, optional): Defaults to True.
-        znedi (bool, optional): Use znedi3 or not. Defaults to False.
+
+        scaler (lvsfunc.kernels.Kernel, optional):
+            Resizer used to correct the shift. Defaults to lvsfunc.kernels.Bicubic().
+
+        correct_shift (bool, optional):
+            Corrects the shift introduced by nnedi3 or not. Defaults to True.
+
+        use_znedi (bool, optional):
+            Uses znedi3 or not. Defaults to False.
 
     Returns:
-        vs.VideoNode: Upscaled clip.
+        vs.VideoNode: Doubled clip.
     """
     nnargs: Dict[str, Any] = dict(nsize=4, nns=4, qual=2, pscrn=2)
     nnargs.update(nnedi3_args)
 
-    if znedi:
-        clip = clip.std.Transpose().znedi3.nnedi3(0, True, **nnargs).std.Transpose().znedi3.nnedi3(0, True, **nnargs)
+    if use_znedi:
+        clip = clip.std.Transpose().znedi3.nnedi3(0, True, **nnargs) \
+            .std.Transpose().znedi3.nnedi3(0, True, **nnargs)
     else:
-        clip = clip.std.Transpose().nnedi3.nnedi3(0, True, **nnargs).std.Transpose().nnedi3.nnedi3(0, True, **nnargs)
+        clip = clip.std.Transpose().nnedi3.nnedi3(0, True, **nnargs) \
+            .std.Transpose().nnedi3.nnedi3(0, True, **nnargs)
 
-    if scaler is None:
-        scaler = core.resize.Bicubic
+    return scaler.scale(clip, clip.width, clip.height, shift=(.5, .5)) if correct_shift else clip
 
-    return scaler(clip, src_top=.5, src_left=.5) if correct_shift else clip
 
 
 def eedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.VideoNode] = None,
