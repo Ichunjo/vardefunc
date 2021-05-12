@@ -4,7 +4,7 @@ Various functions I use.
 import math
 import subprocess
 from functools import partial
-from typing import Any, Callable, Dict, List, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 
 import fvsfunc as fvf
 import havsfunc as hvf
@@ -407,7 +407,7 @@ def eedi3_upscale(clip: vs.VideoNode, scaler: Callable[[vs.VideoNode, Any], vs.V
 
 def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080, shader_file: str = None,
                     downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Bicubic,
-                    upscaler_smooth: Callable[[vs.VideoNode, Any], vs.VideoNode] = partial(nnedi3_upscale, nsize=4, nns=4, qual=2, pscrn=2),
+                    upscaled_smooth: Optional[vs.VideoNode] = None,
                     strength: float = 100.0, profile: str = 'slow',
                     lmode: int = 1, overshoot: int = None, undershoot: int = None,
                     sharpener: Callable[[vs.VideoNode, Any], vs.VideoNode] = partial(z4USM, radius=2, strength=65)
@@ -425,9 +425,8 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
         downscaler (Callable[[vs.VideoNode, int, int], vs.VideoNode], optional):
             Resizer used to downscale the upscaled clip. Defaults to core.resize.Bicubic.
 
-        upscaler_smooth (Callable[[vs.VideoNode, Any], vs.VideoNode], optional):
-            Resizer used to replace the smoother nnedi3 upscale.
-            Defaults to partial(nnedi3_upscale, nsize=4, nns=4, qual=2, pscrn=2).
+        upscaled_smooth (Optional[vs.VideoNode]):
+            Smooth doubled clip. If not provided, will use nnedi3_upscale(source).
 
         strength (float):
             Only for profile='slow'.
@@ -481,7 +480,7 @@ def fsrcnnx_upscale(source: vs.VideoNode, width: int = None, height: int = 1080,
 
     if num >= 1:
         # old or slow profile
-        smooth = upscaler_smooth(clip)
+        smooth = depth(get_y(upscaled_smooth), clip.format.bits_per_sample) if upscaled_smooth else nnedi3_upscale(clip)
         if num == 1:
             # old profile
             limit = core.std.Expr([fsrcnnx, smooth], 'x y min')
