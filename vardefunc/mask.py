@@ -20,7 +20,7 @@ core = vs.core
 class EdgeDetect(ABC):
     """Abstract edge detection interface."""
 
-    def get_mask(self, clip: vs.VideoNode, lthr: int = 0, hthr: Optional[float] = None, multi: float = 1.0) -> vs.VideoNode:
+    def get_mask(self, clip: vs.VideoNode, lthr: float = 0.0, hthr: Optional[float] = None, multi: float = 1.0) -> vs.VideoNode:
         """Makes edge mask based on convolution kernel.
            The resulting mask can be thresholded with lthr, hthr and multiplied with multi.
 
@@ -28,7 +28,7 @@ class EdgeDetect(ABC):
             clip (vs.VideoNode):
                 Source clip.
 
-            lthr (int, optional):
+            lthr (float, optional):
                 Low threshold. Anything below lthr will be set to 0. Defaults to 0.
 
             hthr (Optional[float], optional):
