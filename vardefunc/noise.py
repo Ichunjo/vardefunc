@@ -2,6 +2,7 @@
 from functools import partial
 from typing import List, Tuple, Union, cast
 
+import lvsfunc
 from vsutil import (Dither, Range, depth, disallow_variable_format,
                     disallow_variable_resolution, get_y, split)
 
@@ -71,15 +72,10 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
 
 
     if not protect_mask:
-        try:
-            import G41Fun as gf
-            import debandshit as dbs
-        except ModuleNotFoundError:
-            raise ModuleNotFoundError("decsiz: missing dependency 'G41Fun' or 'debandshit'")
-
         clip16 = depth(clip, 16)
         masks = split(
-            dbs.rangemask(clip16, 3, 2).resize.Bilinear(format=vs.YUV444P16)
+            # partial(lvsfunc.mask.range_mask, rad=3, radc=2)(clip16).resize.Bilinear(format=vs.YUV444P16)
+            core.std.BlankClip(clip, width=1, height=1)
         ) + [
             FDOG().get_mask(get_y(clip16)).std.Maximum().std.Minimum()
         ]
