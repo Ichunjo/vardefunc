@@ -46,8 +46,8 @@ def deband(clip: vs.VideoNode, radius: float = 16.0,
     Returns:
         vs.VideoNode: Debanded clip.
     """
-    threshold = [threshold] * 3 if isinstance(threshold, float) else threshold + [threshold[-1]] * (3 - len(threshold))
-    grain = [grain] * 3 if isinstance(grain, float) else grain + [grain[-1]] * (3 - len(grain))
+    threshold = [threshold] * 3 if isinstance(threshold, (float, int)) else threshold + [threshold[-1]] * (3 - len(threshold))
+    grain = [grain] * 3 if isinstance(grain, (float, int)) else grain + [grain[-1]] * (3 - len(grain))
 
     if chroma and clip.format.num_planes > 1:
         planes = split(clip)
