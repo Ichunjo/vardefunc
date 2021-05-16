@@ -257,16 +257,26 @@ def to_444(clip: vs.VideoNode,
        Modified by Vardë.
 
     Args:
-        clip ([type]): Source clip
-        width (int, optional): Upscale width. Defaults to None.
-        height (int, optional): Upscale height. Defaults to None.
-        join_planes (bool, optional): Defaults to True.
-        znedi (bool, optional): Use znedi3 or not. Defaults to True.
-        scaler (Callable[[vs.VideoNode, Any], vs.VideoNode], optional):
-            Resizer used to correct the shift. Defaults to core.resize.Bicubic.
+        clip (vs.VideoNode): Source clip.
+
+        width (int, optional):
+            Target width. Defaults to None.
+
+        height (int, optional):
+            Target height. Defaults to None.
+
+        join_planes (bool, optional):
+            If join_planes then returns a 444'd clip.
+            if join_planes is False then returns only chroma planes.
+            Defaults to True.
+
+        znedi (bool, optional): Defaults to True.
+
+        scaler (lvsfunc.kernels.Kernel, optional):
+            Resizer used to correct the shift. Defaults to lvsfunc.kernels.Bicubic().
 
     Returns:
-        vs.VideoNode: 444’d clip.
+        Union[vs.VideoNode, List[vs.VideoNode]]: 444'd clip or chroma planes.
     """
     def _nnedi3x2(clip: vs.VideoNode) -> vs.VideoNode:
         if znedi:
