@@ -6,7 +6,7 @@ requirements = open("requirements.txt").read()
 readme = open("README.md").read()
 
 NAME = "vardefunc"
-VERSION = "1.1"
+VERSION = "1.1.1"
 
 setup(
     name=NAME,
