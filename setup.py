@@ -16,7 +16,7 @@ setup(
     description="Vardë's Vapoursynth functions",
     long_description="README.md",
     url="https://github.com/Ichunjo/vardefunc",
-    download_url="https://github.com/Ichunjo/vardefunc/archive/refs/tags/v1.0-beta.zip",
+    download_url="https://github.com/Ichunjo/vardefunc/archive/refs/tags/v1.0.zip",
     packages=["vardefunc"],
     install_requires=requirements,
     python_requires=">=3.8",
