@@ -22,7 +22,7 @@ setup(
     python_requires=">=3.8",
     zip_safe=False,
     classifiers=[
-        "Development Status :: 5 - Stable",
+        "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
