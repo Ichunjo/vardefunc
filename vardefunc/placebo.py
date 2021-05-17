@@ -1,8 +1,7 @@
-"""
-Placebo wrapper
-"""
+"""Placebo wrapper"""
 from typing import List, Union
-from vsutil import depth, join, split, get_depth, get_y
+from vsutil import depth, join, split, get_y
+
 import vapoursynth as vs
 core = vs.core
 
@@ -47,17 +46,17 @@ def deband(clip: vs.VideoNode, radius: float = 16.0,
     Returns:
         vs.VideoNode: Debanded clip.
     """
-    if chroma and clip.format.num_planes > 1:
-        threshold = [threshold] * 3 if isinstance(threshold, float) else threshold + [threshold[-1]] * (3 - len(threshold))
-        grain = [grain] * 3 if isinstance(grain, float) else grain + [grain[-1]] * (3 - len(grain))
+    threshold = [threshold] * 3 if isinstance(threshold, (float, int)) else threshold + [threshold[-1]] * (3 - len(threshold))
+    grain = [grain] * 3 if isinstance(grain, (float, int)) else grain + [grain[-1]] * (3 - len(grain))
 
+    if chroma and clip.format.num_planes > 1:
         planes = split(clip)
 
         for i, (thr, gra) in enumerate(zip(threshold, grain)):
             planes[i] = planes[i].placebo.Deband(1, iterations, thr, radius, gra, **kwargs)
         clip = join(planes)
     else:
-        clip = clip.placebo.Deband(1, iterations, threshold, radius, grain, **kwargs)
+        clip = clip.placebo.Deband(1, iterations, threshold[0], radius, grain[0], **kwargs)
 
     return clip
 
@@ -68,7 +67,7 @@ def shader(clip: vs.VideoNode, width: int, height: int, shader_file: str, luma_o
        https://github.com/Lypheo/vs-placebo#vs-placebo
 
     Args:
-        clip (vs.VideoNode): Source clip/
+        clip (vs.VideoNode): Source clip.
 
         width (int): Destination width.
 
@@ -83,19 +82,24 @@ def shader(clip: vs.VideoNode, width: int, height: int, shader_file: str, luma_o
     Returns:
         vs.VideoNode: Shader'd clip.
     """
-    if get_depth(clip) != 16:
-        clip = depth(clip, 16)
-    if luma_only is True:
+    clip = depth(clip, 16)
+
+    if luma_only:
         filter_shader = 'box'
         if clip.format.num_planes == 1:
             if width > clip.width or height > clip.height:
                 clip = clip.resize.Point(format=vs.YUV444P16)
             else:
-                blank = core.std.BlankClip(clip, clip.width / 4, clip.height / 4, vs.GRAY16)
+                if width % 4 == 0 and height % 4 == 0:
+                    blank = core.std.BlankClip(clip, int(clip.width / 4), int(clip.height / 4), vs.GRAY16)
+                elif width % 2 == 0 and height % 2 == 0:
+                    blank = core.std.BlankClip(clip, int(clip.width / 2), int(clip.height / 2), vs.GRAY16)
+                else:
+                    blank = core.std.BlankClip(clip, vs.GRAY16)
                 clip = join([clip, blank, blank])
     else:
         filter_shader = 'ewa_lanczos'
 
     clip = core.placebo.Shader(clip, shader_file, width, height, filter=filter_shader, **kwargs)
 
-    return get_y(clip) if luma_only is True else clip
+    return get_y(clip) if luma_only else clip
