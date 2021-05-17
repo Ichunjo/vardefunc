@@ -17,7 +17,7 @@ setup(
     long_description=readme,
     long_description_content_type="text/markdown",
     url="https://github.com/Ichunjo/vardefunc",
-    download_url="https://github.com/Ichunjo/vardefunc/archive/refs/tags/v1.1.zip",
+    download_url="https://github.com/Ichunjo/vardefunc/archive/refs/tags/v1.1.1.zip",
     packages=["vardefunc"],
     install_requires=requirements,
     python_requires=">=3.8",
