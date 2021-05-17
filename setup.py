@@ -1,12 +1,14 @@
 from setuptools import setup
 
 
+with open("README.md") as fh:
+    long_description = fh.read()
 
-requirements = open("requirements.txt").read()
-readme = open("README.md").read()
+with open("requirements.txt") as fh:
+    install_requires = fh.read()
 
 NAME = "vardefunc"
-VERSION = "1.1.1"
+VERSION = "1.1.2"
 
 setup(
     name=NAME,
@@ -14,12 +16,11 @@ setup(
     author="Vardë",
     author_email="ichunjo.le.terrible@gmail.com",
     description="Vardë's Vapoursynth functions",
-    long_description=readme,
+    long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Ichunjo/vardefunc",
-    download_url="https://github.com/Ichunjo/vardefunc/archive/refs/tags/v1.1.1.zip",
     packages=["vardefunc"],
-    install_requires=requirements,
+    install_requires=install_requires,
     python_requires=">=3.8",
     zip_safe=False,
     classifiers=[
