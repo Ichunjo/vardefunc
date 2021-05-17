@@ -74,7 +74,7 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
     if not protect_mask:
         clip16 = depth(clip, 16)
         masks = split(
-            partial(lvsfunc.mask.range_mask, rad=3, radc=2)(clip16).resize.Bilinear(format=vs.YUV444P16)
+            lvsfunc.mask.range_mask(clip16, rad=3, radc=2).resize.Bilinear(format=vs.YUV444P16)
         ) + [
             FDOG().get_mask(get_y(clip16)).std.Maximum().std.Minimum()
         ]
