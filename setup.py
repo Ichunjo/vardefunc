@@ -8,7 +8,7 @@ with open("requirements.txt") as fh:
     install_requires = fh.read()
 
 NAME = "vardefunc"
-VERSION = "1.1.4"
+VERSION = "1.1.5"
 
 setup(
     name=NAME,
