@@ -6,7 +6,7 @@ requirements = open("requirements.txt").read()
 
 
 NAME = "vardefunc"
-VERSION = "1.0"
+VERSION = "1.1"
 
 setup(
     name=NAME,
@@ -16,13 +16,13 @@ setup(
     description="Vardë's Vapoursynth functions",
     long_description="README.md",
     url="https://github.com/Ichunjo/vardefunc",
-    download_url="https://github.com/Ichunjo/vardefunc/archive/refs/tags/v1.0.zip",
+    download_url="https://github.com/Ichunjo/vardefunc/archive/refs/tags/v1.1.zip",
     packages=["vardefunc"],
     install_requires=requirements,
     python_requires=">=3.8",
     zip_safe=False,
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Stable",
         "Intended Audience :: Developers",
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
