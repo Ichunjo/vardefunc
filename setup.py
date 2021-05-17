@@ -3,7 +3,7 @@ from setuptools import setup
 
 
 requirements = open("requirements.txt").read()
-
+readme = open("README.md").read()
 
 NAME = "vardefunc"
 VERSION = "1.1"
@@ -14,7 +14,8 @@ setup(
     author="Vardë",
     author_email="ichunjo.le.terrible@gmail.com",
     description="Vardë's Vapoursynth functions",
-    long_description="README.md",
+    long_description=readme,
+    long_description_content_type="text/markdown",
     url="https://github.com/Ichunjo/vardefunc",
     download_url="https://github.com/Ichunjo/vardefunc/archive/refs/tags/v1.1.zip",
     packages=["vardefunc"],
