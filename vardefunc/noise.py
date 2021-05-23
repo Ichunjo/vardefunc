@@ -13,6 +13,46 @@ from .mask import FDOG
 core = vs.core
 
 
+class Grainer(ABC):
+    """Abstract graining interface"""
+    def __init__(self, **kwargs: Any) -> None:
+        self.kwargs = kwargs
+        super().__init__()
+
+    @abstractmethod
+    def grain(self: Grainer, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
+        """Graining function of the Grainer
+
+        Args:
+            clip (vs.VideoNode):
+                Source clip.
+
+            strength (Tuple[float, float]):
+                First value is luma strength, second value is chroma strength.
+
+        Returns:
+            vs.VideoNode: Grained clip.
+        """
+        pass
+
+
+class AddGrain(Grainer):
+    """Built-in grain.Add plugin"""
+    def grain(self: AddGrain, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
+        return clip.grain.Add(var=strength[0], uvar=strength[1], **self.kwargs)
+
+
+class PlaceboGrain(Grainer):
+    """Built-in placebo.Deband plugin"""
+    def grain(self: PlaceboGrain, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
+        return deband(clip, threshold=0.0, grain=list(strength), **self.kwargs)
+
+
+class F3kdbGrain(Grainer):
+    """Built-in f3kdb.Deband plugin"""
+    def grain(self: F3kdbGrain, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
+        return dumb3kdb(clip, threshold=1, grain=list((int(strength[0]), int(strength[1]))), **self.kwargs)
+
 @disallow_variable_format
 @disallow_variable_resolution
 def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,  # noqa: PLC0103
