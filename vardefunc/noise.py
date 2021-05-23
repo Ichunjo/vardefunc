@@ -142,13 +142,14 @@ class Graigasm():
             boxargs: Dict[str, Any] = dict(hradius=2, hpasses=2, vradius=2, vpasses=2)
             if boxblur_args is not None:
                 boxargs.update(boxblur_args)
-            clip = core.std.BoxBlur(clip, **boxargs)
+            pref = core.std.BoxBlur(get_y(clip), **boxargs)
+        else:
+            pref = get_y(clip)
 
 
-        luma = get_y(clip)
         mod = self._get_mod(clip)
 
-        masks = [self._make_mask(luma, thr, overflow, peak) for thr, overflow in zip(self.thrs, self.overflows)] + [luma.std.BlankClip(color=peak)]
+        masks = [self._make_mask(pref, thr, overflow, peak) for thr, overflow in zip(self.thrs, self.overflows)] + [pref.std.BlankClip(color=peak)]
         masks = [join([mask] * 3).resize.Bilinear(format=clip.format.id) if num_planes == 3 else mask for mask in masks]
 
         if show_masks:
