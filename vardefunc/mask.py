@@ -72,7 +72,7 @@ class EdgeDetect(ABC):
 
         return mask
 
-    def _get_divisors(self) -> List[Union[int, float]]:
+    def _get_divisors(self) -> List[float]:
         return [0.0] * len(self._get_matrices())
 
     def _get_mode_types(self) -> List[str]:
@@ -304,8 +304,8 @@ class FreyChen(EdgeDetect):
 
     @staticmethod
     def _get_expr() -> Optional[str]:
-        M = 'x x * y y * + z z * + a a * +'
-        S = f'b b * c c * + d d * + e e * + f f * + {M} +'
+        M = 'x x * y y * + z z * + a a * +'  # noqa: PLC0103
+        S = f'b b * c c * + d d * + e e * + f f * + {M} +'  # noqa: PLC0103
         return f'{M} {S} / sqrt'
 
     @staticmethod
@@ -425,7 +425,7 @@ class ExKirsch(EdgeDetect):
 
 @disallow_variable_format
 @disallow_variable_resolution
-def diff_rescale_mask(clip: vs.VideoNode, height: int = 720,
+def diff_rescale_mask(clip: vs.VideoNode, height: int = 720,  # noqa: PLC0103
                       kernel: lvsfunc.kernels.Kernel = lvsfunc.kernels.Bicubic(b=0, c=0.5),
                       thr: Union[int, float] = 55,
                       sw: int = 2, sh: int = 2) -> vs.VideoNode:
@@ -485,7 +485,7 @@ def diff_rescale_mask(clip: vs.VideoNode, height: int = 720,
 
 @disallow_variable_format
 @disallow_variable_resolution
-def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_clip: vs.VideoNode,
+def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_clip: vs.VideoNode,  # noqa: PLC0103
                          start_frame: int, thr: int, sw: int = 2, sh: int = 2, *,
                          prefilter: bool = False, bilateral_args: Dict[str, Any] = {}) -> vs.VideoNode:
     """Makes a mask based on difference from 2 clips.
