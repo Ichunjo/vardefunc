@@ -87,7 +87,8 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.
 
 
 def eedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Bicubic(),
-                  correct_shift: bool = True, nnedi3_args: Dict[str, Any] = {}, eedi3_args: Dict[str, Any] = {}) -> vs.VideoNode:
+                  correct_shift: bool = True,
+                  nnedi3_args: Optional[Dict[str, Any]] = None, eedi3_args: Optional[Dict[str, Any]] = None) -> vs.VideoNode:
     """Upscale function using the power of eedi3 and nnedi3.
        Eedi3 default values are the safest and should work for anything without introducing any artifacts
        except for very specific shrinking pattern.
@@ -102,18 +103,21 @@ def eedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.k
             Corrects the shift introduced by nnedi3 or not. Defaults to True.
 
         nnedi3_args (Dict[str, Any], optional):
-            Additionnal and overrided nnedi3 parameters. Defaults to {}.
+            Additionnal and overrided nnedi3 parameters. Defaults to None.
 
         eedi3_args (Dict[str, Any], optional):
-            Additionnal and overrided eedi3 parameters. Defaults to {}.
+            Additionnal and overrided eedi3 parameters. Defaults to None.
 
     Returns:
         vs.VideoNode: Doubled clip.
     """
     nnargs: Dict[str, Any] = dict(nsize=4, nns=4, qual=2, etype=1, pscrn=1)
-    nnargs.update(nnedi3_args)
+    if nnedi3_args:
+        nnargs.update(nnedi3_args)
+
     eeargs: Dict[str, Any] = dict(alpha=0.2, beta=0.8, gamma=1000, nrad=1, mdis=15)
-    eeargs.update(eedi3_args)
+    if eedi3_args:
+        eeargs.update(eedi3_args)
 
     clip = clip.std.Transpose()
     clip = clip.eedi3m.EEDI3(0, True, sclip=clip.nnedi3.nnedi3(0, True, **nnargs), **eeargs)
@@ -123,7 +127,7 @@ def eedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.k
     return scaler.scale(clip, clip.width, clip.height, shift=(.5, .5)) if correct_shift else clip
 
 
-def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, shader_file: str = None,
+def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, shader_file: str = None,  # noqa: PLR0912
                     downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Bicubic,
                     upscaled_smooth: Optional[vs.VideoNode] = None,
                     strength: float = 100.0, profile: str = 'slow',
