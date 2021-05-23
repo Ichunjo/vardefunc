@@ -4,6 +4,7 @@ from functools import partial
 from typing import Tuple, Union
 
 from vsutil import get_w, insert_clip
+
 import vapoursynth as vs
 
 core = vs.core

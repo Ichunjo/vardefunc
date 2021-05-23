@@ -1,6 +1,10 @@
 """Sharpening functions"""
 import math
+
 import vapoursynth as vs
+
+from .util import FormatError
+
 core = vs.core
 
 
@@ -15,6 +19,8 @@ def z4usm(clip: vs.VideoNode, radius: int = 1, strength: float = 100.0) -> vs.Vi
     Returns:
         vs.VideoNode: Sharpened clip.
     """
+    if clip.format is None:
+        raise FormatError('z4usm: Variable format not allowed!')
     if radius not in (1, 2):
         raise vs.Error('z4usm: "radius" must be 1 or 2')
 
@@ -22,14 +28,13 @@ def z4usm(clip: vs.VideoNode, radius: int = 1, strength: float = 100.0) -> vs.Vi
     weight = 0.5 ** strength / ((1 - 0.5 ** strength) / 2)
 
     if clip.format.sample_type == 0:
-        all_matrices = range(1, 1024)
-        all_matrices = list(map(lambda x: [float(x)], all_matrices))
+        all_matrices = list(map(lambda x: [float(x)], range(1, 1024)))
 
         for x in range(1023):  # noqa: PLC0103
             while len(all_matrices[x]) < radius * 2 + 1:
                 all_matrices[x].append(all_matrices[x][-1] / weight)
         error = [sum([abs(x - round(x)) for x in matrix[1:]]) for matrix in all_matrices]
-        matrix = [round(x) for x in all_matrices[error.index(min(error))]]
+        matrix = [float(round(x)) for x in all_matrices[error.index(min(error))]]
     else:
         matrix = [1.0]
         while len(matrix) < radius * 2 + 1:

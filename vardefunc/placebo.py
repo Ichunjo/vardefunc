@@ -3,6 +3,9 @@ from typing import List, Union
 from vsutil import depth, join, split, get_y
 
 import vapoursynth as vs
+
+from .util import FormatError
+
 core = vs.core
 
 
@@ -49,6 +52,9 @@ def deband(clip: vs.VideoNode, radius: float = 16.0,
     threshold = [threshold] * 3 if isinstance(threshold, (float, int)) else threshold + [threshold[-1]] * (3 - len(threshold))
     grain = [grain] * 3 if isinstance(grain, (float, int)) else grain + [grain[-1]] * (3 - len(grain))
 
+    if clip.format is None:
+        raise FormatError('deband: Variable format not allowed!')
+
     if chroma and clip.format.num_planes > 1:
         planes = split(clip)
 
@@ -83,6 +89,9 @@ def shader(clip: vs.VideoNode, width: int, height: int, shader_file: str, luma_o
         vs.VideoNode: Shader'd clip.
     """
     clip = depth(clip, 16)
+
+    if clip.format is None:
+        raise FormatError('shader: Variable format not allowed!')
 
     if luma_only:
         filter_shader = 'box'

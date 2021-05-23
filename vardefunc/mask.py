@@ -5,13 +5,12 @@ from functools import partial
 from typing import Any, Dict, List, Optional, Union
 
 import lvsfunc
-from vsutil import (Range, depth, disallow_variable_format,
-                    disallow_variable_resolution, get_depth, get_w, get_y,
-                    insert_clip, iterate, scale_value, split)
+from vsutil import (Range, depth, get_depth, get_w, get_y, insert_clip,
+                    iterate, scale_value, split)
 
 import vapoursynth as vs
 
-from .util import get_sample_type, mae_expr, max_expr
+from .util import FormatError, get_sample_type, mae_expr, max_expr
 
 core = vs.core
 
@@ -188,8 +187,9 @@ class Prewitt(EdgeDetect):
 
 class PrewittStd(EdgeDetect):
     """Judith M. S. Prewitt Vapoursynth plugin operator. 3x3 matrices."""
-    def _get_matrices(self) -> None:
-        pass
+    @staticmethod
+    def _get_matrices() -> List[List[float]]:
+        return [[]]
 
     @staticmethod
     def _compute_mask(clip: vs.VideoNode) -> vs.VideoNode:
@@ -222,8 +222,9 @@ class Sobel(EdgeDetect):
 
 class SobelStd(EdgeDetect):
     """Sobel–Feldman Vapoursynth plugin operator. 3x3 matrices."""
-    def _get_matrices(self) -> None:
-        pass
+    @staticmethod
+    def _get_matrices() -> List[List[float]]:
+        return [[]]
 
     @staticmethod
     def _compute_mask(clip: vs.VideoNode) -> vs.VideoNode:
@@ -351,8 +352,9 @@ class TEdge(EdgeDetect):
 
 class TEdgeTedgemask(EdgeDetect):
     """(tedgemask.TEdgeMask(threshold=0.0, type=2)) Vapoursynth plugin. 3x3 matrices."""
-    def _get_matrices(self) -> None:
-        pass
+    @staticmethod
+    def _get_matrices() -> List[List[float]]:
+        return [[]]
 
     @staticmethod
     def _compute_mask(clip: vs.VideoNode) -> vs.VideoNode:
@@ -423,8 +425,6 @@ class ExKirsch(EdgeDetect):
         return max_expr(8)
 
 
-@disallow_variable_format
-@disallow_variable_resolution
 def diff_rescale_mask(clip: vs.VideoNode, height: int = 720,  # noqa: PLC0103
                       kernel: lvsfunc.kernels.Kernel = lvsfunc.kernels.Bicubic(b=0, c=0.5),
                       thr: Union[int, float] = 55,
@@ -456,6 +456,9 @@ def diff_rescale_mask(clip: vs.VideoNode, height: int = 720,  # noqa: PLC0103
     Returns:
         vs.VideoNode: Rescaled mask.
     """
+    if clip.format is None:
+        raise FormatError('diff_rescale_mask: Variable format not allowed!')
+
     bits = get_depth(clip)
     gray_only = clip.format.num_planes == 1
     thr = scale_value(thr, bits, 32, scale_offsets=True)
@@ -483,8 +486,6 @@ def diff_rescale_mask(clip: vs.VideoNode, height: int = 720,  # noqa: PLC0103
     )
 
 
-@disallow_variable_format
-@disallow_variable_resolution
 def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_clip: vs.VideoNode,  # noqa: PLC0103
                          start_frame: int, thr: int, sw: int = 2, sh: int = 2, *,
                          prefilter: bool = False, bilateral_args: Dict[str, Any] = {}) -> vs.VideoNode:
@@ -529,6 +530,9 @@ def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_c
 
         opmask = diff_creditless_mask(clip, clip[opstart:opend+1], ncop[:opend+1-opstart], opstart, thr=25, prefilter=True)
     """
+    if src_clip.format is None:
+        raise FormatError('diff_creditless_mask: Variable format not allowed!')
+
     gray_only = src_clip.format.num_planes == 1
     clips = [credit_clip, nc_clip]
 
@@ -565,8 +569,6 @@ def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_c
     return mask
 
 
-@disallow_variable_format
-@disallow_variable_resolution
 def luma_credit_mask(clip: vs.VideoNode, thr: int = 230,
                      edgemask: EdgeDetect = Prewitt(), draft: bool = False) -> vs.VideoNode:
     """Makes a mask based on luma value and edges.
@@ -600,8 +602,6 @@ def luma_credit_mask(clip: vs.VideoNode, thr: int = 230,
     return credit_mask
 
 
-@disallow_variable_format
-@disallow_variable_resolution
 def region_mask(clip: vs.VideoNode,
                 left: int = 0, right: int = 0,
                 top: int = 0, bottom: int = 0) -> vs.VideoNode:

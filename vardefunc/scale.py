@@ -215,7 +215,7 @@ def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, s
 
     if num >= 1:
         # old or slow profile
-        smooth = depth(get_y(upscaled_smooth), clip.format.bits_per_sample) if upscaled_smooth else nnedi3_upscale(clip)
+        smooth = depth(get_y(upscaled_smooth), bits) if upscaled_smooth else nnedi3_upscale(clip)
         if num == 1:
             # old profile
             limit = core.std.Expr([fsrcnnx, smooth], 'x y min')

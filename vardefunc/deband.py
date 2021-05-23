@@ -1,14 +1,13 @@
 """Debanding functions"""
 from typing import Any, Dict, List, Union
 
-from vsutil import disallow_variable_format, disallow_variable_resolution
-
 import vapoursynth as vs
+
+from .util import FormatError
+
 core = vs.core
 
 
-@disallow_variable_format
-@disallow_variable_resolution
 def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
              threshold: Union[int, List[int]] = 30, grain: Union[int, List[int]] = 0,
              sample_mode: int = 2, use_neo: bool = False, **kwargs) -> vs.VideoNode:
@@ -54,8 +53,14 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
         (fout := f[0].copy()).props.update(f[1].props)
         return fout
 
+    def _pick_f3kdb(neo: bool, *args: Any, **kwargs: Any) -> vs.VideoNode:
+        return core.neo_f3kdb.Deband(*args, **kwargs) if neo else core.f3kdb.Deband(*args, **kwargs)
+
     if sample_mode > 2 and not use_neo:
         raise ValueError('dumb3kdb: "sample_mode" argument should be less or equal to 2 when "use_neo" is false.')
+
+    if clip.format is None:
+        raise FormatError('dumb3kdb: Variable format not allowed!')
 
 
     thy, thcb, thcr = [threshold] * 3 if isinstance(threshold, int) else threshold + [threshold[-1]] * (3 - len(threshold))
@@ -63,23 +68,21 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
 
 
     step = 16 if sample_mode == 2 else 32
-    f3kdb = core.neo_f3kdb.Deband if use_neo else core.f3kdb.Deband
-
 
     f3kdb_args: Dict[str, Any] = dict(keep_tv_range=True, output_depth=16)
     f3kdb_args.update(kwargs)
 
     if thy % step == 1 and thcb % step == 1 and thcr % step == 1:
-        deband = f3kdb(clip, radius, thy, thcb, thcr, gry, grc, sample_mode, **f3kdb_args)
+        deband = _pick_f3kdb(use_neo, radius, thy, thcb, thcr, gry, grc, sample_mode, **f3kdb_args)
     else:
         loy, locb, locr = [(th - 1) // step * step + 1 for th in [thy, thcb, thcr]]
         hiy, hicb, hicr = [lo + step for lo in [loy, locb, locr]]
 
-        lo_clip = f3kdb(clip, radius, loy, locb, locr, gry, grc, sample_mode, **f3kdb_args)
-        hi_clip = f3kdb(clip, radius, hiy, hicb, hicr, gry, grc, sample_mode, **f3kdb_args)
+        lo_clip = _pick_f3kdb(use_neo, clip, radius, loy, locb, locr, gry, grc, sample_mode, **f3kdb_args)
+        hi_clip = _pick_f3kdb(use_neo, clip, radius, hiy, hicb, hicr, gry, grc, sample_mode, **f3kdb_args)
 
         if clip.format.color_family == vs.GRAY:
-            weight = (thy - loy) / step
+            weight = [(thy - loy) / step]
         else:
             weight = [(thy - loy) / step, (thcb - locb) / step, (thcr - locr) / step]
 

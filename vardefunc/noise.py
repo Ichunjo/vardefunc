@@ -93,8 +93,9 @@ class Graigasm():
         self.sharps = sharps
 
         length = len(self.thrs)
-        if all(len(lst) != length for lst in [self.strengths, self.sizes, self.sharps]):
-            raise ValueError('')
+        datas: List[Any] = [self.strengths, self.sizes, self.sharps]
+        if all(len(lst) != length for lst in datas):
+            raise ValueError('Graigasm: "thrs", "strengths", "sizes" and "sharps" must have the same length!')
 
         if isinstance(overflows, float):
             overflows = [overflows]
@@ -127,8 +128,10 @@ class Graigasm():
         Returns:
             vs.VideoNode: [description]
         """
+        if clip.format is None:
+            raise FormatError('graining: Variable format not allowed!')
         if clip.format.color_family not in (vs.YUV, vs.GRAY):
-            raise FormatError('Only YUV and GRAY format are supported!')
+            raise FormatError('graining: Only YUV and GRAY format are supported!')
 
 
         bits = get_depth(clip)
@@ -177,7 +180,7 @@ class Graigasm():
 
         return out
 
-    def _get_mod(self: Graigasm, clip: vs.VideoNode) -> int:
+    def _get_mod(self, clip: vs.VideoNode) -> int:  # noqa: PLR0201
         ss_mod: Dict[Tuple[int, int], int] = {
             (0, 0): 1,
             (1, 1): 2,
@@ -186,11 +189,11 @@ class Graigasm():
             (2, 2): 4,
             (2, 0): 4
         }
-        ss = (clip.format.subsampling_w, clip.format.subsampling_h)
+        assert clip.format is not None
         try:
-            return ss_mod[ss]
-        except KeyError as ke:
-            raise ValueError('Format unknown! wtf') from ke
+            return ss_mod[(clip.format.subsampling_w, clip.format.subsampling_h)]
+        except KeyError as kerr:
+            raise ValueError('Graigasm: Format unknown!') from kerr
 
 
     def _make_mask(self: Graigasm, clip: vs.VideoNode, thr: float, overflow: float, peak: float) -> vs.VideoNode:
@@ -212,8 +215,8 @@ class Graigasm():
                       neutral: List[float], mod: int) -> vs.VideoNode:
         ss_w = self._m__(round(clip.width / size), mod)
         ss_h = self._m__(round(clip.height / size), mod)
-        b = sharp / -50 + 1
-        c = (1 - b) / 2
+        b = sharp / -50 + 1  # noqa: PLC0103
+        c = (1 - b) / 2  # noqa: PLC0103
 
         blank = core.std.BlankClip(clip, ss_w, ss_h, color=neutral)
         grained = grainer.grain(blank, strength=strength).resize.Bicubic(clip.width, clip.height, filter_param_a=b, filter_param_b=c)
@@ -226,8 +229,6 @@ class Graigasm():
 
 
 
-@disallow_variable_format
-@disallow_variable_resolution
 def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,  # noqa: PLC0103
            min_in: Union[int, float] = None, max_in: Union[int, float] = None, gamma: float = 1.0,
            protect_mask: vs.VideoNode = None, prefilter: bool = True,
@@ -274,6 +275,8 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,  # n
         clip = depth(clip, 16)
         clip = vdf.decsiz(clip, min_in=128<<8, max_in=200<<8)
     """
+    if clip.format is None:
+        raise FormatError('decsiz: Variable format not allowed!')
 
     bits = clip.format.bits_per_sample
     peak = (1 << bits) - 1
