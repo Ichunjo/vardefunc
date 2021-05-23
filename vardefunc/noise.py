@@ -1,13 +1,10 @@
 """Noising/denoising functions"""
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from functools import partial
 from typing import Any, Dict, List, Tuple, Union, cast
 
 import lvsfunc
-from vsutil import (Dither, Range, depth, disallow_variable_format,
-                    disallow_variable_resolution, get_y, split, join, get_depth)
+from vsutil import Dither, Range, depth, get_depth, get_y, join, split
 
 import vapoursynth as vs
 
@@ -26,7 +23,7 @@ class Grainer(ABC):
         super().__init__()
 
     @abstractmethod
-    def grain(self: Grainer, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
+    def grain(self, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
         """Graining function of the Grainer
 
         Args:
@@ -39,24 +36,24 @@ class Grainer(ABC):
         Returns:
             vs.VideoNode: Grained clip.
         """
-        pass
+        pass  # noqa: PLW0107
 
 
 class AddGrain(Grainer):
     """Built-in grain.Add plugin"""
-    def grain(self: AddGrain, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
+    def grain(self, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
         return clip.grain.Add(var=strength[0], uvar=strength[1], **self.kwargs)
 
 
 class PlaceboGrain(Grainer):
     """Built-in placebo.Deband plugin"""
-    def grain(self: PlaceboGrain, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
+    def grain(self, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
         return deband(clip, threshold=0.0, grain=list(strength), **self.kwargs)
 
 
 class F3kdbGrain(Grainer):
     """Built-in f3kdb.Deband plugin"""
-    def grain(self: F3kdbGrain, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
+    def grain(self, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
         return dumb3kdb(clip, threshold=1, grain=list((int(strength[0]), int(strength[1]))), **self.kwargs)
 
 
@@ -69,7 +66,7 @@ class Graigasm():
     overflows: List[float]
     grainers: List[Grainer]
 
-    def __init__(self: Graigasm,
+    def __init__(self,
                  thrs: List[float], strengths: List[Tuple[float, float]], sizes: List[float], sharps: List[float], *,
                  overflows: Union[float, List[float]] = None,
                  grainers: Union[Grainer, List[Grainer]] = None) -> None:
@@ -109,7 +106,7 @@ class Graigasm():
             grainers = [cast(Grainer, AddGrain())]
         self.grainers = grainers * length
 
-    def graining(self: Graigasm,
+    def graining(self,
                  clip: vs.VideoNode, /, *,
                  prefilter: bool = False, show_masks: bool = False,
                  boxblur_args: Dict[str, Any] = None) -> vs.VideoNode:
@@ -196,7 +193,7 @@ class Graigasm():
             raise ValueError('Graigasm: Format unknown!') from kerr
 
 
-    def _make_mask(self: Graigasm, clip: vs.VideoNode, thr: float, overflow: float, peak: float) -> vs.VideoNode:
+    def _make_mask(self, clip: vs.VideoNode, thr: float, overflow: float, peak: float) -> vs.VideoNode:  # noqa: PLR0201
         min_thr = f'{thr} {overflow} {peak} * 2 / -'
         max_thr = f'{thr} {overflow} {peak} * 2 / +'
 
@@ -209,7 +206,7 @@ class Graigasm():
 
         return core.std.Expr(clip, expr)
 
-    def _make_grained(self: Graigasm,
+    def _make_grained(self,
                       clip: vs.VideoNode,
                       strength: Tuple[float, float], size: float, sharp: float, grainer: Grainer,
                       neutral: List[float], mod: int) -> vs.VideoNode:
