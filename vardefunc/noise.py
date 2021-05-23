@@ -15,7 +15,7 @@ core = vs.core
 
 @disallow_variable_format
 @disallow_variable_resolution
-def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
+def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,  # noqa: PLC0103
            min_in: Union[int, float] = None, max_in: Union[int, float] = None, gamma: float = 1.0,
            protect_mask: vs.VideoNode = None, prefilter: bool = True,
            planes: List[int] = None, show_mask: bool = False) -> vs.VideoNode:
@@ -142,7 +142,7 @@ def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, origin
     avg_max = max(range_avg)
     avg_min = min(range_avg)
 
-    def _diff(n: int, f: vs.VideoFrame, avg_max: float, avg_min: float,
+    def _diff(n: int, f: vs.VideoFrame, avg_max: float, avg_min: float,  # noqa: PLW0613, PLC0103
               new: vs.VideoNode, adapt: vs.VideoNode) -> vs.VideoNode:
         psa = cast(float, f.props['PlaneStatsAverage'])
         if psa > avg_max:

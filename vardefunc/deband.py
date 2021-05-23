@@ -50,7 +50,7 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
     """
 
     # neo_f3kdb nukes frame props
-    def _trf(n: int, f: List[vs.VideoFrame]) -> vs.VideoFrame:
+    def _trf(n: int, f: List[vs.VideoFrame]) -> vs.VideoFrame:  # noqa: PLC0103, PLW0613
         (fout := f[0].copy()).props.update(f[1].props)
         return fout
 

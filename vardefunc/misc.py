@@ -29,7 +29,7 @@ def fade_filter(clip: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode,
     """
     length = end_f - start_f
 
-    def _fade(n: int, clip_a: vs.VideoNode, clip_b: vs.VideoNode, length: int) -> vs.VideoNode:
+    def _fade(n: int, clip_a: vs.VideoNode, clip_b: vs.VideoNode, length: int) -> vs.VideoNode:  # noqa: PLC0103
         return core.std.Merge(clip_a, clip_b, n / length)
 
     func = partial(_fade, clip_a=clip_a[start_f:end_f + 1], clip_b=clip_b[start_f:end_f + 1], length=length)
@@ -85,20 +85,20 @@ def get_bicubic_params(cubic_filter: str) -> Tuple[float, float]:
     sqrt = math.sqrt
 
     def _get_robidoux_soft() -> Tuple[float, float]:
-        b = (9 - 3 * sqrt(2)) / 7
-        c = (1 - b) / 2
+        b = (9 - 3 * sqrt(2)) / 7  # noqa: PLC0103
+        c = (1 - b) / 2  # noqa: PLC0103
         return b, c
 
     def _get_robidoux() -> Tuple[float, float]:
         sqrt2 = sqrt(2)
-        b = 12 / (19 + 9 * sqrt2)
-        c = 113 / (58 + 216 * sqrt2)
+        b = 12 / (19 + 9 * sqrt2)  # noqa: PLC0103
+        c = 113 / (58 + 216 * sqrt2)  # noqa: PLC0103
         return b, c
 
     def _get_robidoux_sharp() -> Tuple[float, float]:
         sqrt2 = sqrt(2)
-        b = 6 / (13 + 7 * sqrt2)
-        c = 7 / (2 + 12 * sqrt2)
+        b = 6 / (13 + 7 * sqrt2)  # noqa: PLC0103
+        c = 7 / (2 + 12 * sqrt2)  # noqa: PLC0103
         return b, c
 
     cubic_filter = cubic_filter.lower().replace(' ', '_').replace('-', '_')

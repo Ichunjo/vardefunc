@@ -18,7 +18,7 @@ def load_operators_expr() -> List[str]:
     return abcd[-3:] + abcd[:-3]
 
 
-def max_expr(n: int) -> str:
+def max_expr(n: int) -> str:  # noqa: PLC0103
     """Dynamic variable max string to be integrated in std.Expr.
 
     Args:

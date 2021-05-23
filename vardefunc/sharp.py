@@ -25,7 +25,7 @@ def z4usm(clip: vs.VideoNode, radius: int = 1, strength: float = 100.0) -> vs.Vi
         all_matrices = range(1, 1024)
         all_matrices = list(map(lambda x: [float(x)], all_matrices))
 
-        for x in range(1023):
+        for x in range(1023):  # noqa: PLC0103
             while len(all_matrices[x]) < radius * 2 + 1:
                 all_matrices[x].append(all_matrices[x][-1] / weight)
         error = [sum([abs(x - round(x)) for x in matrix[1:]]) for matrix in all_matrices]
