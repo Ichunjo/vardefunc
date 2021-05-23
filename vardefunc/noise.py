@@ -53,6 +53,173 @@ class F3kdbGrain(Grainer):
     def grain(self: F3kdbGrain, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
         return dumb3kdb(clip, threshold=1, grain=list((int(strength[0]), int(strength[1]))), **self.kwargs)
 
+
+class Graigasm():
+    """Contains settings on the current graining operation"""
+    thrs: List[float]
+    strengths: List[Tuple[float, float]]
+    sizes: List[float]
+    sharps: List[float]
+    overflows: List[float]
+    grainers: List[Grainer]
+
+    def __init__(self: Graigasm,
+                 thrs: List[float], strengths: List[Tuple[float, float]], sizes: List[float], sharps: List[float], *,
+                 overflows: Union[float, List[float]] = None,
+                 grainers: Union[Grainer, List[Grainer]] = None) -> None:
+        # TODO: Make docstring
+        """[summary]
+
+        Args:
+            thrs (List[float]): [description]
+            strengths (List[Tuple[float, float]]): [description]
+            sizes (List[float]): [description]
+            sharps (List[float]): [description]
+            overflows (Union[float, List[float]], optional): [description]. Defaults to None.
+            grainers (Union[Grainer, List[Grainer]], optional): [description]. Defaults to None.
+
+        Raises:
+            ValueError: [description]
+        """
+        self.thrs = thrs
+        self.strengths = strengths
+        self.sizes = sizes
+        self.sharps = sharps
+
+        length = len(self.thrs)
+        if all(len(lst) != length for lst in [self.strengths, self.sizes, self.sharps]):
+            raise ValueError('')
+
+        if isinstance(overflows, float):
+            overflows = [overflows]
+        if overflows is None:
+            overflows = [1/length]
+        self.overflows = overflows * length
+
+        if isinstance(grainers, Grainer):
+            grainers = [grainers]
+        if grainers is None or not grainers:
+            grainers = [cast(Grainer, AddGrain())]
+        self.grainers = grainers * length
+
+    def graining(self: Graigasm,
+                 clip: vs.VideoNode, /, *,
+                 prefilter: bool = False, show_masks: bool = False,
+                 boxblur_args: Dict[str, Any] = None) -> vs.VideoNode:
+        # TODO: Make docstring
+        """[summary]
+
+        Args:
+            clip (vs.VideoNode): [description]
+            prefilter (bool, optional): [description]. Defaults to False.
+            show_masks (bool, optional): [description]. Defaults to False.
+            boxblur_args (Dict[str, Any], optional): [description]. Defaults to None.
+
+        Raises:
+            FormatError: [description]
+
+        Returns:
+            vs.VideoNode: [description]
+        """
+        if clip.format.color_family not in (vs.YUV, vs.GRAY):
+            raise FormatError('Only YUV and GRAY format are supported!')
+
+
+        bits = get_depth(clip)
+        is_float = get_sample_type(clip) == vs.FLOAT
+        peak = 1.0 if is_float else (1 << bits) - 1
+        num_planes = clip.format.num_planes
+        neutral = [0.5] + [0.0] * (num_planes - 1) if is_float else [float(1 << (bits - 1))] * num_planes
+
+
+        if prefilter:
+            boxargs: Dict[str, Any] = dict(hradius=2, hpasses=2, vradius=2, vpasses=2)
+            if boxblur_args is not None:
+                boxargs.update(boxblur_args)
+            clip = core.std.BoxBlur(clip, **boxargs)
+
+
+        luma = get_y(clip)
+        mod = self._get_mod(clip)
+
+        masks = [self._make_mask(luma, thr, overflow, peak) for thr, overflow in zip(self.thrs, self.overflows)] + [luma.std.BlankClip(color=peak)]
+        masks = [join([mask] * 3).resize.Bilinear(format=clip.format.id) if num_planes == 3 else mask for mask in masks]
+
+        if show_masks:
+            return core.std.Interleave([core.text.FrameNum(mask, 9) for mask in masks])
+
+        graineds = [self._make_grained(clip, strength, size, sharp, grainer, neutral, mod)
+                    for strength, size, sharp, grainer in zip(self.strengths, self.sizes, self.sharps, self.grainers)]
+
+        # Expr way
+        clips_adg = [core.std.Expr(
+            [grained, clip, masks[i+1], mask],
+            f'x z {peak} / * y 1 z {peak} / - * + a {peak} - abs {peak} / * y 1 a {peak} - abs {peak} / - * +'
+        ) for i, (grained, mask) in enumerate(zip(graineds, masks))]
+
+        # Double maskedmerge way
+        # clips_adg = []
+        # for i, (grained, mask) in enumerate(zip(graineds, masks)):
+        #     cc = core.std.MaskedMerge(clip, grained, masks[i + 1])
+        #     cc = core.std.MaskedMerge(clip, cc, mask.std.Invert())
+        #     clips_adg.append(cc)
+
+
+        out = clip
+        for clip_adg in clips_adg:
+            out = core.std.MergeDiff(clip_adg, clip.std.MakeDiff(out))
+
+        return out
+
+    def _get_mod(self: Graigasm, clip: vs.VideoNode) -> int:
+        ss_mod: Dict[Tuple[int, int], int] = {
+            (0, 0): 1,
+            (1, 1): 2,
+            (1, 0): 2,
+            (0, 1): 2,
+            (2, 2): 4,
+            (2, 0): 4
+        }
+        ss = (clip.format.subsampling_w, clip.format.subsampling_h)
+        try:
+            return ss_mod[ss]
+        except KeyError as ke:
+            raise ValueError('Format unknown! wtf') from ke
+
+
+    def _make_mask(self: Graigasm, clip: vs.VideoNode, thr: float, overflow: float, peak: float) -> vs.VideoNode:
+        min_thr = f'{thr} {overflow} {peak} * 2 / -'
+        max_thr = f'{thr} {overflow} {peak} * 2 / +'
+
+        # if x > min_thr and x < max_thr -> gradient else ...
+        expr = f'x {min_thr} >= x {max_thr} <= and x {min_thr} - {max_thr} {min_thr} - / {peak} * {peak} - abs _ ?'
+        # ... if x < min_thr -> peak else ...
+        expr = expr.replace('_', f'x {min_thr} < {peak} _ ?')
+        # ... if x > max_thr -> 0 else x
+        expr = expr.replace('_', f'x {max_thr} > 0 x ?')
+
+        return core.std.Expr(clip, expr)
+
+    def _make_grained(self: Graigasm,
+                      clip: vs.VideoNode,
+                      strength: Tuple[float, float], size: float, sharp: float, grainer: Grainer,
+                      neutral: List[float], mod: int) -> vs.VideoNode:
+        ss_w = self._m__(round(clip.width / size), mod)
+        ss_h = self._m__(round(clip.height / size), mod)
+        b = sharp / -50 + 1
+        c = (1 - b) / 2
+
+        blank = core.std.BlankClip(clip, ss_w, ss_h, color=neutral)
+        grained = grainer.grain(blank, strength=strength).resize.Bicubic(clip.width, clip.height, filter_param_a=b, filter_param_b=c)
+
+        return clip.std.MakeDiff(grained)
+
+    @staticmethod
+    def _m__(x: int, mod: int, /) -> int:
+        return x - x % mod
+
+
+
 @disallow_variable_format
 @disallow_variable_resolution
 def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,  # noqa: PLC0103
