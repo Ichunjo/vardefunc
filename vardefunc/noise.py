@@ -190,6 +190,7 @@ class Graigasm():
         ) for i, (grained, mask) in enumerate(zip(graineds, masks))]
 
         # Double maskedmerge way
+        # MaskedMerge is currently broken for float
         # clips_adg = []
         # for i, (grained, mask) in enumerate(zip(graineds, masks)):
         #     cc = core.std.MaskedMerge(clip, grained, masks[i + 1])
