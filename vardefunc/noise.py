@@ -93,7 +93,7 @@ class Graigasm():
                 Range 0.0 - 1.0. Defaults to 1 divided by thrs's length for each thr.
 
             grainers (Union[Grainer, List[Grainer]], optional):
-                Grainer used for each combo of thrs, strengths, sizes and sharps. 
+                Grainer used for each combo of thrs, strengths, sizes and sharps.
                 Defaults to AddGrain(seed=-1, constant=False).
         """
         self.thrs = thrs
@@ -138,7 +138,7 @@ class Graigasm():
 
             boxblur_args (Dict[str, Any], optional):
                 Additionnal and overrided std.BoxBlur parameters if prefilter=True.
-                Defaults to None.
+                Defaults BoxBlur settings are (hradius=2, hpasses=2, vradius=2, vpasses=2)
 
         Returns:
             vs.VideoNode: Grained clip.
