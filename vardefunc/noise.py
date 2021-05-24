@@ -69,6 +69,7 @@ class Graigasm():
     def __init__(self,
                  thrs: List[float], strengths: List[Tuple[float, float]], sizes: List[float], sharps: List[float], *,
                  overflows: Union[float, List[float]] = None,
+                 grainers: Union[Grainer, List[Grainer]] = AddGrain(seed=-1, constant=False)) -> None:
         """Constructor checks and initializes the values.
            Length of thrs must be equal to strengths, sizes and sharps.
            thrs, strengths, sizes and sharps match the same area.
@@ -105,17 +106,19 @@ class Graigasm():
         if all(len(lst) != length for lst in datas):
             raise ValueError('Graigasm: "thrs", "strengths", "sizes" and "sharps" must have the same length!')
 
-        if isinstance(overflows, float):
-            overflows = [overflows]
         if overflows is None:
             overflows = [1/length]
-        self.overflows = overflows * length
+        if isinstance(overflows, float):
+            overflows = [overflows] * length
+        else:
+            overflows += [overflows[-1]] * (length - len(overflows))
+        self.overflows = overflows
 
         if isinstance(grainers, Grainer):
-            grainers = [grainers]
-        if grainers is None or not grainers:
-            grainers = [cast(Grainer, AddGrain())]
-        self.grainers = grainers * length
+            grainers = [grainers] * length
+        else:
+            grainers += [grainers[-1]] * (length - len(grainers))
+        self.grainers = grainers
 
     def graining(self,
                  clip: vs.VideoNode, /, *,
