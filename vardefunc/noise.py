@@ -4,7 +4,7 @@ from functools import partial
 from typing import Any, Dict, List, Tuple, Union, cast
 
 import lvsfunc
-from vsutil import Dither, Range, depth, get_depth, get_y, join, split
+from vsutil import Dither, Range, depth, get_depth, get_y, join, plane, split
 
 import vapoursynth as vs
 
@@ -164,8 +164,15 @@ class Graigasm():
 
         mod = self._get_mod(clip)
 
-        masks = [self._make_mask(pref, thr, overflow, peak) for thr, overflow in zip(self.thrs, self.overflows)] + [pref.std.BlankClip(color=peak)]
-        masks = [join([mask] * 3).resize.Bilinear(format=clip.format.id) if num_planes == 3 else mask for mask in masks]
+        masks = [self._make_mask(pref, thr, overflow, peak, is_float=is_float) for thr, overflow in zip(self.thrs, self.overflows)]
+        masks += [pref.std.BlankClip(color=peak)]
+        if num_planes == 3:
+            if is_float:
+                chroma = plane(clip, 1)
+                masks_chroma = [mask.resize.Bilinear(chroma.width, chroma.height) for mask in masks]
+                masks = [join([mask, mask_chroma, mask_chroma]) for mask, mask_chroma in zip(masks, masks_chroma)]
+            else:
+                masks = [join([mask] * 3).resize.Bilinear(format=clip.format.id) for mask in masks]
 
         if show_masks:
             return core.std.Interleave([core.text.FrameNum(mask, 9) for mask in masks])
@@ -209,18 +216,36 @@ class Graigasm():
             raise ValueError('Graigasm: Format unknown!') from kerr
 
 
-    def _make_mask(self, clip: vs.VideoNode, thr: float, overflow: float, peak: float) -> vs.VideoNode:  # noqa: PLR0201
-        min_thr = f'{thr} {overflow} {peak} * 2 / -'
-        max_thr = f'{thr} {overflow} {peak} * 2 / +'
+    def _make_mask(self, clip: vs.VideoNode,  # noqa: PLR0201
+                   thr: float, overflow: float, peak: float, *,
+                   is_float: bool) -> vs.VideoNode:
+        if is_float:
+            min_thr = f'{thr} {overflow} {peak} * 2 / -'
+            max_thr = f'{thr} {overflow} {peak} * 2 / +'
 
-        # if x > min_thr and x < max_thr -> gradient else ...
-        expr = f'x {min_thr} >= x {max_thr} <= and x {min_thr} - {max_thr} {min_thr} - / {peak} * {peak} - abs _ ?'
-        # ... if x < min_thr -> peak else ...
-        expr = expr.replace('_', f'x {min_thr} < {peak} _ ?')
-        # ... if x > max_thr -> 0 else x
-        expr = expr.replace('_', f'x {max_thr} > 0 x ?')
+            # if x >= min_thr and x <= max_thr -> gradient else ...
+            expr = f'x {min_thr} >= x {max_thr} <= and x {min_thr} - {max_thr} {min_thr} - / {peak} * {peak} - abs _ ?'
+            # ... if x < min_thr -> peak else ...
+            expr = expr.replace('_', f'x {min_thr} < {peak} _ ?')
+            # ... if x > max_thr -> 0 else x
+            expr = expr.replace('_', f'x {max_thr} > 0 x ?')
 
-        return core.std.Expr(clip, expr)
+            clip = core.std.Expr(clip, expr)
+        else:
+            def _mask(x: float) -> float:  # noqa: PLC0103
+                min_thr = thr - (overflow * peak) / 2
+                max_thr = thr + (overflow * peak) / 2
+                if min_thr <= x <= max_thr:
+                    x = abs(((x - min_thr) / (max_thr - min_thr)) * peak - peak)
+                elif x < min_thr:
+                    x = peak
+                elif x > max_thr:
+                    x = 0.0
+                return round(x)
+
+            clip = core.std.Lut(clip, function=_mask)
+
+        return clip
 
     def _make_grained(self,
                       clip: vs.VideoNode,
