@@ -58,7 +58,7 @@ class F3kdbGrain(Grainer):
 
 
 class Graigasm():
-    """Contains settings on the current graining operation"""
+    """Custom graining interface based on luma values"""
     thrs: List[float]
     strengths: List[Tuple[float, float]]
     sizes: List[float]
@@ -69,20 +69,31 @@ class Graigasm():
     def __init__(self,
                  thrs: List[float], strengths: List[Tuple[float, float]], sizes: List[float], sharps: List[float], *,
                  overflows: Union[float, List[float]] = None,
-                 grainers: Union[Grainer, List[Grainer]] = None) -> None:
-        # TODO: Make docstring
-        """[summary]
+        """Constructor checks and initializes the values.
+           Length of thrs must be equal to strengths, sizes and sharps.
+           thrs, strengths, sizes and sharps match the same area.
 
         Args:
-            thrs (List[float]): [description]
-            strengths (List[Tuple[float, float]]): [description]
-            sizes (List[float]): [description]
-            sharps (List[float]): [description]
-            overflows (Union[float, List[float]], optional): [description]. Defaults to None.
-            grainers (Union[Grainer, List[Grainer]], optional): [description]. Defaults to None.
+            thrs (List[float]):
+                List of thresholds defining the grain boundary.
+                Below the threshold, it's grained, above the threshold, it's not grained.
 
-        Raises:
-            ValueError: [description]
+            strengths (List[Tuple[float, float]]):
+                List of tuple representing the grain strengh of the luma and the chroma, respectively.
+
+            sizes (List[float]):
+                List of size of grain.
+
+            sharps (List[float]):
+                List of sharpened grain values. 50 is neutral Catmull-Rom (b=0, c=0.5).
+
+            overflows (Union[float, List[float]], optional):
+                Percentage value determining by how much the hard limit of threshold will be extended.
+                Range 0.0 - 1.0. Defaults to 1 divided by thrs's length for each thr.
+
+            grainers (Union[Grainer, List[Grainer]], optional):
+                Grainer used for each combo of thrs, strengths, sizes and sharps. 
+                Defaults to AddGrain(seed=-1, constant=False).
         """
         self.thrs = thrs
         self.strengths = strengths
@@ -110,20 +121,24 @@ class Graigasm():
                  clip: vs.VideoNode, /, *,
                  prefilter: bool = False, show_masks: bool = False,
                  boxblur_args: Dict[str, Any] = None) -> vs.VideoNode:
-        # TODO: Make docstring
-        """[summary]
+        """Do grain stuff using settings from constructor.
 
         Args:
-            clip (vs.VideoNode): [description]
-            prefilter (bool, optional): [description]. Defaults to False.
-            show_masks (bool, optional): [description]. Defaults to False.
-            boxblur_args (Dict[str, Any], optional): [description]. Defaults to None.
+            clip (vs.VideoNode): Source clip.
 
-        Raises:
-            FormatError: [description]
+            prefilter (bool, optional):
+                Blurs the clip before building masks.
+                Defaults to False.
+
+            show_masks (bool, optional):
+                Returns interleaved masks. Defaults to False.
+
+            boxblur_args (Dict[str, Any], optional):
+                Additionnal and overrided std.BoxBlur parameters if prefilter=True.
+                Defaults to None.
 
         Returns:
-            vs.VideoNode: [description]
+            vs.VideoNode: Grained clip.
         """
         if clip.format is None:
             raise FormatError('graining: Variable format not allowed!')
