@@ -468,7 +468,7 @@ def diff_rescale_mask(clip: vs.VideoNode, height: int = 720,  # noqa: PLC0103
     descale = kernel.descale(pre, get_w(height), height)
     rescale = kernel.scale(descale, clip.width, clip.height)
 
-    diff = core.std.Expr(sum(map(split, [pre, rescale]), []), mae_expr(gray_only))
+    diff = core.std.Expr(split(pre) + split(rescale), mae_expr(gray_only))
 
     mask = iterate(diff, lambda x: core.rgsf.RemoveGrain(x, 2), 2)
     mask = core.std.Expr(mask, f'x 2 4 pow * {thr} < 0 1 ?')
@@ -590,9 +590,8 @@ def luma_credit_mask(clip: vs.VideoNode, thr: int = 230,
     clip = get_y(clip)
 
     edge_mask = edgemask.get_mask(clip)
-    luma_mask = core.std.Expr(clip, f'x {thr} > x 0 ?')
 
-    credit_mask = core.std.Expr([edge_mask, luma_mask], 'x y min')
+    credit_mask = core.std.Expr([edge_mask, clip], f'y {thr} > y 0 ? x min')
 
     if not draft:
         credit_mask = iterate(credit_mask, core.std.Maximum, 4)
