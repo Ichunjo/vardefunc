@@ -73,7 +73,7 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
     f3kdb_args.update(kwargs)
 
     if thy % step == 1 and thcb % step == 1 and thcr % step == 1:
-        deband = _pick_f3kdb(use_neo, radius, thy, thcb, thcr, gry, grc, sample_mode, **f3kdb_args)
+        deband = _pick_f3kdb(use_neo, clip, radius, thy, thcb, thcr, gry, grc, sample_mode, **f3kdb_args)
     else:
         loy, locb, locr = [(th - 1) // step * step + 1 for th in [thy, thcb, thcr]]
         hiy, hicb, hicr = [lo + step for lo in [loy, locb, locr]]
