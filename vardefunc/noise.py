@@ -4,7 +4,7 @@ from functools import partial
 from typing import Any, Dict, List, Tuple, Union, cast
 
 import lvsfunc
-from vsutil import Dither, Range, depth, get_depth, get_y, join, plane, split
+from vsutil import Dither, Range, depth, get_depth, get_plane_size, get_y, join, split
 
 import vapoursynth as vs
 
@@ -171,8 +171,7 @@ class Graigasm():
         masks += [pref.std.BlankClip(color=peak)]
         if num_planes == 3:
             if is_float:
-                chroma = plane(clip, 1)
-                masks_chroma = [mask.resize.Bilinear(chroma.width, chroma.height) for mask in masks]
+                masks_chroma = [mask.resize.Bilinear(*get_plane_size(clip, 1)) for mask in masks]
                 masks = [join([mask, mask_chroma, mask_chroma]) for mask, mask_chroma in zip(masks, masks_chroma)]
             else:
                 masks = [join([mask] * 3).resize.Bilinear(format=clip.format.id) for mask in masks]
