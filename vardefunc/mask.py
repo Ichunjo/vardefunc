@@ -10,7 +10,7 @@ from vsutil import (Range, depth, get_depth, get_w, get_y, insert_clip,
 
 import vapoursynth as vs
 
-from .util import FormatError, get_sample_type, mae_expr, max_expr
+from .util import FormatError, get_sample_type, mae_expr, max_expr, pick_px_op
 
 core = vs.core
 
@@ -42,7 +42,8 @@ class EdgeDetect(ABC):
         assert clip.format is not None
 
         bits = get_depth(clip)
-        peak = 1.0 if get_sample_type(clip) == vs.FLOAT else (1 << bits) - 1
+        is_float = get_sample_type(clip) == vs.FLOAT
+        peak = 1.0 if is_float else (1 << bits) - 1
         hthr = peak if hthr is None else hthr
 
 
@@ -53,11 +54,16 @@ class EdgeDetect(ABC):
 
 
         if multi != 1:
-            mask = core.std.Expr(mask, f'x {multi} *')
+            mask = pick_px_op(
+                is_float, (f'x {multi} *', lambda x: round(max(min(x * multi, peak), 0)))
+            )(mask)
 
 
         if lthr > 0 or hthr < peak:
-            mask = core.std.Expr(mask, f'x {hthr} > {peak} x {lthr} <= 0 x ? ?')
+            mask = pick_px_op(
+                is_float, (f'x {hthr} > {peak} x {lthr} <= 0 x ? ?',
+                           lambda x: peak if x > hthr else 0 if x <= lthr else x)
+            )(mask)
 
 
         return mask

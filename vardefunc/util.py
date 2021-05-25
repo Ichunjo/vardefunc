@@ -1,5 +1,6 @@
 """Helper functions for the main functions in the script."""
-from typing import Any, Callable, List
+from functools import partial
+from typing import Any, Callable, List, Sequence, Tuple, Union
 
 from string import ascii_lowercase
 import vapoursynth as vs
@@ -66,6 +67,44 @@ def max_expr(n: int) -> str:  # noqa: PLC0103
     return 'x y max ' + ' max '.join(
         load_operators_expr()[i] for i in range(2, n)
     ) + ' max'
+
+
+def pick_px_op(use_expr: bool,
+               operations: Tuple[str, Union[Sequence[int], Sequence[float], int, float, Callable[..., Any]]]
+               ):
+    """[summary]
+
+    Args:
+        use_expr (bool): [description]
+        operations (Tuple[str, Union[Sequence[int], Sequence[float], int, float, Callable[[], Any]]]): [description]
+
+    Raises:
+        ValueError: [description]
+        ValueError: [description]
+
+    Returns:
+        partial[vs.VideoNode]: [description]
+    """
+    expr, lut = operations
+    if use_expr:
+        func = partial(core.std.Expr, expr=expr)
+    else:
+        if callable(lut):
+            func = partial(core.std.Lut, function=lut)
+        elif isinstance(lut, Sequence):
+            if all(isinstance(x, int) for x in lut):
+                func = partial(core.std.Lut, lut=lut)
+            elif all(isinstance(x, float) for x in lut):
+                func = partial(core.std.Lut, lutf=lut)
+            else:
+                raise ValueError('pick_px_operation: operations[1] is not a valid type!')
+        elif isinstance(lut, int):
+            func = partial(core.std.Lut, lut=lut)
+        elif isinstance(lut, float):
+            func = partial(core.std.Lut, lutf=lut)
+        else:
+            raise ValueError('pick_px_operation: operations[1] is not a valid type!')
+    return func
 
 
 def rmse_expr(gray_only: bool = True) -> str:

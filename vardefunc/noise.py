@@ -11,7 +11,7 @@ import vapoursynth as vs
 from .deband import dumb3kdb
 from .mask import FDOG
 from .placebo import deband
-from .util import FormatError, get_sample_type
+from .util import FormatError, get_sample_type, pick_px_op
 
 core = vs.core
 
@@ -223,33 +223,28 @@ class Graigasm():
     def _make_mask(self, clip: vs.VideoNode,  # noqa: PLR0201
                    thr: float, overflow: float, peak: float, *,
                    is_float: bool) -> vs.VideoNode:
-        if is_float:
-            min_thr = f'{thr} {overflow} {peak} * 2 / -'
-            max_thr = f'{thr} {overflow} {peak} * 2 / +'
 
-            # if x >= min_thr and x <= max_thr -> gradient else ...
-            expr = f'x {min_thr} >= x {max_thr} <= and x {min_thr} - {max_thr} {min_thr} - / {peak} * {peak} - abs _ ?'
-            # ... if x < min_thr -> peak else ...
-            expr = expr.replace('_', f'x {min_thr} < {peak} _ ?')
-            # ... if x > max_thr -> 0 else x
-            expr = expr.replace('_', f'x {max_thr} > 0 x ?')
+        def _func(x: float) -> int:  # noqa: PLC0103
+            min_thr = thr - (overflow * peak) / 2
+            max_thr = thr + (overflow * peak) / 2
+            if min_thr <= x <= max_thr:
+                x = abs(((x - min_thr) / (max_thr - min_thr)) * peak - peak)
+            elif x < min_thr:
+                x = peak
+            elif x > max_thr:
+                x = 0.0
+            return round(x)
 
-            clip = core.std.Expr(clip, expr)
-        else:
-            def _mask(x: float) -> float:  # noqa: PLC0103
-                min_thr = thr - (overflow * peak) / 2
-                max_thr = thr + (overflow * peak) / 2
-                if min_thr <= x <= max_thr:
-                    x = abs(((x - min_thr) / (max_thr - min_thr)) * peak - peak)
-                elif x < min_thr:
-                    x = peak
-                elif x > max_thr:
-                    x = 0.0
-                return round(x)
+        min_thr = f'{thr} {overflow} {peak} * 2 / -'
+        max_thr = f'{thr} {overflow} {peak} * 2 / +'
+        # if x >= min_thr and x <= max_thr -> gradient else ...
+        expr = f'x {min_thr} >= x {max_thr} <= and x {min_thr} - {max_thr} {min_thr} - / {peak} * {peak} - abs _ ?'
+        # ... if x < min_thr -> peak else ...
+        expr = expr.replace('_', f'x {min_thr} < {peak} _ ?')
+        # ... if x > max_thr -> 0 else x
+        expr = expr.replace('_', f'x {max_thr} > 0 x ?')
 
-            clip = core.std.Lut(clip, function=_mask)
-
-        return clip
+        return pick_px_op(is_float, (expr, _func))(clip)
 
     def _make_grained(self,
                       clip: vs.VideoNode,
@@ -321,6 +316,7 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,  # n
         raise FormatError('decsiz: Variable format not allowed!')
 
     bits = clip.format.bits_per_sample
+    is_float = get_sample_type(clip) == vs.FLOAT
     peak = (1 << bits) - 1
     gamma = 1 / gamma
     if clip.format.color_family == vs.GRAY:
@@ -346,7 +342,11 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,  # n
     else:
         pre = clip_y
 
-    denoise_mask = core.std.Expr(pre, f'x {min_in} max {max_in} min {min_in} - {max_in} {min_in} - / {gamma} pow 0 max 1 min {peak} *')
+    denoise_mask = pick_px_op(
+        is_float, (f'x {min_in} max {max_in} min {min_in} - {max_in} {min_in} - / {gamma} pow 0 max 1 min {peak} *',
+                   lambda x: round(min(1, max(0, pow((min(max_in, max(min_in, x)) - min_in) / (max_in - min_in), gamma))) * peak))
+    )(pre)
+
     mask = core.std.Expr(
         [depth(protect_mask, bits, range=Range.FULL, range_in=Range.FULL, dither_type=Dither.NONE), denoise_mask],
         'y x -'
