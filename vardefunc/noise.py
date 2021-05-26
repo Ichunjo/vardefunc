@@ -156,7 +156,7 @@ class Graigasm():
 
         mod = self._get_mod(clip)
 
-        masks = [self._make_mask(pref, thr, overflow, peak, is_float=is_float) for thr, overflow in zip(self.thrs, self.overflows)]
+        masks = [self._make_mask(pref, thr, ovf, peak, is_float=is_float) for thr, ovf in zip(self.thrs, self.overflows)]
         masks = [pref.std.BlankClip(color=0)] + masks
         masks = [core.std.Expr([masks[i], masks[i-1]], 'x y -') for i in range(1, len(masks))]
 
@@ -175,7 +175,8 @@ class Graigasm():
         graineds = [self._make_grained(clip, strength, size, sharp, grainer, neutral, mod)
                     for strength, size, sharp, grainer in zip(self.strengths, self.sizes, self.sharps, self.grainers)]
 
-        clips_adg = [core.std.Expr([grained, clip, mask], f'x z {peak} / * y 1 z {peak} / - * +') for grained, mask in zip(graineds, masks)]
+        clips_adg = [core.std.Expr([grained, clip, mask], f'x z {peak} / * y 1 z {peak} / - * +')
+                     for grained, mask in zip(graineds, masks)]
 
 
         out = clip
