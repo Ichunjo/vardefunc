@@ -170,7 +170,10 @@ class Graigasm():
         mod = self._get_mod(clip)
 
         masks = [self._make_mask(pref, thr, overflow, peak, is_float=is_float) for thr, overflow in zip(self.thrs, self.overflows)]
-        masks += [pref.std.BlankClip(color=peak)]
+        masks = [pref.std.BlankClip(color=0)] + masks
+        masks = [core.std.Expr([masks[i], masks[i-1]], 'x y -') for i in range(1, len(masks))]
+
+
         if num_planes == 3:
             if is_float:
                 masks_chroma = [mask.resize.Bilinear(*get_plane_size(clip, 1)) for mask in masks]
@@ -181,27 +184,17 @@ class Graigasm():
         if show_masks:
             return core.std.Interleave([core.text.FrameNum(mask, 9) for mask in masks])
 
+
         graineds = [self._make_grained(clip, strength, size, sharp, grainer, neutral, mod)
                     for strength, size, sharp, grainer in zip(self.strengths, self.sizes, self.sharps, self.grainers)]
 
-        # Expr way
-        clips_adg = [core.std.Expr(
-            [grained, clip, masks[i+1], mask],
-            f'x z {peak} / * y 1 z {peak} / - * + a {peak} - abs {peak} / * y 1 a {peak} - abs {peak} / - * +'
-        ) for i, (grained, mask) in enumerate(zip(graineds, masks))]
-
-        # Double maskedmerge way
-        # MaskedMerge is currently broken for float
-        # clips_adg = []
-        # for i, (grained, mask) in enumerate(zip(graineds, masks)):
-        #     cc = core.std.MaskedMerge(clip, grained, masks[i + 1])
-        #     cc = core.std.MaskedMerge(clip, cc, mask.std.Invert())
-        #     clips_adg.append(cc)
+        clips_adg = [core.std.Expr([grained, clip, mask], f'x z {peak} / * y 1 z {peak} / - * +') for i, (grained, mask) in enumerate(zip(graineds, masks))]
 
 
         out = clip
         for clip_adg in clips_adg:
             out = core.std.MergeDiff(clip_adg, clip.std.MakeDiff(out))
+
 
         return out
 
