@@ -1,7 +1,7 @@
 """Noising/denoising functions"""
 from abc import ABC, abstractmethod
 from functools import partial
-from typing import Any, Dict, List, Tuple, Union, cast
+from typing import Any, Dict, List, Sequence, Tuple, Union, cast
 
 import lvsfunc
 from vsutil import Dither, Range, depth, get_depth, get_plane_size, get_y, join, split
@@ -67,39 +67,39 @@ class Graigasm():
     grainers: List[Grainer]
 
     def __init__(self,
-                 thrs: List[float], strengths: List[Tuple[float, float]], sizes: List[float], sharps: List[float], *,
-                 overflows: Union[float, List[float]] = None,
-                 grainers: Union[Grainer, List[Grainer]] = AddGrain(seed=-1, constant=False)) -> None:
+                 thrs: Sequence[float], strengths: Sequence[Tuple[float, float]], sizes: Sequence[float], sharps: Sequence[float], *,
+                 overflows: Union[float, Sequence[float]] = None,
+                 grainers: Union[Grainer, Sequence[Grainer]] = AddGrain(seed=-1, constant=False)) -> None:
         """Constructor checks and initializes the values.
            Length of thrs must be equal to strengths, sizes and sharps.
            thrs, strengths, sizes and sharps match the same area.
 
         Args:
-            thrs (List[float]):
-                List of thresholds defining the grain boundary.
+            thrs (Sequence[float]):
+                Sequence of thresholds defining the grain boundary.
                 Below the threshold, it's grained, above the threshold, it's not grained.
 
-            strengths (List[Tuple[float, float]]):
-                List of tuple representing the grain strengh of the luma and the chroma, respectively.
+            strengths (Sequence[Tuple[float, float]]):
+                Sequence of tuple representing the grain strengh of the luma and the chroma, respectively.
 
-            sizes (List[float]):
-                List of size of grain.
+            sizes (Sequence[float]):
+                Sequence of size of grain.
 
-            sharps (List[float]):
-                List of sharpened grain values. 50 is neutral Catmull-Rom (b=0, c=0.5).
+            sharps (Sequence[float]):
+                Sequence of sharpened grain values. 50 is neutral Catmull-Rom (b=0, c=0.5).
 
-            overflows (Union[float, List[float]], optional):
+            overflows (Union[float, Sequence[float]], optional):
                 Percentage value determining by how much the hard limit of threshold will be extended.
                 Range 0.0 - 1.0. Defaults to 1 divided by thrs's length for each thr.
 
-            grainers (Union[Grainer, List[Grainer]], optional):
+            grainers (Union[Grainer, Sequence[Grainer]], optional):
                 Grainer used for each combo of thrs, strengths, sizes and sharps.
                 Defaults to AddGrain(seed=-1, constant=False).
         """
-        self.thrs = thrs
-        self.strengths = strengths
-        self.sizes = sizes
-        self.sharps = sharps
+        self.thrs = list(thrs)
+        self.strengths = list(strengths)
+        self.sizes = list(sizes)
+        self.sharps = list(sharps)
 
         length = len(self.thrs)
         datas: List[Any] = [self.strengths, self.sizes, self.sharps]
@@ -111,12 +111,14 @@ class Graigasm():
         if isinstance(overflows, float):
             overflows = [overflows] * length
         else:
+            overflows = list(overflows)
             overflows += [overflows[-1]] * (length - len(overflows))
         self.overflows = overflows
 
         if isinstance(grainers, Grainer):
             grainers = [grainers] * length
         else:
+            grainers = list(grainers)
             grainers += [grainers[-1]] * (length - len(grainers))
         self.grainers = grainers
 
