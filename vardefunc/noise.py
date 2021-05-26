@@ -124,23 +124,18 @@ class Graigasm():
 
     def graining(self,
                  clip: vs.VideoNode, /, *,
-                 prefilter: bool = False, show_masks: bool = False,
-                 boxblur_args: Dict[str, Any] = None) -> vs.VideoNode:
+                 prefilter: vs.VideoNode = None, show_masks: bool = False) -> vs.VideoNode:
         """Do grain stuff using settings from constructor.
 
         Args:
             clip (vs.VideoNode): Source clip.
 
-            prefilter (bool, optional):
-                Blurs the clip before building masks.
-                Defaults to False.
+            prefilter (clip, optional):
+                Prefilter clip used to compute masks.
+                Defaults to None.
 
             show_masks (bool, optional):
                 Returns interleaved masks. Defaults to False.
-
-            boxblur_args (Dict[str, Any], optional):
-                Additionnal and overrided std.BoxBlur parameters if prefilter=True.
-                Defaults BoxBlur settings are (hradius=2, hpasses=2, vradius=2, vpasses=2)
 
         Returns:
             vs.VideoNode: Grained clip.
@@ -157,15 +152,7 @@ class Graigasm():
         num_planes = clip.format.num_planes
         neutral = [0.5] + [0.0] * (num_planes - 1) if is_float else [float(1 << (bits - 1))] * num_planes
 
-
-        if prefilter:
-            boxargs: Dict[str, Any] = dict(hradius=2, hpasses=2, vradius=2, vpasses=2)
-            if boxblur_args is not None:
-                boxargs.update(boxblur_args)
-            pref = core.std.BoxBlur(get_y(clip), **boxargs)
-        else:
-            pref = get_y(clip)
-
+        pref = prefilter if prefilter is not None else get_y(clip)
 
         mod = self._get_mod(clip)
 
