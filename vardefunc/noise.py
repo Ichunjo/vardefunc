@@ -188,7 +188,7 @@ class Graigasm():
         graineds = [self._make_grained(clip, strength, size, sharp, grainer, neutral, mod)
                     for strength, size, sharp, grainer in zip(self.strengths, self.sizes, self.sharps, self.grainers)]
 
-        clips_adg = [core.std.Expr([grained, clip, mask], f'x z {peak} / * y 1 z {peak} / - * +') for i, (grained, mask) in enumerate(zip(graineds, masks))]
+        clips_adg = [core.std.Expr([grained, clip, mask], f'x z {peak} / * y 1 z {peak} / - * +') for grained, mask in zip(graineds, masks)]
 
 
         out = clip
