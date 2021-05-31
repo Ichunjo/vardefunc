@@ -66,6 +66,8 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
     thy, thcb, thcr = [threshold] * 3 if isinstance(threshold, int) else threshold + [threshold[-1]] * (3 - len(threshold))
     gry, grc = [grain] * 2 if isinstance(grain, int) else grain + [grain[-1]] * (2 - len(grain))
 
+    thy, thcb, thcr = [max(1, x) for x in [thy, thcb, thcr]]
+
 
     step = 16 if sample_mode == 2 else 32
 
