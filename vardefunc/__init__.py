@@ -4,7 +4,7 @@
 
 from . import deband, mask, misc, noise, placebo, scale, sharp, util
 
-drm = mask.diff_rescale_mask
-dcm = mask.diff_creditless_mask
+drm = mask.Difference().rescale
+dcm = mask.Difference().creditless
 lcm = mask.luma_credit_mask
 gk = misc.generate_keyframes

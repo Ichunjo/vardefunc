@@ -1,14 +1,12 @@
 """Wrappers and masks for denoising, debanding, rescaling etc."""
 import math
 from abc import ABC, abstractmethod
-from functools import partial
 from typing import Any, Dict, List, Optional, Union
 
 import lvsfunc
+import vapoursynth as vs
 from vsutil import (Range, depth, get_depth, get_w, get_y, insert_clip,
                     iterate, scale_value, split)
-
-import vapoursynth as vs
 
 from .util import FormatError, get_sample_type, mae_expr, max_expr, pick_px_op
 
@@ -431,152 +429,161 @@ class ExKirsch(EdgeDetect):
         return max_expr(8)
 
 
-def diff_rescale_mask(clip: vs.VideoNode, height: int = 720,  # noqa: PLC0103
-                      kernel: lvsfunc.kernels.Kernel = lvsfunc.kernels.Bicubic(b=0, c=0.5),
-                      thr: Union[int, float] = 55,
-                      sw: int = 2, sh: int = 2) -> vs.VideoNode:
-    """Makes a mask based on rescaled difference.
-       Modified version of Atomchtools.
+class Difference():
+    """Collection of function based on differences between prediction and observation"""
 
-    Args:
-        clip (vs.VideoNode):
-            Source clip. Can be Gray, YUV or RGB.
-            Keep in mind that descale plugin will descale all planes
-            after conversion to GRAYS, YUV444PS and RGBS respectively.
+    def rescale(self, clip: vs.VideoNode, height: int = 720,
+                kernel: lvsfunc.kernels.Kernel = lvsfunc.kernels.Bicubic(b=0, c=0.5),
+                thr: Union[int, float] = 55, expand: int = 2) -> vs.VideoNode:
+        """Makes a mask based on rescaled difference.
+           Modified version of Atomchtools.
 
-        height (int, optional):
-            Height to descale to. Defaults to 720.
+        Args:
+            clip (vs.VideoNode):
+                Source clip. Can be Gray, YUV or RGB.
+                Keep in mind that descale plugin will descale all planes
+                after conversion to GRAYS, YUV444PS and RGBS respectively.
 
-        kernel (lvsfunc.kernels.Kernel, optional):
-            Kernel used to descale. Defaults to lvsfunc.kernels.Bicubic(b=0, c=0.5).
+            height (int, optional):
+                Height to descale to. Defaults to 720.
 
-        thr (Union[int, float], optional):
-            Binarization threshold. Defaults to 55.
+            kernel (lvsfunc.kernels.Kernel, optional):
+                Kernel used to descale. Defaults to lvsfunc.kernels.Bicubic(b=0, c=0.5).
 
-        sw (int, optional):
-            Growing/shrinking shape width. 0 is allowed. Defaults to 2.
+            thr (Union[int, float], optional):
+                Binarization threshold. Defaults to 55.
 
-        sh (int, optional):
-            Growing/shrinking shape height. 0 is allowed. Defaults to 2.
+            sw (int, optional):
+                Growing/shrinking shape width. 0 is allowed. Defaults to 2.
 
-    Returns:
-        vs.VideoNode: Rescaled mask.
-    """
-    if clip.format is None:
-        raise FormatError('diff_rescale_mask: Variable format not allowed!')
+            sh (int, optional):
+                Growing/shrinking shape height. 0 is allowed. Defaults to 2.
 
-    bits = get_depth(clip)
-    gray_only = clip.format.num_planes == 1
-    thr = scale_value(thr, bits, 32, scale_offsets=True)
+        Returns:
+            vs.VideoNode: Rescaled mask.
+        """
+        if clip.format is None:
+            raise FormatError('diff_rescale_mask: Variable format not allowed!')
 
-    pre = core.resize.Bicubic(
-        clip, format=clip.format.replace(
-            bits_per_sample=32, sample_type=vs.FLOAT, subsampling_w=0, subsampling_h=0
-        ).id
-    )
-    descale = kernel.descale(pre, get_w(height), height)
-    rescale = kernel.scale(descale, clip.width, clip.height)
+        bits = get_depth(clip)
+        gray_only = clip.format.num_planes == 1
+        thr = scale_value(thr, bits, 32, scale_offsets=True)
 
-    diff = core.std.Expr(split(pre) + split(rescale), mae_expr(gray_only))
+        pre = core.resize.Bicubic(
+            clip, format=clip.format.replace(
+                bits_per_sample=32, sample_type=vs.FLOAT, subsampling_w=0, subsampling_h=0
+            ).id
+        )
+        descale = kernel.descale(pre, get_w(height), height)
+        rescale = kernel.scale(descale, clip.width, clip.height)
 
-    mask = iterate(diff, lambda x: core.rgsf.RemoveGrain(x, 2), 2)
-    mask = core.std.Expr(mask, f'x 2 4 pow * {thr} < 0 1 ?')
+        diff = core.std.Expr(split(pre) + split(rescale), mae_expr(gray_only))
 
-    mask = iterate(mask, partial(core.std.Maximum, coordinates=[0, 0, 0, 1, 1, 0, 0, 0]), 2 + sw)
-    mask = iterate(mask, partial(core.std.Maximum, coordinates=[0, 1, 0, 0, 0, 0, 1, 0]), 2 + sh)
-    mask = mask.std.Deflate()
+        mask = iterate(diff, lambda x: core.rgsf.RemoveGrain(x, 2), 2)
+        mask = core.std.Expr(mask, f'x 2 4 pow * {thr} < 0 1 ?')
 
-    return mask.resize.Point(
-        format=clip.format.replace(color_family=vs.GRAY, subsampling_w=0, subsampling_h=0).id,
-        dither_type='none'
-    )
+        mask = self._minmax(mask, 2 + expand, True)
+        mask = mask.std.Deflate()
 
-
-def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_clip: vs.VideoNode,  # noqa: PLC0103
-                         start_frame: int, thr: int, sw: int = 2, sh: int = 2, *,
-                         prefilter: bool = False, bilateral_args: Dict[str, Any] = {}) -> vs.VideoNode:
-    """Makes a mask based on difference from 2 clips.
-
-    Args:
-        src_clip (vs.VideoNode):
-            Source clip. Can be Gray, YUV or RGB.
-
-        credit_clip (vs.VideoNode): Credit clip.
-            It will be resampled according to the src_clip.
-
-        nc_clip (vs.VideoNode): Creditless clip.
-            It will be resampled according to the src_clip.
-
-        start_frame (int): Start frame.
-
-        thr (int): Binarize threshold.
-            25 is a good starting value in 8 bit.
-
-        sw (int, optional): Growing/shrinking shape width.
-            0 is allowed. Defaults to 2.
-
-        sh (int, optional): Growing/shrinking shape height.
-            0 is allowed. Defaults to 2.
-
-        prefilter (bool, optional):
-            Blurs the credit_clip and nc_clip with Bilateral to avoid false posivive
-            such as noise and compression artifacts.
-            Defaults to False.
-
-        bilateral_args (Dict[str, Any], optional):
-            Additionnal and overrided Bilateral parameters if prefilter=True. Defaults to {}.
-
-    Returns:
-        vs.VideoNode: Credit mask clip.
-
-    Example:
-        import vardefunc as vdf
-
-        opstart, opend = 792, 2948
-
-        opmask = diff_creditless_mask(clip, clip[opstart:opend+1], ncop[:opend+1-opstart], opstart, thr=25, prefilter=True)
-    """
-    if src_clip.format is None:
-        raise FormatError('diff_creditless_mask: Variable format not allowed!')
-
-    gray_only = src_clip.format.num_planes == 1
-    clips = [credit_clip, nc_clip]
-
-    if prefilter:
-        bilargs: Dict[str, Any] = dict(sigmaS=((5 ** 2 - 1) / 12) ** 0.5, sigmaR=0.5)
-        bilargs.update(bilateral_args)
-        clips = [c.bilateral.Bilateral(**bilargs) for c in clips]
+        return mask.resize.Point(
+            format=clip.format.replace(color_family=vs.GRAY, subsampling_w=0, subsampling_h=0).id,
+            dither_type='none'
+        )
 
 
-    clips = [
-        c.resize.Bicubic(
-            format=src_clip.format.replace(
-                bits_per_sample=get_depth(src_clip),
-                subsampling_w=0, subsampling_h=0).id
-        ) for c in clips]
+    def creditless(self, src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_clip: vs.VideoNode,
+                   start_frame: int, thr: int, expand: int = 2, *,
+                   prefilter: bool = False, bilateral_args: Dict[str, Any] = {}) -> vs.VideoNode:
+        """Makes a mask based on difference from 2 clips.
 
-    diff = core.std.Expr(
-        sum(map(split, clips), []),
-        mae_expr(gray_only),
-        format=src_clip.format.replace(color_family=vs.GRAY).id
-    )
+        Args:
+            src_clip (vs.VideoNode):
+                Source clip. Can be Gray, YUV or RGB.
 
-    mask = core.std.Prewitt(diff).std.Binarize(thr)
-    mask = iterate(mask, partial(core.std.Maximum, coordinates=[0, 0, 0, 1, 1, 0, 0, 0]), sw)
-    mask = iterate(mask, partial(core.std.Maximum, coordinates=[0, 1, 0, 0, 0, 0, 1, 0]), sh)
+            credit_clip (vs.VideoNode): Credit clip.
+                It will be resampled according to the src_clip.
 
-    blank = core.std.BlankClip(
-        src_clip, format=src_clip.format.replace(
-            color_family=vs.GRAY, subsampling_w=0, subsampling_h=0
-        ).id
-    )
-    mask = insert_clip(blank, mask, start_frame)
+            nc_clip (vs.VideoNode): Creditless clip.
+                It will be resampled according to the src_clip.
 
-    return mask
+            start_frame (int): Start frame.
+
+            thr (int): Binarize threshold.
+                25 is a good starting value in 8 bit.
+
+            sw (int, optional): Growing/shrinking shape width.
+                0 is allowed. Defaults to 2.
+
+            sh (int, optional): Growing/shrinking shape height.
+                0 is allowed. Defaults to 2.
+
+            prefilter (bool, optional):
+                Blurs the credit_clip and nc_clip with Bilateral to avoid false posivive
+                such as noise and compression artifacts.
+                Defaults to False.
+
+            bilateral_args (Dict[str, Any], optional):
+                Additionnal and overrided Bilateral parameters if prefilter=True. Defaults to {}.
+
+        Returns:
+            vs.VideoNode: Credit mask clip.
+
+        Example:
+            import vardefunc as vdf
+
+            opstart, opend = 792, 2948
+
+            opmask = diff_creditless_mask(clip, clip[opstart:opend+1], ncop[:opend+1-opstart], opstart, thr=25, prefilter=True)
+        """
+        if src_clip.format is None:
+            raise FormatError('diff_creditless_mask: Variable format not allowed!')
+
+        gray_only = src_clip.format.num_planes == 1
+        clips = [credit_clip, nc_clip]
+
+        if prefilter:
+            bilargs: Dict[str, Any] = dict(sigmaS=((5 ** 2 - 1) / 12) ** 0.5, sigmaR=0.5)
+            bilargs.update(bilateral_args)
+            clips = [c.bilateral.Bilateral(**bilargs) for c in clips]
+
+
+        clips = [
+            c.resize.Bicubic(
+                format=src_clip.format.replace(
+                    bits_per_sample=get_depth(src_clip),
+                    subsampling_w=0, subsampling_h=0).id
+            ) for c in clips]
+
+        diff = core.std.Expr(
+            sum(map(split, clips), []),
+            mae_expr(gray_only),
+            format=src_clip.format.replace(color_family=vs.GRAY).id
+        )
+
+        mask = PrewittStd().get_mask(diff).std.Binarize(thr)
+        mask = self._minmax(mask, 2 + expand, True)
+
+        blank = core.std.BlankClip(
+            src_clip, format=src_clip.format.replace(
+                color_family=vs.GRAY, subsampling_w=0, subsampling_h=0
+            ).id
+        )
+        mask = insert_clip(blank, mask, start_frame)
+
+        return mask
+
+
+    @staticmethod
+    def _minmax(clip: vs.VideoNode, iterations: int, maximum: bool) -> vs.VideoNode:
+        func = core.std.Maximum if maximum else core.std.Minimum
+        for i in range(1, iterations + 1):
+            coord = [0, 1, 0, 1, 1, 0, 1, 0] if (i % 3) != 1 else [1] * 8
+            clip = func(clip, coordinates=coord)
+        return clip
 
 
 def luma_credit_mask(clip: vs.VideoNode, thr: int = 230,
-                     edgemask: EdgeDetect = Prewitt(), draft: bool = False) -> vs.VideoNode:
+                     edgemask: EdgeDetect = FDOG(), draft: bool = False) -> vs.VideoNode:
     """Makes a mask based on luma value and edges.
 
     Args:
