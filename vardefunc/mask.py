@@ -572,6 +572,39 @@ class Difference():
 
         return mask
 
+    def creditless_oped(self, ep: vs.VideoNode, ncop: vs.VideoNode, nced: vs.VideoNode,
+                        opstart: Optional[int] = None, opend: Optional[int] = None,
+                        edstart: Optional[int] = None, edend: Optional[int] = None,
+                        **creditless_args: Any) -> vs.VideoNode:
+        """Wrapper using Difference().creditless(...). for opening and ending.
+
+        Args:
+            ep (vs.VideoNode): Full episode clip.
+            ncop (vs.VideoNode): NCOP clip.
+            nced (vs.VideoNode): NCED clip.
+            opstart (int): Opening start frame.
+            opend (int): Opening end frame.
+            edstart (int): Ending start frame.
+            edend (int): Ending end frame.
+
+        Returns:
+            vs.VideoNode: Mask.
+        """
+        args: Dict[str, Any] = dict(thr=25, expand=4, prefilter=False)
+        args.update(creditless_args)
+
+        if None not in {opstart, opend, edstart, edend}:
+            mask = core.std.Expr((self.creditless(ep, ep[opstart:opend+1], ncop[:opend-opstart+1], opstart, **args),  # type: ignore
+                                  self.creditless(ep, ep[edstart:edend+1], nced[:edend-edstart+1], edstart, **args)),  # type: ignore
+                                 'x y +')
+        elif None in {edstart, edend} and None not in {opstart, opend}:
+            mask = self.creditless(ep, ep[opstart:opend+1], ncop[:opend-opstart+1], opstart, **args)  # type: ignore
+        elif None in {opstart, opend} and None not in {edstart, edend}:
+            mask = self.creditless(ep, ep[edstart:edend+1], nced[:edend-edstart+1], edstart, **args)  # type: ignore
+        else:
+            raise ValueError('creditless_oped: wtf are you doing')
+
+        return mask
 
     @staticmethod
     def _minmax(clip: vs.VideoNode, iterations: int, maximum: bool) -> vs.VideoNode:
