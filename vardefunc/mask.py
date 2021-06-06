@@ -627,7 +627,7 @@ def luma_credit_mask(clip: vs.VideoNode, thr: int = 230,
             Luma value assuming 8 bit input. Defaults to 230.
 
         edgemask (EdgeDetect, optional):
-            Edge mask used with thr. Defaults to Prewitt().
+            Edge mask used with thr. Defaults to FDOG().
 
         draft (bool, optional):
             Allow to output the mask without growing. Defaults to False.
