@@ -644,6 +644,22 @@ class Difference():
         return clip
 
 
+def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_clip: vs.VideoNode,
+                         start_frame: int, thr: int, expand: int = 2, *,
+                         prefilter: bool = False, bilateral_args: Dict[str, Any] = {}) -> vs.VideoNode:
+    """Legacy function of Difference().creditless"""
+    return Difference().creditless(src_clip, credit_clip, nc_clip, start_frame, thr, expand,
+                                   prefilter=prefilter, bilateral_args=bilateral_args)
+
+
+def diff_rescale_mask(clip: vs.VideoNode, height: int = 720,
+                      kernel: lvsfunc.kernels.Kernel = lvsfunc.kernels.Bicubic(b=0, c=0.5),
+                      thr: Union[int, float] = 55, expand: int = 2) -> vs.VideoNode:
+    """Legacy function of Difference().rescale"""
+    return Difference().rescale(clip, height, kernel, thr, expand)
+
+
+
 def luma_credit_mask(clip: vs.VideoNode, thr: int = 230,
                      edgemask: EdgeDetect = FDOG(), draft: bool = False) -> vs.VideoNode:
     """Makes a mask based on luma value and edges.
