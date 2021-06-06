@@ -660,6 +660,41 @@ def diff_rescale_mask(clip: vs.VideoNode, height: int = 720,
 
 
 
+def luma_mask(clip: vs.VideoNode, thr_lo: float, thr_hi: float, invert: bool = True) -> vs.VideoNode:
+    """Mask each pixel according to its luma value.
+       From debandshit.
+
+    Args:
+        clip (vs.VideoNode):
+            Source clip.
+
+        thr_lo (float):
+            All pixels below this threshold will be binary
+
+        thr_hi (float):
+            All pixels above this threshold will be binary
+
+        All pixels in-between will be scaled from black to white
+
+        invert (bool, optional):
+            When true, masks dark areas (pixels below lo will be white, and vice versa).
+            Defaults to True.
+
+    Returns:
+        vs.VideoNode: Luma mask.
+    """
+    bits = get_depth(clip)
+    is_float = get_sample_type(clip) == vs.FLOAT
+    peak = 1.0 if is_float else (1 << bits) - 1
+
+    mask = pick_px_op(
+        is_float,
+        (f'x {thr_lo} < 0 x {thr_hi} > {peak} x {thr_lo} - {thr_lo} {thr_hi} - / {peak} * ? ?',
+         lambda x: round(0 if x < thr_lo else peak if x > thr_hi else (x - thr_lo) / (thr_hi - thr_lo) * peak)))(get_y(clip))
+
+    return mask.std.Invert() if invert else mask
+
+
 def luma_credit_mask(clip: vs.VideoNode, thr: int = 230,
                      edgemask: EdgeDetect = FDOG(), draft: bool = False) -> vs.VideoNode:
     """Makes a mask based on luma value and edges.
