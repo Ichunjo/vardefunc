@@ -195,41 +195,105 @@ def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
     return F3kdb(radius, threshold, grain, sample_mode, use_neo, **kwargs).deband(clip)
 
 
-    if sample_mode > 2 and not use_neo:
-        raise ValueError('dumb3kdb: "sample_mode" argument should be less or equal to 2 when "use_neo" is false.')
+def f3kbilateral(clip: vs.VideoNode, radius: int = 16,
+                 threshold: Union[int, List[int]] = 65, grain: Union[int, List[int]] = 0,
+                 f3kdb_args: Dict[str, Any] = {}, lf_args: Dict[str, Any] = {}) -> vs.VideoNode:
+    """f3kdb multistage bilateral-esque filter from debandshit.
+       This function is more of a last resort for extreme banding.
+
+    Args:
+        clip (vs.VideoNode): Source clip.
+
+        radius (int, optional):
+            Same as F3kdb constructor. Defaults to 16.
+
+        threshold (Union[int, List[int]], optional):
+            Same as F3kdb constructor. Defaults to 65.
+
+        grain (Union[int, List[int]], optional):
+            Same as F3kdb constructor.
+            It happens after mvsfunc.LimitFilter and call another instance of F3kdb if != 0.
+            Defaults to 0.
+
+        f3kdb_args (Dict[str, Any], optional):
+            Same as F3kdb constructor. Defaults to {}.
+
+        lf_args (Dict[str, Any], optional):
+            Arguments passed to mvsfunc.LimitFilter. Defaults to {}.
+
+    Returns:
+        vs.VideoNode: Debanded clip.
+    """
+    try:
+        from mvsfunc import LimitFilter
+    except ModuleNotFoundError as mod_err:
+        raise ModuleNotFoundError("f3kbilateral: missing dependency 'mvsfunc'") from mod_err
 
     if clip.format is None:
-        raise FormatError('dumb3kdb: Variable format not allowed!')
+        raise FormatError("f3kbilateral: 'Variable-format clips not supported'")
+
+    bits = get_depth(clip)
+
+    limflt_args: Dict[str, Any] = dict(thr=0.6, elast=3.0, thrc=None)
+    limflt_args.update(lf_args)
+
+    # Radius
+    rad1 = round(radius * 4 / 3)
+    rad2 = round(radius * 2 / 3)
+    rad3 = round(radius / 3)
+
+    # F3kdb objects
+    db1 = F3kdb(rad1, threshold, 0, **f3kdb_args)
+    db2 = F3kdb(rad2, threshold, 0, **f3kdb_args)
+    db3 = F3kdb(rad3, threshold, 0, **f3kdb_args)
+
+    # Edit the thr of first f3kdb object
+    db1.thy, db1.thcb, db1.thcr = db1.thy // 2, db1.thcb // 2, db1.thcr // 2
 
 
-    thy, thcb, thcr = [threshold] * 3 if isinstance(threshold, int) else threshold + [threshold[-1]] * (3 - len(threshold))
-    gry, grc = [grain] * 2 if isinstance(grain, int) else grain + [grain[-1]] * (2 - len(grain))
+    # Perform deband
+    clip = depth(clip, 16)
 
-    thy, thcb, thcr = [max(1, x) for x in [thy, thcb, thcr]]
+    flt1 = db1.deband(clip)
+    flt2 = db2.deband(flt1)
+    flt3 = db3.deband(flt2)
 
+    # Limit
+    limit = LimitFilter(flt3, flt2, ref=clip, **lf_args)
 
-    step = 16 if sample_mode == 2 else 32
-
-    f3kdb_args: Dict[str, Any] = dict(keep_tv_range=True, output_depth=16)
-    f3kdb_args.update(kwargs)
-
-    if thy % step == 1 and thcb % step == 1 and thcr % step == 1:
-        deband = _pick_f3kdb(use_neo, clip, radius, thy, thcb, thcr, gry, grc, sample_mode, **f3kdb_args)
+    # Grain
+    if grain != 0 or grain is not None:
+        grained = F3kdb(grain=grain, **f3kdb_args).grain(limit)
     else:
-        loy, locb, locr = [(th - 1) // step * step + 1 for th in [thy, thcb, thcr]]
-        hiy, hicb, hicr = [lo + step for lo in [loy, locb, locr]]
+        grained = limit
 
-        lo_clip = _pick_f3kdb(use_neo, clip, radius, loy, locb, locr, gry, grc, sample_mode, **f3kdb_args)
-        hi_clip = _pick_f3kdb(use_neo, clip, radius, hiy, hicb, hicr, gry, grc, sample_mode, **f3kdb_args)
+    return depth(grained, bits)
 
-        if clip.format.color_family == vs.GRAY:
-            weight = [(thy - loy) / step]
-        else:
-            weight = [(thy - loy) / step, (thcb - locb) / step, (thcr - locr) / step]
 
-        deband = core.std.Merge(lo_clip, hi_clip, weight)
+def lfdeband(clip: vs.VideoNode) -> vs.VideoNode:
+    """A simple debander ported from AviSynth by Zastin from debandshit
 
-    if use_neo:
-        deband = core.std.ModifyFrame(deband, [deband, clip], selector=_trf)
+    Args:
+        clip (vs.VideoNode): Source clip
 
-    return deband
+    Returns:
+        vs.VideoNode: Debanded clip.
+    """
+    if clip.format is None:
+        raise ValueError("lfdeband: 'Variable-format clips not supported'")
+
+    bits = get_depth(clip)
+    wss, hss = 1 << clip.format.subsampling_w, 1 << clip.format.subsampling_h
+    w, h = clip.width, clip.height
+    dw, dh = round(w / 2), round(h / 2)
+
+    clip = depth(clip, 16)
+    dsc = core.resize.Spline64(clip, dw-dw % wss, dh-dh % hss)
+
+    d3kdb = dumb3kdb(dsc, radius=30, threshold=80, grain=0)
+
+    ddif = core.std.MakeDiff(d3kdb, dsc)
+
+    dif = core.resize.Spline64(ddif, w, h)
+    out = core.std.MergeDiff(clip, dif)
+    return depth(out, bits)
