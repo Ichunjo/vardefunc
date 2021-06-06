@@ -1,5 +1,5 @@
-"""Helper functions for the main functions in the script."""
-from functools import partial
+"""Helper functions for the main functions in this module"""
+from functools import partial, wraps
 from typing import Any, Callable, List, Sequence, Tuple, Union
 
 from string import ascii_lowercase
@@ -22,6 +22,7 @@ def copy_docstring_from(source: Callable[..., Any]) -> Callable[..., Any]:
     Returns:
         Callable[..., Any]: Function decorated
     """
+    @wraps(source)
     def wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
         func.__doc__ = source.__doc__
         return func
