@@ -429,6 +429,35 @@ class ExKirsch(EdgeDetect):
         return max_expr(8)
 
 
+def get_all_edge_detects(clip: vs.VideoNode, **kwargs) -> List[vs.VideoNode]:
+    """Allows you to get all masks inheriting from EdgeDetect.
+
+    Args:
+        clip (vs.VideoNode):
+            Source clip.
+
+        kwargs:
+            Arguments passed to EdgeDetect().get_mask
+
+    Returns:
+        List[vs.VideoNode]: List of masks.
+
+    Example:
+        from vardefunc.mask import get_all_edge_detect
+
+        clip.set_output(0)
+
+        for i, mask in enumerate(get_all_edge_detect(get_y(clip)), start=1):
+            mask.set_output(i)
+    """
+    masks = [
+        edge_detect().get_mask(clip, **kwargs).text.Text(edge_detect.__name__)  # type: ignore
+        for edge_detect in EdgeDetect.__subclasses__()
+    ]
+    return masks
+
+
+
 class Difference():
     """Collection of function based on differences between prediction and observation"""
 
