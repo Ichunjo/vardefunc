@@ -14,15 +14,15 @@ def z4usm(clip: vs.VideoNode, radius: int = 1, strength: float = 100.0) -> vs.Vi
     Args:
         clip (vs.VideoNode): Source clip.
         radius (int, optional): Radius setting, it could be 1 or 2. Defaults to 1.
-        strength (float, optional): Sharpening strength. Defaults to 100.0.
+        strength (float, optional): Sharpening strength, range 0 to 100. Defaults to 100.0.
 
     Returns:
         vs.VideoNode: Sharpened clip.
     """
     if clip.format is None:
         raise FormatError('z4usm: Variable format not allowed!')
-    if radius not in (1, 2):
-        raise vs.Error('z4usm: "radius" must be 1 or 2')
+    if radius not in {1, 2}:
+        raise ValueError('z4usm: "radius" must be 1 or 2')
 
     strength = max(1e-6, min(math.log2(3) * strength / 100, math.log2(3)))
     weight = 0.5 ** strength / ((1 - 0.5 ** strength) / 2)

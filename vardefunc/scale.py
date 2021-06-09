@@ -205,11 +205,11 @@ def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, s
 
     profiles = ['fast', 'old', 'slow', 'zastin']
     if profile not in profiles:
-        raise vs.Error('fsrcnnx_upscale: "profile" must be "fast", "old", "slow" or "zastin"')
+        raise ValueError('fsrcnnx_upscale: "profile" must be "fast", "old", "slow" or "zastin"')
     num = profiles.index(profile.lower())
 
     if not shader_file:
-        raise vs.Error('fsrcnnx_upscale: You must set a string path for "shader_file"')
+        raise ValueError('fsrcnnx_upscale: You must set a string path for "shader_file"')
 
     fsrcnnx = shader(clip, clip.width * 2, clip.height * 2, shader_file)
 
@@ -237,7 +237,7 @@ def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, s
                     f'x y {overshoot} + > y {overshoot} + x ? z {undershoot} - < z {undershoot} - x y {overshoot} + > y {overshoot} + x ? ?'
                 )
             else:
-                raise vs.Error('fsrcnnx_upscale: "lmode" must be < 0, 0 or 1')
+                raise ValueError('fsrcnnx_upscale: "lmode" must be < 0, 0 or 1')
         else:
             # zastin profile
             smooth_sharp = sharpener(smooth)
