@@ -14,7 +14,7 @@ core = vs.core
 
 
 def nnedi3cl_double(clip: vs.VideoNode,
-                    scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Bicubic(),
+                    scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom(),
                     correct_shift: bool = True, use_znedi: bool = False, **nnedi3_args) -> vs.VideoNode:
     """Double the clip using nnedi3 for even frames and nnedi3cl for odd frames
        Intended to speed up encoding speed without hogging the GPU either.
@@ -54,7 +54,7 @@ def nnedi3cl_double(clip: vs.VideoNode,
     return scaler.scale(clip, clip.width, clip.height, shift=(.5, .5)) if correct_shift else clip
 
 
-def nnedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Bicubic(),
+def nnedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom(),
                    correct_shift: bool = True, use_znedi: bool = False, **nnedi3_args) -> vs.VideoNode:
     """Classic based nnedi3 upscale.
 
@@ -86,7 +86,7 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.
     return scaler.scale(clip, clip.width, clip.height, shift=(.5, .5)) if correct_shift else clip
 
 
-def eedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Bicubic(),
+def eedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom(),
                   correct_shift: bool = True,
                   nnedi3_args: Optional[Dict[str, Any]] = None, eedi3_args: Optional[Dict[str, Any]] = None) -> vs.VideoNode:
     """Upscale function using the power of eedi3 and nnedi3.
@@ -256,7 +256,8 @@ def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, s
 def to_444(clip: vs.VideoNode,
            width: int = None, height: int = None,
            join_planes: bool = True, znedi: bool = True,
-           scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Bicubic()) -> Union[vs.VideoNode, List[vs.VideoNode]]:
+           scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom()
+           ) -> Union[vs.VideoNode, List[vs.VideoNode]]:
     """Zastin’s nnedi3 chroma upscaler.
        Modified by Vardë.
 
