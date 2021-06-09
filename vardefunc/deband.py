@@ -74,7 +74,7 @@ class F3kdb:
         self._step = 16 if sample_mode == 2 else 32
 
         self.f3kdb_args = dict(keep_tv_range=True, output_depth=16)
-        self.f3kdb_args.update(kwargs)
+        self.f3kdb_args |= kwargs
 
 
     def deband(self, clip: vs.VideoNode) -> vs.VideoNode:

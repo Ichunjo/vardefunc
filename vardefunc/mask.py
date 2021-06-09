@@ -572,7 +572,7 @@ class Difference():
 
         if prefilter:
             bilargs: Dict[str, Any] = dict(sigmaS=((5 ** 2 - 1) / 12) ** 0.5, sigmaR=0.5)
-            bilargs.update(bilateral_args)
+            bilargs |= bilateral_args
             clips = [c.bilateral.Bilateral(**bilargs) for c in clips]
 
 
@@ -620,7 +620,7 @@ class Difference():
             vs.VideoNode: Mask.
         """
         args: Dict[str, Any] = dict(thr=25, expand=4, prefilter=False)
-        args.update(creditless_args)
+        args |= creditless_args
 
         if None not in {opstart, opend, edstart, edend}:
             mask = core.std.Expr((self.creditless(ep, ep[opstart:opend+1], ncop[:opend-opstart+1], opstart, **args),  # type: ignore

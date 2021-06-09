@@ -35,7 +35,7 @@ def nnedi3cl_double(clip: vs.VideoNode,
         vs.VideoNode: Doubled clip.
     """
     nnargs: Dict[str, Any] = dict(nsize=4, nns=4, qual=2, pscrn=2)
-    nnargs.update(nnedi3_args)
+    nnargs |= nnedi3_args
 
     def _nnedi3(clip: vs.VideoNode) -> vs.VideoNode:
         if use_znedi:
@@ -73,8 +73,8 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.
     Returns:
         vs.VideoNode: Doubled clip.
     """
-    nnargs: Dict[str, Any] = dict(nsize=4, nns=4, qual=2, pscrn=2)
-    nnargs.update(nnedi3_args)
+    nnargs: Dict[str, Any] = dict(nsize=4, nns=4, qual=2)
+    nnargs |= nnedi3_args
 
     if use_znedi:
         clip = clip.std.Transpose().znedi3.nnedi3(0, True, **nnargs) \
@@ -113,11 +113,11 @@ def eedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.k
     """
     nnargs: Dict[str, Any] = dict(nsize=4, nns=4, qual=2, etype=1, pscrn=1)
     if nnedi3_args:
-        nnargs.update(nnedi3_args)
+        nnargs |= nnedi3_args
 
     eeargs: Dict[str, Any] = dict(alpha=0.2, beta=0.8, gamma=1000, nrad=1, mdis=15)
     if eedi3_args:
-        eeargs.update(eedi3_args)
+        eeargs |= eedi3_args
 
     clip = clip.std.Transpose()
     clip = clip.eedi3m.EEDI3(0, True, sclip=clip.nnedi3.nnedi3(0, True, **nnargs), **eeargs)
