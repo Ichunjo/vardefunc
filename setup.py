@@ -8,7 +8,7 @@ with open("requirements.txt") as fh:
     install_requires = fh.read()
 
 NAME = "vardefunc"
-VERSION = "1.1.6"
+VERSION = "0.2.6"
 
 setup(
     name=NAME,
@@ -21,10 +21,9 @@ setup(
     url="https://github.com/Ichunjo/vardefunc",
     packages=["vardefunc"],
     install_requires=install_requires,
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     zip_safe=False,
     classifiers=[
-        "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
