@@ -482,11 +482,8 @@ class Difference():
             thr (Union[int, float], optional):
                 Binarization threshold. Defaults to 55.
 
-            sw (int, optional):
-                Growing/shrinking shape width. 0 is allowed. Defaults to 2.
-
-            sh (int, optional):
-                Growing/shrinking shape height. 0 is allowed. Defaults to 2.
+            expand (int, optional):
+                Growing/shrinking shape. 0 is allowed. Defaults to 2.
 
         Returns:
             vs.VideoNode: Rescaled mask.
@@ -540,11 +537,8 @@ class Difference():
             thr (int): Binarize threshold.
                 25 is a good starting value in 8 bit.
 
-            sw (int, optional): Growing/shrinking shape width.
-                0 is allowed. Defaults to 2.
-
-            sh (int, optional): Growing/shrinking shape height.
-                0 is allowed. Defaults to 2.
+            expand (int, optional):
+                Growing/shrinking shape. 0 is allowed. Defaults to 2.
 
             prefilter (bool, optional):
                 Blurs the credit_clip and nc_clip with Bilateral to avoid false posivive
