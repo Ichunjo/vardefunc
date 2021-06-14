@@ -1,0 +1,14 @@
+.vspreview
+.vscode/
+.mypy_cache/
+__pycache__
+
+
+build/
+dist/
+vardefunc.egg-info/
+
+test_files/
+upload_to_pip
+
+
