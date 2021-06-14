@@ -72,19 +72,8 @@ def max_expr(n: int) -> str:
 def pick_px_op(use_expr: bool,
                operations: Tuple[str, Union[Sequence[int], Sequence[float], int, float, Callable[..., Any]]]
                ):
-    """[summary]
-
-    Args:
-        use_expr (bool): [description]
-        operations (Tuple[str, Union[Sequence[int], Sequence[float], int, float, Callable[[], Any]]]): [description]
-
-    Raises:
-        ValueError: [description]
-        ValueError: [description]
-
-    Returns:
-        partial[vs.VideoNode]: [description]
-    """
+    """Pick either std.Lut or std.Expr
+       Returns partial[VideoNode]"""
     expr, lut = operations
     if use_expr:
         func = partial(core.std.Expr, expr=expr)
