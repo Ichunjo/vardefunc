@@ -10,7 +10,6 @@ core = vs.core
 
 class FormatError(Exception):
     """Raised when a format of VideoNode object is not allowed."""
-    pass  # noqa: PLW0107
 
 
 def copy_docstring_from(source: Callable[..., Any]) -> Callable[..., Any]:
@@ -56,7 +55,7 @@ def mae_expr(gray_only: bool = True) -> str:
     return 'x y - abs' if gray_only else 'x a - abs y b - abs max z c - abs max'
 
 
-def max_expr(n: int) -> str:  # noqa: PLC0103
+def max_expr(n: int) -> str:
     """Dynamic variable max string to be integrated in std.Expr.
 
     Args:

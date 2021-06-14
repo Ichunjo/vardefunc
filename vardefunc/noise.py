@@ -36,7 +36,6 @@ class Grainer(ABC):
         Returns:
             vs.VideoNode: Grained clip.
         """
-        pass  # noqa: PLW0107
 
 
 class AddGrain(Grainer):
@@ -186,7 +185,22 @@ class Graigasm():
 
         return out
 
-    def _get_mod(self, clip: vs.VideoNode) -> int:  # noqa: PLR0201
+    def _make_grained(self,
+                      clip: vs.VideoNode,
+                      strength: Tuple[float, float], size: float, sharp: float, grainer: Grainer,
+                      neutral: List[float], mod: int) -> vs.VideoNode:
+        ss_w = self._m__(round(clip.width / size), mod)
+        ss_h = self._m__(round(clip.height / size), mod)
+        b = sharp / -50 + 1
+        c = (1 - b) / 2
+
+        blank = core.std.BlankClip(clip, ss_w, ss_h, color=neutral)
+        grained = grainer.grain(blank, strength=strength).resize.Bicubic(clip.width, clip.height, filter_param_a=b, filter_param_b=c)
+
+        return clip.std.MakeDiff(grained)
+
+    @staticmethod
+    def _get_mod(clip: vs.VideoNode) -> int:
         ss_mod: Dict[Tuple[int, int], int] = {
             (0, 0): 1,
             (1, 1): 2,
@@ -201,12 +215,12 @@ class Graigasm():
         except KeyError as kerr:
             raise ValueError('Graigasm: Format unknown!') from kerr
 
-
-    def _make_mask(self, clip: vs.VideoNode,  # noqa: PLR0201
+    @staticmethod
+    def _make_mask(clip: vs.VideoNode,
                    thr: float, overflow: float, peak: float, *,
                    is_float: bool) -> vs.VideoNode:
 
-        def _func(x: float) -> int:  # noqa: PLC0103
+        def _func(x: float) -> int:
             min_thr = thr - (overflow * peak) / 2
             max_thr = thr + (overflow * peak) / 2
             if min_thr <= x <= max_thr:
@@ -228,27 +242,13 @@ class Graigasm():
 
         return pick_px_op(is_float, (expr, _func))(clip)
 
-    def _make_grained(self,
-                      clip: vs.VideoNode,
-                      strength: Tuple[float, float], size: float, sharp: float, grainer: Grainer,
-                      neutral: List[float], mod: int) -> vs.VideoNode:
-        ss_w = self._m__(round(clip.width / size), mod)
-        ss_h = self._m__(round(clip.height / size), mod)
-        b = sharp / -50 + 1  # noqa: PLC0103
-        c = (1 - b) / 2  # noqa: PLC0103
-
-        blank = core.std.BlankClip(clip, ss_w, ss_h, color=neutral)
-        grained = grainer.grain(blank, strength=strength).resize.Bicubic(clip.width, clip.height, filter_param_a=b, filter_param_b=c)
-
-        return clip.std.MakeDiff(grained)
-
     @staticmethod
     def _m__(x: int, mod: int, /) -> int:
         return x - x % mod
 
 
 
-def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,  # noqa: PLC0103
+def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
            min_in: Union[int, float] = None, max_in: Union[int, float] = None, gamma: float = 1.0,
            protect_mask: vs.VideoNode = None, prefilter: bool = True,
            planes: List[int] = None, show_mask: bool = False) -> vs.VideoNode:
@@ -382,7 +382,7 @@ def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, origin
     avg_max = max(range_avg)
     avg_min = min(range_avg)
 
-    def _diff(n: int, f: vs.VideoFrame, avg_max: float, avg_min: float,  # noqa: PLW0613, PLC0103
+    def _diff(n: int, f: vs.VideoFrame, avg_max: float, avg_min: float,  # noqa: PLW0613
               new: vs.VideoNode, adapt: vs.VideoNode) -> vs.VideoNode:
         psa = cast(float, f.props['PlaneStatsAverage'])
         if psa > avg_max:

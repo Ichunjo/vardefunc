@@ -309,8 +309,8 @@ class FreyChen(EdgeDetect):
 
     @staticmethod
     def _get_expr() -> Optional[str]:
-        M = 'x x * y y * + z z * + a a * +'  # noqa: PLC0103
-        S = f'b b * c c * + d d * + e e * + f f * + {M} +'  # noqa: PLC0103
+        M = 'x x * y y * + z z * + a a * +'
+        S = f'b b * c c * + d d * + e e * + f f * + {M} +'
         return f'{M} {S} / sqrt'
 
     @staticmethod

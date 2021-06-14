@@ -127,7 +127,7 @@ def eedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.k
     return scaler.scale(clip, clip.width, clip.height, shift=(.5, .5)) if correct_shift else clip
 
 
-def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, shader_file: str = None,  # noqa: PLR0912
+def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, shader_file: str = None,
                     downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Bicubic,
                     upscaled_smooth: Optional[vs.VideoNode] = None,
                     strength: float = 100.0, profile: str = 'slow',

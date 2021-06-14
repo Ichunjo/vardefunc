@@ -137,7 +137,7 @@ class F3kdb:
         return self.deband(clip)
 
     @staticmethod
-    def _trf(n: int, f: List[vs.VideoFrame]) -> vs.VideoFrame:  # noqa: PLC0103, PLW0613
+    def _trf(n: int, f: List[vs.VideoFrame]) -> vs.VideoFrame:  # noqa: PLW0613
         # neo_f3kdb nukes frame props
         (fout := f[0].copy()).props.update(f[1].props)
         return fout
