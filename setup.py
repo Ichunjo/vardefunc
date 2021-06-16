@@ -20,6 +20,9 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/Ichunjo/vardefunc",
     packages=["vardefunc"],
+    package_data={
+        'vardefunc': ['py.typed'],
+    },
     install_requires=install_requires,
     python_requires=">=3.9",
     zip_safe=False,
