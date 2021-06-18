@@ -17,4 +17,4 @@ python -m pip install git+https://github.com/Ichunjo/vardefunc.git
 * Python 3.9 or newer
 * VapourSynth r51 or newer
 * vsutil 0.5.0 or newer
-* lvsfunc 0.3.4 or newer
+* lvsfunc 0.3.5 or newer
