@@ -175,11 +175,11 @@ def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, s
                      – (= 0): No limit.
                      – (= 1): Limit to over/undershoot.
 
-        overshoot (int):
+        overshoot (float):
             Only for profile='slow'.
             Limit for pixels that get brighter during upscaling.
 
-        undershoot (int):
+        undershoot (float):
             Only for profile='slow'.
             Limit for pixels that get darker during upscaling.
 
@@ -193,8 +193,7 @@ def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, s
     """
     bits = get_depth(clip)
 
-    clip = get_y(clip)
-    clip = depth(clip, 16)
+    clip = depth(get_y(clip), 16)
 
     if width is None:
         width = get_w(height, clip.width / clip.height)
@@ -215,7 +214,7 @@ def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, s
 
     if num >= 1:
         # old or slow profile
-        smooth = depth(get_y(upscaled_smooth), bits) if upscaled_smooth else nnedi3_upscale(clip)
+        smooth = depth(get_y(upscaled_smooth), 16) if upscaled_smooth else nnedi3_upscale(clip)
         if num == 1:
             # old profile
             limit = core.std.Expr([fsrcnnx, smooth], 'x y min')
@@ -230,8 +229,8 @@ def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, s
                 dark_limit = core.std.Minimum(smooth)
                 bright_limit = core.std.Maximum(smooth)
 
-                overshoot = scale_value(overshoot, 8, 16, range_in=Range.FULL, range=Range.FULL)
-                undershoot = scale_value(undershoot, 8, 16, range_in=Range.FULL, range=Range.FULL)
+                overshoot *= 2**8
+                undershoot *= 2**8
                 limit = core.std.Expr(
                     [upscaled, bright_limit, dark_limit],
                     f'x y {overshoot} + > y {overshoot} + x ? z {undershoot} - < z {undershoot} - x y {overshoot} + > y {overshoot} + x ? ?'
