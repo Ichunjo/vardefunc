@@ -248,7 +248,7 @@ def f3kbilateral(clip: vs.VideoNode, radius: int = 16,
     db3 = F3kdb(rad3, threshold, 0, **f3kdb_args)
 
     # Edit the thr of first f3kdb object
-    db1.thy, db1.thcb, db1.thcr = db1.thy // 2, db1.thcb // 2, db1.thcr // 2
+    db1.thy, db1.thcb, db1.thcr = [max(1, th // 2) for th in (db1.thy, db1.thcb, db1.thcr)]
 
 
     # Perform deband
