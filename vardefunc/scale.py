@@ -3,7 +3,7 @@ from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import lvsfunc
-from vsutil import Range, depth, get_depth, get_w, get_y, scale_value, split
+from vsutil import depth, get_depth, get_w, get_y, split
 
 import vapoursynth as vs
 
