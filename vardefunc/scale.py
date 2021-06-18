@@ -175,11 +175,11 @@ def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, s
                      – (= 0): No limit.
                      – (= 1): Limit to over/undershoot.
 
-        overshoot (int):
+        overshoot (float):
             Only for profile='slow'.
             Limit for pixels that get brighter during upscaling.
 
-        undershoot (int):
+        undershoot (float):
             Only for profile='slow'.
             Limit for pixels that get darker during upscaling.
 
