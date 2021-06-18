@@ -168,7 +168,10 @@ class Graigasm():
                 masks = [join([mask] * 3).resize.Bilinear(format=clip.format.id) for mask in masks]
 
         if show_masks:
-            return core.std.Interleave([core.text.FrameNum(mask, 9) for mask in masks])
+            return core.std.Interleave(
+                [mask.text.Text(f'Threshold: {thr}', 7).text.FrameNum(9)
+                 for thr, mask in zip(self.thrs, masks)]
+            )
 
 
         graineds = [self._make_grained(clip, strength, size, sharp, grainer, neutral, mod)
