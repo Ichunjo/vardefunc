@@ -193,8 +193,7 @@ def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, s
     """
     bits = get_depth(clip)
 
-    clip = get_y(clip)
-    clip = depth(clip, 16)
+    clip = depth(get_y(clip), 16)
 
     if width is None:
         width = get_w(height, clip.width / clip.height)
