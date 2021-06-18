@@ -230,8 +230,8 @@ def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, s
                 dark_limit = core.std.Minimum(smooth)
                 bright_limit = core.std.Maximum(smooth)
 
-                overshoot = scale_value(overshoot, 8, 16, range_in=Range.FULL, range=Range.FULL)
-                undershoot = scale_value(undershoot, 8, 16, range_in=Range.FULL, range=Range.FULL)
+                overshoot *= 2**8
+                undershoot *= 2**8
                 limit = core.std.Expr(
                     [upscaled, bright_limit, dark_limit],
                     f'x y {overshoot} + > y {overshoot} + x ? z {undershoot} - < z {undershoot} - x y {overshoot} + > y {overshoot} + x ? ?'
