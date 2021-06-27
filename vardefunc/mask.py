@@ -1,12 +1,13 @@
 """Wrappers and masks for denoising, debanding, rescaling etc."""
 import math
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import lvsfunc
 import vapoursynth as vs
 from vsutil import (Range, depth, get_depth, get_w, get_y, insert_clip,
-                    iterate, scale_value, split)
+                    iterate, join, scale_value, split)
 
 from .util import FormatError, get_sample_type, mae_expr, max_expr, pick_px_op
 
@@ -427,6 +428,64 @@ class ExKirsch(EdgeDetect):
     @staticmethod
     def _get_expr() -> Optional[str]:
         return max_expr(8)
+
+
+class MinMax(EdgeDetect):
+    """Min/max mask with separate luma/chroma radii."""
+    class Morpho(Enum):
+        MINIMUM = core.std.Minimum
+        MAXIMUM = core.std.Maximum
+
+        def __call__(self, *args: Any, **kwargs: Any) -> vs.VideoNode:
+            return cast(vs.VideoNode, self.value(*args, **kwargs))
+
+    radii: Tuple[int, int, int]
+
+    def __init__(self, rady: int = 2, radc: int = 0) -> None:
+        super().__init__()
+        self.radii = (rady, radc, radc)
+
+    def _compute_mask(self, clip: vs.VideoNode) -> vs.VideoNode:
+        assert clip.format
+        planes = [
+            core.std.Expr(
+                [self._minmax(p, rad, self.Morpho.MAXIMUM),
+                 self._minmax(p, rad, self.Morpho.MINIMUM)],
+                'x y -'
+            )
+            for p, rad in zip(split(clip), self.radii)
+        ]
+        return planes[0] if len(planes) == 1 else join(planes, clip.format.color_family)
+
+    @staticmethod
+    def _get_matrices() -> List[List[float]]:
+        return [[]]
+
+    @staticmethod
+    def _minmax(clip: vs.VideoNode, iterations: int, morpho: Morpho) -> vs.VideoNode:
+        for i in range(1, iterations + 1):
+            coord = [0, 1, 0, 1, 1, 0, 1, 0] if (i % 3) != 1 else [1] * 8
+            clip = morpho(clip, coordinates=coord)
+        return clip
+
+
+def detail_mask(clip: vs.VideoNode, brz_mm: float, brz_ed: float,
+                minmax: MinMax = MinMax(rady=3, radc=2),
+                edgedetect: EdgeDetect = Kirsch()) -> vs.VideoNode:
+    if clip.format is None:
+        raise ValueError("detail_mask: 'Variable-format clips not supported'")
+
+    range_mask = minmax.get_mask(clip).std.Binarize(brz_mm)
+    edges = edgedetect.get_mask(clip).std.Binarize(brz_ed)
+
+    mask = core.std.Expr((range_mask, edges), 'x y max')
+
+    removegrain = core.rgvs.RemoveGrain if clip.format.bits_per_sample < 32 else core.rgsf.RemoveGrain
+
+    mask = removegrain(mask, 22)
+    mask = removegrain(mask, 11)
+
+    return mask
 
 
 def get_all_edge_detects(clip: vs.VideoNode, **kwargs) -> List[vs.VideoNode]:
