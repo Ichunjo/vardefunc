@@ -1,8 +1,7 @@
 """Wrappers and masks for denoising, debanding, rescaling etc."""
 import math
 from abc import ABC, abstractmethod
-from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import lvsfunc
 import vapoursynth as vs
@@ -432,13 +431,6 @@ class ExKirsch(EdgeDetect):
 
 class MinMax(EdgeDetect):
     """Min/max mask with separate luma/chroma radii."""
-    class Morpho(Enum):
-        MINIMUM = core.std.Minimum
-        MAXIMUM = core.std.Maximum
-
-        def __call__(self, *args: Any, **kwargs: Any) -> vs.VideoNode:
-            return cast(vs.VideoNode, self.value(*args, **kwargs))
-
     radii: Tuple[int, int, int]
 
     def __init__(self, rady: int = 2, radc: int = 0) -> None:
@@ -449,8 +441,8 @@ class MinMax(EdgeDetect):
         assert clip.format
         planes = [
             core.std.Expr(
-                [self._minmax(p, rad, self.Morpho.MAXIMUM),
-                 self._minmax(p, rad, self.Morpho.MINIMUM)],
+                [self._minmax(p, rad, core.std.Maximum),
+                 self._minmax(p, rad, core.std.Minimum)],
                 'x y -'
             )
             for p, rad in zip(split(clip), self.radii)
@@ -462,7 +454,7 @@ class MinMax(EdgeDetect):
         return [[]]
 
     @staticmethod
-    def _minmax(clip: vs.VideoNode, iterations: int, morpho: Morpho) -> vs.VideoNode:
+    def _minmax(clip: vs.VideoNode, iterations: int, morpho: Callable[..., vs.VideoNode]) -> vs.VideoNode:
         for i in range(1, iterations + 1):
             coord = [0, 1, 0, 1, 1, 0, 1, 0] if (i % 3) != 1 else [1] * 8
             clip = morpho(clip, coordinates=coord)
