@@ -54,6 +54,27 @@ class Nnedi3SS(SuperSampler):
         return func
 
 
+@dataclass
+class Znedi3SS(SuperSampler):
+    nsize: int = 4
+    nns: int = 4
+    qual: int = 2
+
+    shifter: Kernel = Catrom()
+
+    nnedi3_args: Dict[str, Any] = field(default_factory=dict)
+
+    def do_ss(self) -> Callable[[vs.VideoNode, int, int], vs.VideoNode]:
+
+        def func(clip: vs.VideoNode, w: int, h: int) -> vs.VideoNode:
+            clip = clip.std.Transpose()
+            clip = core.znedi3.nnedi3(clip, 0, True, nsize=self.nsize, nns=self.nns, qual=self.qual, **self.nnedi3_args)
+            clip = clip.std.Transpose()
+            clip = core.znedi3.nnedi3(clip, 0, True, nsize=self.nsize, nns=self.nns, qual=self.qual, **self.nnedi3_args)
+            return self.shifter.scale(clip, w, h, shift=(.5, .5))
+
+        return func
+
 
 @dataclass
 class Eedi3SS(SuperSampler):
