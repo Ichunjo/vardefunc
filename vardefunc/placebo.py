@@ -60,7 +60,7 @@ def deband(clip: vs.VideoNode, radius: float = 16.0,
 
         for i, (thr, gra) in enumerate(zip(threshold, grain)):
             planes[i] = planes[i].placebo.Deband(1, iterations, thr, radius, gra, **kwargs)
-        clip = join(planes)
+        clip = join(planes, clip.format.color_family)
     else:
         clip = clip.placebo.Deband(1, iterations, threshold[0], radius, grain[0], **kwargs)
 
