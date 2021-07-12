@@ -69,6 +69,39 @@ def max_expr(n: int) -> str:
     ) + ' max'
 
 
+def normalise_ranges(clip: vs.VideoNode, ranges: Union[Range, List[Range]]) -> List[Tuple[int, int]]:
+    """Normalise `Range` to a list of an inclusive/exclusive couple positive integer ranges.
+
+    Args:
+        clip (vs.VideoNode):
+            Reference clip used for length.
+
+        ranges (Union[Range, List[Range]]):
+            Single `Range` or list of `Range`.
+
+    Returns:
+        List[Tuple[int, int]]: List of inclusive/exclusive ranges.
+    """
+    ranges = ranges if isinstance(ranges, list) else [ranges]
+
+    out: List[Tuple[int, int]] = []
+    for r in ranges:
+        if isinstance(r, tuple):
+            start, end = r
+            if start is None:
+                start = 0
+            if end is None:
+                end = clip.num_frames
+        else:
+            start = r
+            end = r + 1
+        if start < 0:
+            start += clip.num_frames
+        if end <= 0:
+            end += clip.num_frames
+        out.append((start, end))
+
+    return out
 def pick_px_op(use_expr: bool,
                operations: Tuple[str, Union[Sequence[int], Sequence[float], int, float, Callable[..., Any]]]
                ):
