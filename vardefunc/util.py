@@ -102,6 +102,26 @@ def normalise_ranges(clip: vs.VideoNode, ranges: Union[Range, List[Range]]) -> L
         out.append((start, end))
 
     return out
+
+
+def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode,
+                   ranges: Union[Range, List[Range]], *, mismatch: bool = False) -> vs.VideoNode:
+    """Modified version of lvsfunc.util.replace_ranges following python slicing syntax"""
+    out = clip_a
+
+    nranges = normalise_ranges(clip_b, ranges)
+
+    for start, end in nranges:
+        tmp = clip_b[start:end]
+        if start != 0:
+            tmp = core.std.Splice([out[:start], tmp], mismatch=mismatch)
+        if end < out.num_frames:
+            tmp = core.std.Splice([tmp, out[end:]], mismatch=mismatch)
+        out = tmp
+
+    return out
+
+
 def pick_px_op(use_expr: bool,
                operations: Tuple[str, Union[Sequence[int], Sequence[float], int, float, Callable[..., Any]]]
                ):
