@@ -1,9 +1,12 @@
 """Helper functions for the main functions in this module"""
 from functools import partial, wraps
+from string import ascii_lowercase
 from typing import Any, Callable, List, Sequence, Tuple, Union
 
-from string import ascii_lowercase
 import vapoursynth as vs
+
+from .types import FrameNumber as FN
+from .types import Range, Trim
 
 core = vs.core
 
@@ -120,6 +123,19 @@ def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode,
         out = tmp
 
     return out
+
+
+def adjust_clip_frames(clip: vs.VideoNode, trims_or_fns: List[Union[Trim, FN]]) -> vs.VideoNode:
+    """Trims and/or duplicates frames"""
+    clips: List[vs.VideoNode] = []
+    for trim_or_fn in trims_or_fns:
+        if isinstance(trim_or_fn, tuple):
+            start, end = normalise_ranges(clip, trim_or_fn)[0]
+            clips.append(clip[start:end])
+        else:
+            fn = trim_or_fn
+            clips.append(clip[fn] * fn.dup)
+    return core.std.Splice(clips)
 
 
 def pick_px_op(use_expr: bool,
