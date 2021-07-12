@@ -125,11 +125,11 @@ class Eedi3SR(SingleRater):
     eedi3cl: bool = False
     nnedi3cl: bool = False
 
-    alpha: float = 0.2
-    beta: float = 0.8
-    gamma: float = 1000
-    nrad: int = 1
-    mdis: int = 15
+    alpha: float = 0.25
+    beta: float = 0.5
+    gamma: float = 40
+    nrad: int = 2
+    mdis: int = 20
 
     eedi3_args: Dict[str, Any] = field(default_factory=dict)
     nnedi3_args: Dict[str, Any] = field(default_factory=dict)
