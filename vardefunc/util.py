@@ -72,6 +72,31 @@ def max_expr(n: int) -> str:
     ) + ' max'
 
 
+def _select_frames(clips: Union[vs.VideoNode, Sequence[vs.VideoNode]],
+                   indicies: Union[Sequence[int], Sequence[Tuple[int, int]]], *, mismatch: bool = False) -> vs.VideoNode:
+    clips = [clips] if isinstance(clips, vs.VideoNode) else list(clips)
+    indicies = [(0, index) if isinstance(index, int) else index for index in indicies]
+
+
+    def select_frames_func(n: int, f: vs.VideoFrame, indicies: List[Tuple[int, int]]) -> vs.VideoFrame:
+        return clips[indicies[n][0]].get_frame(indicies[n][1])
+
+    placeholder = clips[0]
+    if (length := len(indicies)) != placeholder.num_frames:
+        placeholder = placeholder.std.BlankClip(length=length)
+    if mismatch:
+        if not placeholder.format or placeholder.format != vs.GRAY8:
+            ph_format = vs.GRAY8
+        else:
+            ph_format = vs.GRAY16
+        placeholder = core.std.Splice(
+            [placeholder[:-1], placeholder.std.BlankClip(format=ph_format, length=1)],
+            mismatch=True
+        )
+
+    return core.std.ModifyFrame(placeholder, placeholder, partial(select_frames_func, indicies=indicies))
+
+
 def normalise_ranges(clip: vs.VideoNode, ranges: Union[Range, List[Range], Trim, List[Trim]]) -> List[Tuple[int, int]]:
     """Modified version of lvsfunc.util.normalize_ranges following python slicing syntax"""
     ranges = ranges if isinstance(ranges, list) else [ranges]
@@ -99,19 +124,20 @@ def normalise_ranges(clip: vs.VideoNode, ranges: Union[Range, List[Range], Trim,
 def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode,
                    ranges: Union[Range, List[Range]], *, mismatch: bool = False) -> vs.VideoNode:
     """Modified version of lvsfunc.util.replace_ranges following python slicing syntax"""
-    out = clip_a
+    out_indicies = list(zip([0] * clip_a.num_frames, range(clip_a.num_frames)))
+    clip_b_indices = list(zip([1] * clip_b.num_frames, range(clip_b.num_frames)))
 
     nranges = normalise_ranges(clip_b, ranges)
 
     for start, end in nranges:
-        tmp = clip_b[start:end]
+        tmp = clip_b_indices[start:end]
         if start != 0:
-            tmp = core.std.Splice([out[:start], tmp], mismatch=mismatch)
-        if end < out.num_frames:
-            tmp = core.std.Splice([tmp, out[end:]], mismatch=mismatch)
-        out = tmp
+            tmp = out_indicies[:start] + tmp
+        if end < len(out_indicies):
+            tmp = tmp + out_indicies[end:]
+        out_indicies = tmp
 
-    return out
+    return _select_frames([clip_a, clip_b], out_indicies, mismatch=mismatch)
 
 
 def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: List[Union[Trim, DF]]) -> vs.VideoNode:
