@@ -124,9 +124,6 @@ class F3kdb:
 
             deband = core.std.Merge(lo_clip, hi_clip, weight)
 
-        if self.use_neo:
-            deband = core.std.ModifyFrame(deband, [deband, clip], selector=self._trf)
-
         return deband
 
     def grain(self, clip: vs.VideoNode) -> vs.VideoNode:
@@ -140,12 +137,6 @@ class F3kdb:
         """
         self.thy, self.thcr, self.thcb = (1, ) * 3
         return self.deband(clip)
-
-    @staticmethod
-    def _trf(n: int, f: List[vs.VideoFrame]) -> vs.VideoFrame:
-        # neo_f3kdb nukes frame props
-        (fout := f[0].copy()).props.update(f[1].props)
-        return fout
 
     @staticmethod
     def _pick_f3kdb(neo: bool, *args: Any, **kwargs: Any) -> vs.VideoNode:
