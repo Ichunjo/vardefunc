@@ -74,11 +74,8 @@ class F3kdb:
         if sample_mode > 2 and not use_neo:
             raise ValueError('F3kdb: f3kdb.Deband doesn\'t support SampleMode.ROW or SampleMode.COL_ROW_MEAN')
 
-        if sample_mode <= 2 or not use_neo:
-            self.sample_mode = sample_mode
-            self.use_neo = use_neo
-        else:
-            raise ValueError('F3kdb: neo_f3kd is leaking memory, don\'t use it')
+        self.sample_mode = sample_mode
+        self.use_neo = use_neo
 
         self._step = 16 if sample_mode == 2 else 32
 
