@@ -14,6 +14,12 @@ class DuplicateFrame(int):
         fn.dup = dup
         return fn
 
+    def __repr__(self) -> str:
+        return f'<DuplicateFrame object: \'x:{super().__repr__()}, dup:{self.dup}\'>'
+
+    def __str__(self) -> str:
+        return f'{super().__str__()} * {self.dup}'
+
     def __add__(self, x: int) -> DuplicateFrame:
         return DuplicateFrame(self, dup=self.dup + x)
 
