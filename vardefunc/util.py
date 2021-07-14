@@ -73,18 +73,7 @@ def max_expr(n: int) -> str:
 
 
 def normalise_ranges(clip: vs.VideoNode, ranges: Union[Range, List[Range]]) -> List[Tuple[int, int]]:
-    """Normalise `Range` to a list of an inclusive/exclusive couple positive integer ranges.
-
-    Args:
-        clip (vs.VideoNode):
-            Reference clip used for length.
-
-        ranges (Union[Range, List[Range]]):
-            Single `Range` or list of `Range`.
-
-    Returns:
-        List[Tuple[int, int]]: List of inclusive/exclusive ranges.
-    """
+    """Modified version of lvsfunc.util.normalize_ranges following python slicing syntax"""
     ranges = ranges if isinstance(ranges, list) else [ranges]
 
     out: List[Tuple[int, int]] = []
