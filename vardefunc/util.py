@@ -5,7 +5,7 @@ from typing import Any, Callable, List, Sequence, Tuple, Union
 
 import vapoursynth as vs
 
-from .types import FrameNumber as FN
+from .types import DuplicateFrame as DF
 from .types import Range, Trim
 
 core = vs.core
@@ -125,16 +125,16 @@ def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode,
     return out
 
 
-def adjust_clip_frames(clip: vs.VideoNode, trims_or_fns: List[Union[Trim, FN]]) -> vs.VideoNode:
+def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: List[Union[Trim, DF]]) -> vs.VideoNode:
     """Trims and/or duplicates frames"""
     clips: List[vs.VideoNode] = []
-    for trim_or_fn in trims_or_fns:
-        if isinstance(trim_or_fn, tuple):
-            start, end = normalise_ranges(clip, trim_or_fn)[0]
+    for trim_or_df in trims_or_dfs:
+        if isinstance(trim_or_df, tuple):
+            start, end = normalise_ranges(clip, trim_or_df)[0]
             clips.append(clip[start:end])
         else:
-            fn = trim_or_fn
-            clips.append(clip[fn] * fn.dup)
+            df = trim_or_df
+            clips.append(clip[df] * df.dup)
     return core.std.Splice(clips)
 
 
