@@ -13,3 +13,15 @@ class DuplicateFrame(int):
         fn = super().__new__(cls, x)
         fn.dup = dup
         return fn
+
+    def __add__(self, x: int) -> DuplicateFrame:
+        return DuplicateFrame(self, dup=self.dup + x)
+
+    def __sub__(self, x: int) -> DuplicateFrame:
+        return DuplicateFrame(self, dup=self.dup - x)
+
+    def __mul__(self, x: int) -> DuplicateFrame:
+        return DuplicateFrame(self, dup=self.dup * x)
+
+    def __floordiv__(self, x: int) -> DuplicateFrame:
+        return DuplicateFrame(self, dup=self.dup // x)
