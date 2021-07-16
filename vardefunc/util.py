@@ -72,7 +72,7 @@ def max_expr(n: int) -> str:
     ) + ' max'
 
 
-def normalise_ranges(clip: vs.VideoNode, ranges: Union[Range, List[Range]]) -> List[Tuple[int, int]]:
+def normalise_ranges(clip: vs.VideoNode, ranges: Union[Range, List[Range], Trim, List[Trim]]) -> List[Tuple[int, int]]:
     """Modified version of lvsfunc.util.normalize_ranges following python slicing syntax"""
     ranges = ranges if isinstance(ranges, list) else [ranges]
 
