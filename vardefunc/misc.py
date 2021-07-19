@@ -1,13 +1,122 @@
 """Miscellaneous functions and wrappers that didn't really have a place in any other submodules."""
 import math
+import warnings
 from functools import partial
-from typing import Tuple, Union
-
-from vsutil import get_w, insert_clip
+from typing import Iterable, List, Optional, Tuple, Union, overload
 
 import vapoursynth as vs
+from lvsfunc.comparison import Stack
+from vsutil import get_w, insert_clip
 
 core = vs.core
+
+
+OutputClip = Union[
+    vs.VideoNode,
+    List[vs.VideoNode],
+    Tuple[int, vs.VideoNode],
+    Tuple[int, List[vs.VideoNode]]
+]
+
+
+class DebugOutput:
+    """Utility class to ouput multiple clips"""
+    @overload
+    def __init__(self, *clips: OutputClip) -> None:
+        ...
+
+    @overload
+    def __init__(self, *clips: OutputClip, clear_outputs: bool = False) -> None:
+        ...
+
+    @overload
+    def __init__(self, *clips: OutputClip, clear_outputs: bool = False, **named_clips: OutputClip) -> None:
+        ...
+
+    def __init__(self, *clips: OutputClip, clear_outputs: bool = False, **named_clips: OutputClip) -> None:
+        """
+        Utility class to ouput multiple clips.
+        Either `clips` or `named_clips` can be a VideoNode, a list of planes,
+        a tuple of an index and VideoNode or a tuple of an index and a list of planes.
+
+        If a list of planes is passed, DebugOutput will try to stack the planes for previewing.
+        Only 444 and 420 format are allowed. Otherwise a warning will be raise and a garbage clip will be displayed.
+
+        Args:
+            clips (vs.VideoNode | List[vs.VideoNode] | Tuple[int, vs.VideoNode] | Tuple[int, List[vs.VideoNode]]):
+                Output clips.
+
+            named_clips (Dict[str, vs.VideoNode | List[vs.VideoNode] | Tuple[int, vs.VideoNode] | Tuple[int, List[vs.VideoNode]]]):
+                Keyword arguments for all output clips.
+
+            clear_outputs (bool, optional):
+                Clears all clips set for output in the current environment.
+                Defaults to False.
+        """
+
+        rclips = [
+            self._resolve_clips(i, clip) for i, clip in enumerate(clips)
+        ]
+        rclips += [
+            self._resolve_clips(i, clip, name)
+            for i, (name, clip) in enumerate(named_clips.items(), start=len(rclips))
+        ]
+
+        if len(all_idx := [idx for idx, _ in rclips]) != len(set(all_idx)):
+            raise ValueError('DebugOutput: there are shared indexes!')
+
+        if clear_outputs:
+            vs.clear_outputs()
+        else:
+            self._check_curr_env(all_idx)
+
+        for idx, clip in rclips:
+            clip.set_output(idx)
+
+    def _resolve_clips(self, i: int, clip: OutputClip, name: Optional[str] = None) -> Tuple[int, vs.VideoNode]:
+        if isinstance(clip, vs.VideoNode):
+            out = (i, clip)
+        elif isinstance(clip, list):
+            out = (i, self._stack_planes(clip))
+        else:
+            idx, clp = clip
+            if isinstance(clp, list):
+                out = (idx, self._stack_planes(clp))
+            else:
+                out = (idx, clp)
+
+        if name:
+            idx, c = out
+            out = idx, c.text.Text(name)
+
+        return out
+
+    @staticmethod
+    def _stack_planes(planes: List[vs.VideoNode]) -> vs.VideoNode:
+        if len(planes) > 3:
+            warnings.warn('DebugOutput: output list out of range', Warning)
+            out = core.std.BlankClip(
+                format=vs.GRAY8, color=128
+            ).text.Text('Problematic output: \noutput list out of range', 5, 2)
+        else:
+            ws, hs = {c.width for c in planes}, {c.height for c in planes}
+            if len(ws) == len(hs) == 1:
+                out = Stack(planes).clip
+            else:
+                try:
+                    out = Stack([planes[0], Stack(planes[1:]).clip]).clip
+                finally:
+                    warnings.warn('DebugOutput: unexpected subsampling')
+                    out = core.std.BlankClip(
+                        format=vs.GRAY8, color=128
+                    ).text.Text('Problematic output: \nunexpected subsampling', 5, 2)
+        return out
+
+    @staticmethod
+    def _check_curr_env(idx: Iterable[int]) -> None:
+        for i in idx:
+            if i in vs.get_outputs().keys():
+                raise ValueError(f'DebugOutput: index {i} is already used in current environment!')
 
 
 def fade_filter(clip: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode,
