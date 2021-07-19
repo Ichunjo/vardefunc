@@ -2,7 +2,7 @@
 import math
 import warnings
 from functools import partial
-from typing import Iterable, List, Optional, Tuple, Union, overload
+from typing import Iterable, Iterator, List, Optional, Tuple, Union, overload
 
 import vapoursynth as vs
 from lvsfunc.comparison import Stack
@@ -25,48 +25,86 @@ class DebugOutput:
 
     @overload
     def __init__(self, *clips: OutputClip) -> None:
+        """
+        Args:
+            clips (vs.VideoNode | List[vs.VideoNode] | Tuple[int, vs.VideoNode] | Tuple[int, List[vs.VideoNode]]):
+                `clips` can be a VideoNode, a list of planes,
+                a tuple of an index and VideoNode or a tuple of an index and a list of planes.
+                If a list of planes is passed, DebugOutput will try to stack the planes for previewing.
+                Only 444 and 420 format are allowed. Otherwise a warning will be raise and a garbage clip will be displayed.
+        """
         ...
 
     @overload
     def __init__(self, *clips: OutputClip, props: int = 0) -> None:
+        """
+        Args:
+            clips (vs.VideoNode | List[vs.VideoNode] | Tuple[int, vs.VideoNode] | Tuple[int, List[vs.VideoNode]]):
+                `clips` can be a VideoNode, a list of planes,
+                a tuple of an index and VideoNode or a tuple of an index and a list of planes.
+                If a list of planes is passed, DebugOutput will try to stack the planes for previewing.
+                Only 444 and 420 format are allowed. Otherwise a warning will be raise and a garbage clip will be displayed.
+
+            props (int, optional):
+                Location of the displayed FrameProps. 0 means no display.
+                Defaults to 0.
+        """
         ...
 
     @overload
     def __init__(self, *clips: OutputClip, props: int = 0, num: int = 0) -> None:
+        """
+        Args:
+            clips (vs.VideoNode | List[vs.VideoNode] | Tuple[int, vs.VideoNode] | Tuple[int, List[vs.VideoNode]]):
+                `clips` can be a VideoNode, a list of planes,
+                a tuple of an index and VideoNode or a tuple of an index and a list of planes.
+                If a list of planes is passed, DebugOutput will try to stack the planes for previewing.
+                Only 444 and 420 format are allowed. Otherwise a warning will be raise and a garbage clip will be displayed.
+
+            props (int, optional):
+                Location of the displayed FrameProps. 0 means no display.
+                Defaults to 0.
+
+            num (int, optional):
+                Location of the displayed FrameNum. 0 means no display.
+                Defaults to 0.
+        """
         ...
 
     @overload
     def __init__(self, *clips: OutputClip, props: int = 0, num: int = 0, scale: int = 1) -> None:
+        """
+        Args:
+            clips (vs.VideoNode | List[vs.VideoNode] | Tuple[int, vs.VideoNode] | Tuple[int, List[vs.VideoNode]]):
+                `clips` can be a VideoNode, a list of planes,
+                a tuple of an index and VideoNode or a tuple of an index and a list of planes.
+                If a list of planes is passed, DebugOutput will try to stack the planes for previewing.
+                Only 444 and 420 format are allowed. Otherwise a warning will be raise and a garbage clip will be displayed.
+
+            props (int, optional):
+                Location of the displayed FrameProps. 0 means no display.
+                Defaults to 0.
+
+            num (int, optional):
+                Location of the displayed FrameNum. 0 means no display.
+                Defaults to 0.
+
+            scale (int, optional):
+                Global integer scaling factor for the bitmap font.
+                Defaults to 1.
+        """
         ...
 
     @overload
     def __init__(self, *clips: OutputClip, props: int = 0, num: int = 0, scale: int = 1,
                  clear_outputs: bool = False) -> None:
-        ...
-
-    @overload
-    def __init__(self, *clips: OutputClip, props: int = 0, num: int = 0, scale: int = 1,
-                 clear_outputs: bool = False, **named_clips: OutputClip) -> None:
-        ...
-
-    def __init__(self, *clips: OutputClip, props: int = 0, num: int = 0, scale: int = 1,
-                 clear_outputs: bool = False, **named_clips: OutputClip) -> None:
         """
-        Utility class to ouput multiple clips.
-        Either `clips` or `named_clips` can be a VideoNode, a list of planes,
-        a tuple of an index and VideoNode or a tuple of an index and a list of planes.
-
-        If a list of planes is passed, DebugOutput will try to stack the planes for previewing.
-        Only 444 and 420 format are allowed. Otherwise a warning will be raise and a garbage clip will be displayed.
-
-        Location of named_clips's names are hardcoded to 8.
-
         Args:
             clips (vs.VideoNode | List[vs.VideoNode] | Tuple[int, vs.VideoNode] | Tuple[int, List[vs.VideoNode]]):
-                Output clips.
-
-            named_clips (Dict[str, vs.VideoNode | List[vs.VideoNode] | Tuple[int, vs.VideoNode] | Tuple[int, List[vs.VideoNode]]]):
-                Keyword arguments for all output clips.
+                `clips` can be a VideoNode, a list of planes,
+                a tuple of an index and VideoNode or a tuple of an index and a list of planes.
+                If a list of planes is passed, DebugOutput will try to stack the planes for previewing.
+                Only 444 and 420 format are allowed. Otherwise a warning will be raise and a garbage clip will be displayed.
 
             props (int, optional):
                 Location of the displayed FrameProps. 0 means no display.
@@ -84,6 +122,43 @@ class DebugOutput:
                 Clears all clips set for output in the current environment.
                 Defaults to False.
         """
+        ...
+
+    @overload
+    def __init__(self, *clips: OutputClip, props: int = 0, num: int = 0, scale: int = 1,
+                 clear_outputs: bool = False, **named_clips: OutputClip) -> None:
+        """
+        Args:
+            clips (vs.VideoNode | List[vs.VideoNode] | Tuple[int, vs.VideoNode] | Tuple[int, List[vs.VideoNode]]):
+                `clips` can be a VideoNode, a list of planes,
+                a tuple of an index and VideoNode or a tuple of an index and a list of planes.
+                If a list of planes is passed, DebugOutput will try to stack the planes for previewing.
+                Only 444 and 420 format are allowed. Otherwise a warning will be raise and a garbage clip will be displayed.
+
+            named_clips (Dict[str, vs.VideoNode | List[vs.VideoNode] | Tuple[int, vs.VideoNode] | Tuple[int, List[vs.VideoNode]]]):
+                Same as clips except it's Keyword arguments.
+                Location of named_clips's names are hardcoded to 8.
+
+            props (int, optional):
+                Location of the displayed FrameProps. 0 means no display.
+                Defaults to 0.
+
+            num (int, optional):
+                Location of the displayed FrameNum. 0 means no display.
+                Defaults to 0.
+
+            scale (int, optional):
+                Global integer scaling factor for the bitmap font.
+                Defaults to 1.
+
+            clear_outputs (bool, optional):
+                Clears all clips set for output in the current environment.
+                Defaults to False.
+        """
+        ...
+
+    def __init__(self, *clips: OutputClip, props: int = 0, num: int = 0, scale: int = 1,
+                 clear_outputs: bool = False, **named_clips: OutputClip) -> None:
         self.scale = scale
 
         rclips = [
@@ -108,6 +183,40 @@ class DebugOutput:
             if num:
                 clip = clip.text.FrameNum(num, self.scale)
             clip.set_output(idx)
+
+    def __len__(self) -> int:
+        return len(vs.get_outputs())
+
+    def __repr__(self) -> str:
+        return str(vs.get_outputs())
+
+    def __getitem__(self, index: int) -> Union[vs.VideoNode, vs.AlphaOutputTuple]:
+        return vs.get_output(index)
+
+    def __setitem__(self, index: int, clip: vs.VideoNode) -> None:
+        clip.set_output(index)
+
+    def __delitem__(self, index: int) -> None:
+        vs.clear_output(index)
+
+    def __iter__(self) -> Iterator[Tuple[int, Union[vs.VideoNode, vs.AlphaOutputTuple]]]:
+        for i, c in vs.get_outputs().items():
+            yield i, c
+
+    @overload
+    def clear(self) -> None:
+        ...
+
+    @overload
+    def clear(self, index: Optional[int] = None) -> None:
+        ...
+
+    def clear(self, index: Optional[int] = None) -> None:
+        """Clear output at specified index or all indexes if None"""
+        if index is not None:
+            del self[index]
+        else:
+            vs.clear_outputs()
 
     def _resolve_clips(self, i: int, clip: OutputClip, name: Optional[str]) -> Tuple[int, vs.VideoNode]:
         if isinstance(clip, vs.VideoNode):
@@ -141,7 +250,7 @@ class DebugOutput:
             else:
                 try:
                     out = Stack([planes[0], Stack(planes[1:]).clip]).clip
-                finally:
+                except ValueError:
                     warnings.warn('DebugOutput: unexpected subsampling')
                     out = core.std.BlankClip(
                         format=vs.GRAY8, color=128
