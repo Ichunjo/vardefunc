@@ -21,19 +21,36 @@ OutputClip = Union[
 
 class DebugOutput:
     """Utility class to ouput multiple clips"""
+    scale: int
+
     @overload
     def __init__(self, *clips: OutputClip) -> None:
         ...
 
     @overload
-    def __init__(self, *clips: OutputClip, clear_outputs: bool = False) -> None:
+    def __init__(self, *clips: OutputClip, props: int = 0) -> None:
         ...
 
     @overload
-    def __init__(self, *clips: OutputClip, clear_outputs: bool = False, **named_clips: OutputClip) -> None:
+    def __init__(self, *clips: OutputClip, props: int = 0, num: int = 0) -> None:
         ...
 
-    def __init__(self, *clips: OutputClip, clear_outputs: bool = False, **named_clips: OutputClip) -> None:
+    @overload
+    def __init__(self, *clips: OutputClip, props: int = 0, num: int = 0, scale: int = 1) -> None:
+        ...
+
+    @overload
+    def __init__(self, *clips: OutputClip, props: int = 0, num: int = 0, scale: int = 1,
+                 clear_outputs: bool = False) -> None:
+        ...
+
+    @overload
+    def __init__(self, *clips: OutputClip, props: int = 0, num: int = 0, scale: int = 1,
+                 clear_outputs: bool = False, **named_clips: OutputClip) -> None:
+        ...
+
+    def __init__(self, *clips: OutputClip, props: int = 0, num: int = 0, scale: int = 1,
+                 clear_outputs: bool = False, **named_clips: OutputClip) -> None:
         """
         Utility class to ouput multiple clips.
         Either `clips` or `named_clips` can be a VideoNode, a list of planes,
@@ -42,6 +59,8 @@ class DebugOutput:
         If a list of planes is passed, DebugOutput will try to stack the planes for previewing.
         Only 444 and 420 format are allowed. Otherwise a warning will be raise and a garbage clip will be displayed.
 
+        Location of named_clips's names are hardcoded to 8.
+
         Args:
             clips (vs.VideoNode | List[vs.VideoNode] | Tuple[int, vs.VideoNode] | Tuple[int, List[vs.VideoNode]]):
                 Output clips.
@@ -49,13 +68,26 @@ class DebugOutput:
             named_clips (Dict[str, vs.VideoNode | List[vs.VideoNode] | Tuple[int, vs.VideoNode] | Tuple[int, List[vs.VideoNode]]]):
                 Keyword arguments for all output clips.
 
+            props (int, optional):
+                Location of the displayed FrameProps. 0 means no display.
+                Defaults to 0.
+
+            num (int, optional):
+                Location of the displayed FrameNum. 0 means no display.
+                Defaults to 0.
+
+            scale (int, optional):
+                Global integer scaling factor for the bitmap font.
+                Defaults to 1.
+
             clear_outputs (bool, optional):
                 Clears all clips set for output in the current environment.
                 Defaults to False.
         """
+        self.scale = scale
 
         rclips = [
-            self._resolve_clips(i, clip) for i, clip in enumerate(clips)
+            self._resolve_clips(i, clip, None) for i, clip in enumerate(clips)
         ]
         rclips += [
             self._resolve_clips(i, clip, name)
@@ -71,23 +103,27 @@ class DebugOutput:
             self._check_curr_env(all_idx)
 
         for idx, clip in rclips:
+            if props:
+                clip = clip.text.FrameProps(alignment=props, scale=self.scale)
+            if num:
+                clip = clip.text.FrameNum(num, self.scale)
             clip.set_output(idx)
 
-    def _resolve_clips(self, i: int, clip: OutputClip, name: Optional[str] = None) -> Tuple[int, vs.VideoNode]:
+    def _resolve_clips(self, i: int, clip: OutputClip, name: Optional[str]) -> Tuple[int, vs.VideoNode]:
         if isinstance(clip, vs.VideoNode):
-            out = (i, clip)
+            out = i, clip
         elif isinstance(clip, list):
-            out = (i, self._stack_planes(clip))
+            out = i, self._stack_planes(clip)
         else:
             idx, clp = clip
             if isinstance(clp, list):
-                out = (idx, self._stack_planes(clp))
+                out = idx, self._stack_planes(clp)
             else:
-                out = (idx, clp)
+                out = idx, clp
 
         if name:
             idx, c = out
-            out = idx, c.text.Text(name)
+            out = idx, c.text.Text(name, 8, self.scale)
 
         return out
 
