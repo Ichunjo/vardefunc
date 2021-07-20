@@ -1,10 +1,10 @@
 """Miscellaneous functions and wrappers that didn't really have a place in any other submodules."""
+from __future__ import annotations
+
 import math
 import warnings
-from abc import ABCMeta
 from functools import partial
-from threading import Lock
-from typing import (Any, Dict, Iterable, Iterator, List, MutableMapping,
+from typing import (Dict, Iterable, Iterator, List, MutableMapping,
                     Optional, Tuple, Union, overload)
 
 import vapoursynth as vs
@@ -13,21 +13,6 @@ from vsutil import get_w, insert_clip
 
 core = vs.core
 
-
-class SingletonMeta(ABCMeta):
-    _instances: Dict[object, Any] = {}
-    _lock: Lock = Lock()
-
-    def __call__(cls, *args: Any, **kwds: Any) -> Any:
-        with cls._lock:
-            if cls not in cls._instances:
-                instance = super().__call__(*args, **kwds)
-                cls._instances[cls] = instance
-        return cls._instances[cls]
-
-
-class Singleton(metaclass=SingletonMeta):
-    pass
 
 
 OutputClip = Union[
@@ -38,10 +23,12 @@ OutputClip = Union[
 ]
 
 
-class DebugOutput(Singleton, MutableMapping):
+class DebugOutput(MutableMapping):
     """Utility class to ouput multiple clips"""
-    scale: int
-    ouputs: Dict[int, vs.VideoNode]
+    _scale: int
+    _ouputs: Dict[int, vs.VideoNode]
+
+    _counter: int
 
     @overload
     def __init__(self, *clips: OutputClip) -> None:
@@ -179,7 +166,7 @@ class DebugOutput(Singleton, MutableMapping):
 
     def __init__(self, *clips: OutputClip, props: int = 0, num: int = 0, scale: int = 1,
                  clear_outputs: bool = False, **named_clips: OutputClip) -> None:
-        self.scale = scale
+        self._scale = scale
 
         rclips = [
             self._resolve_clips(i, clip, None) for i, clip in enumerate(clips)
@@ -194,42 +181,55 @@ class DebugOutput(Singleton, MutableMapping):
 
         if clear_outputs:
             vs.clear_outputs()
+            self._ouputs.clear()
+            self._ouputs = dict(rclips)
         else:
             self._check_curr_env(all_idx)
+            self._ouputs = self._get_outputs() | dict(rclips)
 
-        for idx, clip in rclips:
+        self._counter = max(self._ouputs.keys()) if self._ouputs.keys() else 0
+
+        for idx, clip in self._ouputs.items():
             if props:
-                clip = clip.text.FrameProps(alignment=props, scale=self.scale)
+                clip = clip.text.FrameProps(alignment=props, scale=self._scale)
             if num:
-                clip = clip.text.FrameNum(num, self.scale)
+                clip = clip.text.FrameNum(num, self._scale)
             clip.set_output(idx)
 
-        self.ouputs = dict(rclips)
-
-    def __len__(self) -> int:
-        return len(self.ouputs)
-
-    def __repr__(self) -> str:
-        return str(self.ouputs)
-
     def __getitem__(self, index: int) -> vs.VideoNode:
-        return self.ouputs[index]
+        return self._ouputs[index]
 
     def __setitem__(self, index: int, clip: vs.VideoNode) -> None:
-        self.ouputs[index] = clip
+        self._ouputs[index] = clip
         clip.set_output(index)
 
     def __delitem__(self, index: int) -> None:
-        del self.ouputs[index]
+        del self._ouputs[index]
         vs.clear_output(index)
 
+    def __ior__(self, clips: Union[vs.VideoNode, Tuple[OutputClip, ...], Dict[str, OutputClip]]) -> DebugOutput:
+        if isinstance(clips, tuple):
+            self.__init__(*clips)
+        elif isinstance(clips, dict):
+            self.__init__(**clips)
+        else:
+            self.__init__((self._counter + 1, clips))
+
+        return self
+
     def __iter__(self) -> Iterator[Tuple[int, vs.VideoNode]]:
-        for i, c in self.ouputs.items():
+        for i, c in self._ouputs.items():
             yield i, c
+
+    def __len__(self) -> int:
+        return len(self._ouputs)
+
+    def __repr__(self) -> str:
+        return str(self._ouputs)
 
     def clear(self) -> None:
         """Clear all outputs"""
-        self.ouputs.clear()
+        self._ouputs.clear()
         vs.clear_outputs()
 
     def _resolve_clips(self, i: int, clip: OutputClip, name: Optional[str]) -> Tuple[int, vs.VideoNode]:
@@ -246,7 +246,7 @@ class DebugOutput(Singleton, MutableMapping):
 
         if name:
             idx, c = out
-            out = idx, c.text.Text(name, 8, self.scale)
+            out = idx, c.text.Text(name, 8, self._scale)
 
         return out
 
@@ -276,6 +276,16 @@ class DebugOutput(Singleton, MutableMapping):
         for i in idx:
             if i in vs.get_outputs().keys():
                 raise ValueError(f'DebugOutput: index {i} is already used in current environment!')
+
+    @staticmethod
+    def _get_outputs() -> Dict[int, vs.VideoNode]:
+        outputs: Dict[int, vs.VideoNode] = {}
+        for idx, clip in vs.get_outputs().items():
+            if isinstance(clip, vs.VideoNode):
+                outputs[idx] = clip
+            else:
+                warnings.warn('DebugOutput: AlphaOutputTuple detected; this is not supported', Warning)
+        return outputs
 
 
 def fade_filter(clip: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode,
