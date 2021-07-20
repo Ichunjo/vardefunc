@@ -2,7 +2,7 @@
 import math
 import warnings
 from functools import partial
-from typing import Iterable, Iterator, List, Optional, Tuple, Union, overload
+from typing import Dict, Iterable, Iterator, List, MutableMapping, Optional, Tuple, Union, overload
 
 import vapoursynth as vs
 from lvsfunc.comparison import Stack
@@ -19,9 +19,10 @@ OutputClip = Union[
 ]
 
 
-class DebugOutput:
+class DebugOutput(MutableMapping):
     """Utility class to ouput multiple clips"""
     scale: int
+    ouputs: Dict[int, vs.VideoNode]
 
     @overload
     def __init__(self, *clips: OutputClip) -> None:
@@ -184,39 +185,33 @@ class DebugOutput:
                 clip = clip.text.FrameNum(num, self.scale)
             clip.set_output(idx)
 
+        self.ouputs = dict(rclips)
+
     def __len__(self) -> int:
-        return len(vs.get_outputs())
+        return len(self.ouputs)
 
     def __repr__(self) -> str:
-        return str(vs.get_outputs())
+        return str(self.ouputs)
 
-    def __getitem__(self, index: int) -> Union[vs.VideoNode, vs.AlphaOutputTuple]:
-        return vs.get_output(index)
+    def __getitem__(self, index: int) -> vs.VideoNode:
+        return self.ouputs[index]
 
     def __setitem__(self, index: int, clip: vs.VideoNode) -> None:
+        self.ouputs[index] = clip
         clip.set_output(index)
 
     def __delitem__(self, index: int) -> None:
+        del self.ouputs[index]
         vs.clear_output(index)
 
-    def __iter__(self) -> Iterator[Tuple[int, Union[vs.VideoNode, vs.AlphaOutputTuple]]]:
-        for i, c in vs.get_outputs().items():
+    def __iter__(self) -> Iterator[Tuple[int, vs.VideoNode]]:
+        for i, c in self.ouputs.items():
             yield i, c
 
-    @overload
     def clear(self) -> None:
-        ...
-
-    @overload
-    def clear(self, index: Optional[int] = None) -> None:
-        ...
-
-    def clear(self, index: Optional[int] = None) -> None:
-        """Clear output at specified index or all indexes if None"""
-        if index is not None:
-            del self[index]
-        else:
-            vs.clear_outputs()
+        """Clear all outputs"""
+        self.ouputs.clear()
+        vs.clear_outputs()
 
     def _resolve_clips(self, i: int, clip: OutputClip, name: Optional[str]) -> Tuple[int, vs.VideoNode]:
         if isinstance(clip, vs.VideoNode):
