@@ -196,6 +196,8 @@ class DebugOutput(MutableMapping):
                 clip = clip.text.FrameNum(num, self._scale)
             clip.set_output(idx)
 
+        super().__init__()
+
     def __getitem__(self, index: int) -> vs.VideoNode:
         return self._ouputs[index]
 
@@ -226,6 +228,9 @@ class DebugOutput(MutableMapping):
 
     def __repr__(self) -> str:
         return str(self._ouputs)
+
+    def __del__(self) -> None:
+        vs.clear_outputs()
 
     def clear(self) -> None:
         """Clear all outputs"""
