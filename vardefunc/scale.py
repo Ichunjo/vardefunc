@@ -3,12 +3,11 @@ from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import lvsfunc
-from vsutil import depth, get_depth, get_w, get_y, split
-
 import vapoursynth as vs
+from vsutil import depth, get_depth, get_w, get_y, join, split
 
-from .placebo import shader
 from .sharp import z4usm
+from .util import FormatError
 
 core = vs.core
 
@@ -210,7 +209,7 @@ def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, s
     if not shader_file:
         raise ValueError('fsrcnnx_upscale: You must set a string path for "shader_file"')
 
-    fsrcnnx = shader(clip, clip.width * 2, clip.height * 2, shader_file)
+    fsrcnnx = placebo_shader(clip, clip.width * 2, clip.height * 2, shader_file)
 
     if num >= 1:
         # old or slow profile
@@ -250,6 +249,52 @@ def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, s
         scaled = limit
 
     return depth(scaled, bits)
+
+
+def placebo_shader(clip: vs.VideoNode, width: int, height: int, shader_file: str, luma_only: bool = True, **kwargs) -> vs.VideoNode:
+    """Wrapper for placebo.Resample
+       https://github.com/Lypheo/vs-placebo#vs-placebo
+
+    Args:
+        clip (vs.VideoNode): Source clip.
+
+        width (int): Destination width.
+
+        height (int): Destination height.
+
+        shader_file (str):
+            Path to shader file used into placebo.Shader.
+
+        luma_only (bool, optional):
+            If process the luma only. Defaults to True.
+
+    Returns:
+        vs.VideoNode: Shader'd clip.
+    """
+    clip = depth(clip, 16)
+
+    if clip.format is None:
+        raise FormatError('shader: Variable format not allowed!')
+
+    if luma_only:
+        filter_shader = 'box'
+        if clip.format.num_planes == 1:
+            if width > clip.width or height > clip.height:
+                clip = clip.resize.Point(format=vs.YUV444P16)
+            else:
+                if width % 4 == 0 and height % 4 == 0:
+                    blank = core.std.BlankClip(clip, int(clip.width / 4), int(clip.height / 4), vs.GRAY16)
+                elif width % 2 == 0 and height % 2 == 0:
+                    blank = core.std.BlankClip(clip, int(clip.width / 2), int(clip.height / 2), vs.GRAY16)
+                else:
+                    blank = core.std.BlankClip(clip, vs.GRAY16)
+                clip = join([clip, blank, blank])
+    else:
+        filter_shader = 'ewa_lanczos'
+
+    clip = core.placebo.Shader(clip, shader_file, width, height, filter=filter_shader, **kwargs)
+
+    return get_y(clip) if luma_only else clip
 
 
 def to_444(clip: vs.VideoNode,
