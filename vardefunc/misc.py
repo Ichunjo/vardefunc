@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import math
 import warnings
+from abc import ABCMeta
 from functools import partial
-from typing import (Dict, Iterable, Iterator, List, MutableMapping,
+from threading import Lock
+from typing import (Any, Dict, Iterable, Iterator, List, MutableMapping,
                     Optional, Tuple, Union, overload)
 
 import vapoursynth as vs
@@ -13,6 +15,21 @@ from vsutil import get_w, insert_clip
 
 core = vs.core
 
+
+class SingletonMeta(ABCMeta):
+    _instances: Dict[object, Any] = {}
+    _lock: Lock = Lock()
+
+    def __call__(cls, *args: Any, **kwds: Any) -> Any:
+        with cls._lock:
+            if cls not in cls._instances:
+                instance = super().__call__(*args, **kwds)
+                cls._instances[cls] = instance
+        return cls._instances[cls]
+
+
+class Singleton(metaclass=SingletonMeta):
+    pass
 
 
 OutputClip = Union[
@@ -23,7 +40,7 @@ OutputClip = Union[
 ]
 
 
-class DebugOutput(MutableMapping):
+class DebugOutput(Singleton, MutableMapping):
     """Utility class to ouput multiple clips"""
     _scale: int
     _ouputs: Dict[int, vs.VideoNode]
@@ -224,8 +241,8 @@ class DebugOutput(MutableMapping):
     def __len__(self) -> int:
         return len(self._ouputs)
 
-    def __repr__(self) -> str:
-        return str(self._ouputs)
+    # def __repr__(self) -> str:
+    #     return str(self._ouputs)
 
     def clear(self) -> None:
         """Clear all outputs"""
