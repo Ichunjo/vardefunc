@@ -1,10 +1,14 @@
 """Helper functions for the main functions in this module"""
 from functools import partial, wraps
 from string import ascii_lowercase
-from typing import Any, Callable, List, Sequence, Tuple, Union
+from typing import (Any, Callable, List, Optional, Sequence, Tuple, Union,
+                    cast, overload)
 
 import vapoursynth as vs
+from vsutil import Range as CRange
+from vsutil import depth
 
+from .types import FF
 from .types import DuplicateFrame as DF
 from .types import Range, Trim
 
@@ -15,20 +19,42 @@ class FormatError(Exception):
     """Raised when a format of VideoNode object is not allowed."""
 
 
-def copy_docstring_from(source: Callable[..., Any]) -> Callable[..., Any]:
-    """Decorator intended to copy the docstring from an other function
+@overload
+def finalise_output(*, bits: int = 10, clamp_range: bool = True) -> FF:  # type: ignore
+    ...
 
-    Args:
-        source (Callable[..., Any]): Source function.
 
-    Returns:
-        Callable[..., Any]: Function decorated
-    """
-    @wraps(source)
-    def wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
-        func.__doc__ = source.__doc__
-        return func
-    return wrapper
+@overload
+def finalise_output(func: Optional[FF] = None, /) -> FF:
+    ...
+
+
+@overload
+def finalise_output(func: Optional[FF] = None, /, *, bits: int = 10, clamp_range: bool = True) -> FF:
+    ...
+
+
+def finalise_output(func: Optional[FF] = None, /, *, bits: int = 10, clamp_range: bool = True) -> FF:
+    """Decorator to dither down the final output clip and clamp range to legal values"""
+    if func is None:
+        return cast(FF, partial(finalise_output, bits=bits, clamp_range=clamp_range))
+
+    @wraps(func)
+    def _wrapper(*args: Any, **kwargs: Any) -> vs.VideoNode:
+        assert func
+        out = func(*args, **kwargs)
+        rng = CRange.FULL if get_colour_range(out) == 0 else CRange.LIMITED
+        out = depth(out, bits, range=rng, range_in=rng)
+        if rng == CRange.LIMITED:
+            out = out.std.Limiter(16 << (bits - 8), [235 << (bits - 8), 240 << (bits - 8)], [0, 1, 2])
+        return out
+
+    return cast(FF, _wrapper)
+
+
+def get_colour_range(clip: vs.VideoNode) -> int:
+    """Get the colour range from the VideoProps"""
+    return cast(int, clip.get_frame(0).props['_ColorRange'])
 
 
 def get_sample_type(clip: vs.VideoNode) -> vs.SampleType:
