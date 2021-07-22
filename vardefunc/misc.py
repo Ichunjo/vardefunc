@@ -13,7 +13,7 @@ import vapoursynth as vs
 from lvsfunc.comparison import Stack
 from vsutil import get_w, insert_clip
 
-from .types import VSF, OpInput, Output
+from .types import FD, OpInput, Output
 
 core = vs.core
 
@@ -222,21 +222,24 @@ class DebugOutput(MutableMapping):
 
     @staticmethod
     @overload
-    def catch(*, op: Union[OpDebug, str] = '<<=') -> VSF:  # type: ignore
-        """Decorator to catch the output of the function decorated"""
+    def catch(*, op: Union[OpDebug, str] = '<<=') -> FD:  # type: ignore
         ...
 
     @staticmethod
     @overload
-    def catch(func: Optional[VSF] = None, *, op: Union[OpDebug, str] = '<<=') -> VSF:
-        """Decorator to catch the output of the function decorated"""
+    def catch(func: Optional[FD] = None) -> FD:
         ...
 
     @staticmethod
-    def catch(func: Optional[VSF] = None, *, op: Union[OpDebug, str] = '<<=') -> VSF:
+    @overload
+    def catch(func: Optional[FD] = None, *, op: Union[OpDebug, str] = '<<=') -> FD:
+        ...
+
+    @staticmethod
+    def catch(func: Optional[FD] = None, *, op: Union[OpDebug, str] = '<<=') -> FD:
         """Decorator to catch the output of the function decorated"""
         if func is None:
-            return cast(VSF, partial(DebugOutput.catch, op=op))
+            return cast(FD, partial(DebugOutput.catch, op=op))
 
         @wraps(func)
         def _wrapper(*args: Any, **kwargs: Any) -> OpInput:
@@ -246,7 +249,7 @@ class DebugOutput(MutableMapping):
             opera(DebugOutput(), out)
             return out
 
-        return cast(VSF, _wrapper)
+        return cast(FD, _wrapper)
 
     @staticmethod
     def _index_gen(start: int) -> Iterable[int]:

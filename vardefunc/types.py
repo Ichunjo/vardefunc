@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Callable, Dict, List, Optional, Tuple, TypeVar, Union
 
-from vapoursynth import VideoNode
+from vapoursynth import VideoNode, Format
 
 Range = Union[int, Tuple[Optional[int], Optional[int]]]
 Trim = Tuple[Optional[int], Optional[int]]
@@ -22,8 +22,19 @@ OpInput = Union[
     Dict[str, VideoNode],
     Dict[str, List[VideoNode]]
 ]
-# VapourSynth Function
-VSF = TypeVar('VSF', bound=Callable[..., OpInput])
+# Function Debug
+FD = TypeVar('FD', bound=Callable[..., OpInput])
+# Function finalise
+FF = TypeVar('FF', bound=Callable[..., VideoNode])
+# Generic function
+F = TypeVar('F', bound=Callable)
+# Function return a VideoNode_F
+F_VNF = TypeVar('F_VNF', bound=Callable[..., 'VideoNode_F'])
+
+
+class VideoNode_F(VideoNode):
+    """VideoNode object without a None Format"""
+    format: Format
 
 
 class DuplicateFrame(int):
