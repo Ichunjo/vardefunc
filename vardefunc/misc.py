@@ -3,34 +3,27 @@ from __future__ import annotations
 
 import math
 import warnings
-from functools import partial
+from functools import partial, wraps
 from itertools import count
-from typing import (Dict, Generator, Iterable, Iterator, List, MutableMapping,
-                    Optional, Tuple, Union, overload)
+from operator import ilshift, imatmul, ior
+from typing import (Any, Callable, Dict, Iterable, Iterator, List,
+                    MutableMapping, Optional, Tuple, Union, cast, overload)
 
 import vapoursynth as vs
 from lvsfunc.comparison import Stack
 from vsutil import get_w, insert_clip
 
+from .types import VSF, OpInput, Output
+
 core = vs.core
 
 
-
-Output = Union[
-    vs.VideoNode,
-    List[vs.VideoNode],
-    Tuple[int, vs.VideoNode],
-    Tuple[int, List[vs.VideoNode]]
-]
-
-_OperatorInput = Union[
-    vs.VideoNode,
-    List[vs.VideoNode],
-    Tuple[vs.VideoNode, ...],
-    Tuple[List[vs.VideoNode], ...],
-    Dict[str, vs.VideoNode],
-    Dict[str, List[vs.VideoNode]]
-]
+OpDebug = Callable[["DebugOutput", OpInput], "DebugOutput"]
+_OPS = {
+    '<<=': cast(OpDebug, ilshift),
+    '@=': cast(OpDebug, imatmul),
+    '|=': cast(OpDebug, ior)
+}
 
 
 class DebugOutput(MutableMapping):
@@ -152,16 +145,16 @@ class DebugOutput(MutableMapping):
     def __len__(self) -> int:
         return len(self._ouputs)
 
-    def __ilshift__(self, clips: _OperatorInput) -> DebugOutput:
+    def __ilshift__(self, clips: OpInput) -> DebugOutput:
         """Adds from the biggest index <<="""
         start = self._max_idx + 1 if self._max_idx is not None else 0
         return self._resolve_input_operator(self._index_gen(start), clips, True)
 
-    def __imatmul__(self, clips: _OperatorInput) -> DebugOutput:
+    def __imatmul__(self, clips: OpInput) -> DebugOutput:
         """Fills unused indexes @="""
         return self._resolve_input_operator(self._index_not_used_gen(), clips, True)
 
-    def __ior__(self, clips: _OperatorInput) -> DebugOutput:
+    def __ior__(self, clips: OpInput) -> DebugOutput:
         """Fills and replaces existing indexes |="""
         return self._resolve_input_operator(self._index_gen(0), clips, False)
 
@@ -188,8 +181,7 @@ class DebugOutput(MutableMapping):
 
         return out
 
-    def _resolve_input_operator(self, yield_func: Generator[int, None, None], clips: _OperatorInput,
-                                env: bool = True) -> DebugOutput:
+    def _resolve_input_operator(self, yield_func: Iterable[int], clips: OpInput, env: bool = True) -> DebugOutput:
         if isinstance(clips, dict):
             self.__init__(**{name: (i, clip) for i, (name, clip) in zip(yield_func, clips.items())},
                           check_curr_env=env)
@@ -204,13 +196,41 @@ class DebugOutput(MutableMapping):
             self.__init__(*zip(yield_func, [clips]), check_curr_env=env)
         return self
 
-    def _index_not_used_gen(self) -> Generator[int, None, None]:
+    def _index_not_used_gen(self) -> Iterable[int]:
         for i in self._index_gen(self._min_idx if self._min_idx is not None else 0):
             if i not in self._ouputs.keys():
                 yield i
 
     @staticmethod
-    def _index_gen(start: int) -> Generator[int, None, None]:
+    @overload
+    def catch(*, op: Union[OpDebug, str] = '<<=') -> VSF:  # type: ignore
+        """Decorator to catch the output of the function decorated"""
+        ...
+
+    @staticmethod
+    @overload
+    def catch(func: Optional[VSF] = None, *, op: Union[OpDebug, str] = '<<=') -> VSF:
+        """Decorator to catch the output of the function decorated"""
+        ...
+
+    @staticmethod
+    def catch(func: Optional[VSF] = None, *, op: Union[OpDebug, str] = '<<=') -> VSF:
+        """Decorator to catch the output of the function decorated"""
+        if func is None:
+            return cast(VSF, partial(DebugOutput.catch, op=op))
+
+        @wraps(func)
+        def _wrapper(*args: Any, **kwargs: Any) -> OpInput:
+            assert func
+            out = func(*args, **kwargs)
+            opera = _OPS[op] if isinstance(op, str) else op
+            opera(DebugOutput(), out)
+            return out
+
+        return cast(VSF, _wrapper)
+
+    @staticmethod
+    def _index_gen(start: int) -> Iterable[int]:
         for i in count(start=start):
             yield i
 
