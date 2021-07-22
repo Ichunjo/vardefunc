@@ -160,7 +160,8 @@ class DebugOutput(MutableMapping):
 
     def __ior__(self, clips: OpInput) -> DebugOutput:
         """Fills and replaces existing indexes |="""
-        return self._resolve_input_operator(self._index_gen(0), clips, False)
+        start = self._min_idx + 1 if self._min_idx is not None else 0
+        return self._resolve_input_operator(self._index_gen(start), clips, False)
 
     def clear(self) -> None:
         """Clear all outputs"""
