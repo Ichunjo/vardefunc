@@ -28,6 +28,8 @@ _OPS = {
 
 class DebugOutput(MutableMapping):
     """Utility class to ouput multiple clips"""
+    _props: int
+    _num: int
     _scale: int
     _ouputs: Dict[int, vs.VideoNode]
 
@@ -85,6 +87,8 @@ class DebugOutput(MutableMapping):
 
     def __init__(self, *clips: Output, props: int = 0, num: int = 0, scale: int = 1,
                  clear_outputs: bool = False, check_curr_env: bool = True, **named_clips: Output) -> None:
+        self._props = props
+        self._num = num
         self._scale = scale
 
         rclips = [
@@ -183,17 +187,31 @@ class DebugOutput(MutableMapping):
 
     def _resolve_input_operator(self, yield_func: Iterable[int], clips: OpInput, env: bool = True) -> DebugOutput:
         if isinstance(clips, dict):
-            self.__init__(**{name: (i, clip) for i, (name, clip) in zip(yield_func, clips.items())},
-                          check_curr_env=env)
+            self.__init__(
+                props=self._props, num=self._num, scale=self._scale, check_curr_env=env,
+                **{name: (i, clip) for i, (name, clip) in zip(yield_func, clips.items())},
+            )
         elif isinstance(clips, tuple):
             if isinstance(clips[0], vs.VideoNode):
-                self.__init__(*zip(yield_func, (c for c in clips if isinstance(c, vs.VideoNode))), check_curr_env=env)
+                self.__init__(
+                    *zip(yield_func, (c for c in clips if isinstance(c, vs.VideoNode))),
+                    props=self._props, num=self._num, scale=self._scale, check_curr_env=env,
+                )
             else:
-                self.__init__(*zip(yield_func, (c for c in clips if isinstance(c, list))), check_curr_env=env)
+                self.__init__(
+                    *zip(yield_func, (c for c in clips if isinstance(c, list))),
+                    props=self._props, num=self._num, scale=self._scale, check_curr_env=env,
+                )
         elif isinstance(clips, list):
-            self.__init__(*zip(yield_func, [clips]), check_curr_env=env)
+            self.__init__(
+                *zip(yield_func, [clips]),
+                props=self._props, num=self._num, scale=self._scale, check_curr_env=env,
+            )
         else:
-            self.__init__(*zip(yield_func, [clips]), check_curr_env=env)
+            self.__init__(
+                *zip(yield_func, [clips]),
+                props=self._props, num=self._num, scale=self._scale, check_curr_env=env,
+            )
         return self
 
     def _index_not_used_gen(self) -> Iterable[int]:
