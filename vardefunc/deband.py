@@ -3,7 +3,7 @@ import warnings
 from typing import Any, Dict, List, Optional, Union
 
 import vapoursynth as vs
-from debandshit import SampleMode
+from debandshit import SAMPLEMODE
 from debandshit import dumb3kdb as d3kdb
 from debandshit import f3kbilateral as f3kbil
 from debandshit import lfdeband as lfdb
@@ -14,7 +14,7 @@ core = vs.core
 
 def dumb3kdb(clip: vs.VideoNode, radius: int = 16,
              threshold: Union[int, List[int]] = 30, grain: Union[int, List[int]] = 0,
-             sample_mode: SampleMode = SampleMode.SQUARE, use_neo: bool = False, **kwargs: Any) -> vs.VideoNode:
+             sample_mode: SAMPLEMODE = 2, use_neo: bool = False, **kwargs: Any) -> vs.VideoNode:
     warnings.warn('dumb3kdb: use debandshit.dumb3kdb instead', DeprecationWarning)
     return d3kdb(clip, radius, threshold, grain, sample_mode, use_neo, **kwargs)
 
