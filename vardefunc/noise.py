@@ -4,14 +4,15 @@ from functools import partial
 from typing import Any, Dict, List, Sequence, Tuple, Union, cast
 
 import lvsfunc
-from vsutil import Dither, Range, depth, get_depth, get_plane_size, get_y, join, split
-
 import vapoursynth as vs
+from vsutil import (Dither, Range, depth, get_depth, get_plane_size, get_y,
+                    join, split)
 
 from .deband import dumb3kdb
 from .mask import FDOG
 from .placebo import deband
-from .util import FormatError, get_sample_type, pick_px_op
+from .types import FormatError, format_not_none
+from .util import get_sample_type, pick_px_op
 
 core = vs.core
 
@@ -139,8 +140,7 @@ class Graigasm():
         Returns:
             vs.VideoNode: Grained clip.
         """
-        if clip.format is None:
-            raise FormatError('graining: Variable format not allowed!')
+        clip = format_not_none(clip)
         if clip.format.color_family not in (vs.YUV, vs.GRAY):
             raise FormatError('graining: Only YUV and GRAY format are supported!')
 

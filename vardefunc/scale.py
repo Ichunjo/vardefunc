@@ -7,7 +7,7 @@ import vapoursynth as vs
 from vsutil import depth, get_depth, get_w, get_y, join, split
 
 from .sharp import z4usm
-from .util import FormatError
+from .types import format_not_none
 
 core = vs.core
 
@@ -272,9 +272,7 @@ def placebo_shader(clip: vs.VideoNode, width: int, height: int, shader_file: str
         vs.VideoNode: Shader'd clip.
     """
     clip = depth(clip, 16)
-
-    if clip.format is None:
-        raise FormatError('shader: Variable format not allowed!')
+    clip = format_not_none(clip)
 
     if luma_only:
         filter_shader = 'box'

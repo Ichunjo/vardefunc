@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Optional, Tuple, TypeVar, Union
+from typing import Callable, Dict, List, Optional, Tuple, TypeVar, Union, cast
 
 from vapoursynth import VideoNode, Format
 
@@ -63,3 +63,13 @@ class DuplicateFrame(int):
 
     def __floordiv__(self, x: int) -> DuplicateFrame:
         return DuplicateFrame(self, dup=self.dup // x)
+
+
+class FormatError(Exception):
+    """Raised when a format of VideoNode object is not allowed."""
+
+
+def format_not_none(clip: VideoNode, /) -> VideoNode_F:
+    if clip.format is None:
+        raise FormatError('Variable format not allowed!')
+    return cast(VideoNode_F, clip)

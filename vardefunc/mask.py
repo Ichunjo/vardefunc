@@ -8,7 +8,8 @@ import vapoursynth as vs
 from vsutil import (Range, depth, get_depth, get_w, get_y, insert_clip,
                     iterate, join, scale_value, split)
 
-from .util import FormatError, get_sample_type, mae_expr, max_expr, pick_px_op
+from .types import format_not_none
+from .util import get_sample_type, mae_expr, max_expr, pick_px_op
 
 core = vs.core
 
@@ -37,7 +38,7 @@ class EdgeDetect(ABC):
         Returns:
             vs.VideoNode: Mask clip.
         """
-        assert clip.format is not None
+        clip = format_not_none(clip)
 
         bits = get_depth(clip)
         is_float = get_sample_type(clip) == vs.FLOAT
@@ -539,8 +540,7 @@ class Difference():
         Returns:
             vs.VideoNode: Rescaled mask.
         """
-        if clip.format is None:
-            raise FormatError('diff_rescale_mask: Variable format not allowed!')
+        clip = format_not_none(clip)
 
         bits = get_depth(clip)
         gray_only = clip.format.num_planes == 1
@@ -609,8 +609,7 @@ class Difference():
 
             opmask = diff_creditless_mask(clip, clip[opstart:opend+1], ncop[:opend+1-opstart], opstart, thr=25, prefilter=True)
         """
-        if src_clip.format is None:
-            raise FormatError('diff_creditless_mask: Variable format not allowed!')
+        src_clip = format_not_none(src_clip)
 
         gray_only = src_clip.format.num_planes == 1
         clips = [credit_clip, nc_clip]

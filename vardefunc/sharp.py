@@ -1,14 +1,17 @@
 """Sharpening functions"""
 import math
+from typing import Literal
 
 import vapoursynth as vs
 
-from .util import FormatError
+from .util import get_sample_type
 
 core = vs.core
 
+RADIUS = Literal[1, 2]
 
-def z4usm(clip: vs.VideoNode, radius: int = 1, strength: float = 100.0) -> vs.VideoNode:
+
+def z4usm(clip: vs.VideoNode, radius: RADIUS = 1, strength: float = 100.0) -> vs.VideoNode:
     """Zastin unsharp mask.
 
     Args:
@@ -19,15 +22,10 @@ def z4usm(clip: vs.VideoNode, radius: int = 1, strength: float = 100.0) -> vs.Vi
     Returns:
         vs.VideoNode: Sharpened clip.
     """
-    if clip.format is None:
-        raise FormatError('z4usm: Variable format not allowed!')
-    if radius not in {1, 2}:
-        raise ValueError('z4usm: "radius" must be 1 or 2')
-
     strength = max(1e-6, min(math.log2(3) * strength / 100, math.log2(3)))
     weight = 0.5 ** strength / ((1 - 0.5 ** strength) / 2)
 
-    if clip.format.sample_type == 0:
+    if get_sample_type(clip) == 0:
         all_matrices = list(map(lambda x: [float(x)], range(1, 1024)))
 
         for x in range(1023):

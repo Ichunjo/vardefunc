@@ -10,13 +10,9 @@ from vsutil import depth
 
 from .types import FF
 from .types import DuplicateFrame as DF
-from .types import Range, Trim
+from .types import Range, Trim, format_not_none
 
 core = vs.core
-
-
-class FormatError(Exception):
-    """Raised when a format of VideoNode object is not allowed."""
 
 
 @overload
@@ -59,9 +55,7 @@ def get_colour_range(clip: vs.VideoNode) -> int:
 
 def get_sample_type(clip: vs.VideoNode) -> vs.SampleType:
     """Returns the sample type of a VideoNode as an SampleType."""
-    if clip.format is None:
-        raise FormatError('Variable format not allowed!')
-    return clip.format.sample_type
+    return format_not_none(clip).format.sample_type
 
 
 def load_operators_expr() -> List[str]:
