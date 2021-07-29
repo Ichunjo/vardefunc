@@ -3,17 +3,18 @@ from __future__ import annotations
 
 import math
 import warnings
+from abc import ABC
 from functools import partial, wraps
 from itertools import count
 from operator import ilshift, imatmul, ior
-from typing import (Any, Callable, Dict, Iterable, Iterator, List,
+from typing import (Any, Callable, ClassVar, Dict, Iterable, Iterator, List,
                     MutableMapping, Optional, Tuple, Union, cast, overload)
 
 import vapoursynth as vs
 from lvsfunc.comparison import Stack
 from vsutil import get_w, insert_clip
 
-from .types import FD, OpInput, Output
+from .types import F_OpInput, OpInput, Output
 
 core = vs.core
 
@@ -26,15 +27,56 @@ _OPS = {
 }
 
 
-class DebugOutput(MutableMapping):
-    """Utility class to ouput multiple clips"""
+class DebugOutputMMap(MutableMapping[int, vs.VideoNode], ABC):
+    """Abstract Debug Output interface implementing the mutable mapping methods"""
+    ouputs: ClassVar[Dict[int, vs.VideoNode]] = {}
+
     _props: int
     _num: int
     _scale: int
-    _ouputs: Dict[int, vs.VideoNode]
 
-    _min_idx: Optional[int] = None
-    _max_idx: Optional[int] = None
+    _min_idx: int = 0
+    _max_idx: int = 0
+
+    def __getitem__(self, index: int) -> vs.VideoNode:
+        return self.ouputs[index]
+
+    def __setitem__(self, index: int, clip: vs.VideoNode) -> None:
+        self.ouputs[index] = clip
+
+        self._min_idx, self._max_idx = min(self.ouputs.keys()), max(self.ouputs.keys())
+
+        if self._props:
+            clip = clip.text.FrameProps(alignment=self._props, scale=self._scale)
+        if self._num:
+            clip = clip.text.FrameNum(self._num, self._scale)
+
+        clip.set_output(index)
+
+    def __delitem__(self, index: int) -> None:
+        del self.ouputs[index]
+        self._min_idx, self._max_idx = min(self.ouputs.keys()), max(self.ouputs.keys())
+        vs.clear_output(index)
+
+    def __len__(self) -> int:
+        return len(self.ouputs)
+
+    def __iter__(self) -> Iterator[int]:
+        for i in self.ouputs:
+            yield i
+
+    def __str__(self) -> str:
+        string = ''
+        for idx, clip in sorted(self.items()):
+            string += f'Index N° {idx}\n' + str(clip) + '---------------\n'
+        return string
+
+    def __repr__(self) -> str:
+        return repr(self.ouputs)
+
+
+class DebugOutput(DebugOutputMMap):
+    """Utility class to ouput multiple clips"""
 
     @overload
     def __init__(self, *clips: Output) -> None:
@@ -104,55 +146,15 @@ class DebugOutput(MutableMapping):
 
         if clear_outputs:
             self.clear()
-            self._ouputs = dict(rclips)
+            self.update(dict(rclips))
         else:
             if check_curr_env:
                 self._check_curr_env(all_idx)
-            self._ouputs = self._get_outputs() | dict(rclips)
-
-        if self._ouputs.keys():
-            self._min_idx, self._max_idx = min(self._ouputs.keys()), max(self._ouputs.keys())
-
-        for idx, clip in self._ouputs.items():
-            if props:
-                clip = clip.text.FrameProps(alignment=props, scale=self._scale)
-            if num:
-                clip = clip.text.FrameNum(num, self._scale)
-            clip.set_output(idx)
-
-    def __str__(self) -> str:
-        string = ''
-        for idx, clip in sorted(self._ouputs.items()):
-            string += f'Index N° {idx}\n' + str(clip) + '---------------\n'
-        return string
-
-    def __repr__(self) -> str:
-        return repr(self._ouputs)
-
-    def __getitem__(self, index: int) -> vs.VideoNode:
-        return self._ouputs[index]
-
-    def __setitem__(self, index: int, clip: vs.VideoNode) -> None:
-        self._ouputs[index] = clip
-        self._min_idx, self._max_idx = min(self._ouputs.keys()), max(self._ouputs.keys())
-        clip.set_output(index)
-
-    def __delitem__(self, index: int) -> None:
-        del self._ouputs[index]
-        self._min_idx, self._max_idx = min(self._ouputs.keys()), max(self._ouputs.keys())
-        vs.clear_output(index)
-
-    def __iter__(self) -> Iterator[Tuple[int, vs.VideoNode]]:
-        for i, c in self._ouputs.items():
-            yield i, c
-
-    def __len__(self) -> int:
-        return len(self._ouputs)
+            self.update(self._get_outputs() | dict(rclips))
 
     def __ilshift__(self, clips: OpInput) -> DebugOutput:
         """Adds from the biggest index <<="""
-        start = self._max_idx + 1 if self._max_idx is not None else 0
-        return self._resolve_input_operator(self._index_gen(start), clips, True)
+        return self._resolve_input_operator(self._index_gen(self._max_idx + 1), clips, True)
 
     def __imatmul__(self, clips: OpInput) -> DebugOutput:
         """Fills unused indexes @="""
@@ -160,13 +162,7 @@ class DebugOutput(MutableMapping):
 
     def __ior__(self, clips: OpInput) -> DebugOutput:
         """Fills and replaces existing indexes |="""
-        start = self._min_idx + 1 if self._min_idx is not None else 0
-        return self._resolve_input_operator(self._index_gen(start), clips, False)
-
-    def clear(self) -> None:
-        """Clear all outputs"""
-        self._ouputs.clear()
-        vs.clear_outputs()
+        return self._resolve_input_operator(self._index_gen(self._min_idx), clips, False)
 
     def _resolve_clips(self, i: int, clip: Output, name: Optional[str]) -> Tuple[int, vs.VideoNode]:
         if isinstance(clip, vs.VideoNode):
@@ -188,68 +184,64 @@ class DebugOutput(MutableMapping):
 
     def _resolve_input_operator(self, yield_func: Iterable[int], clips: OpInput, env: bool = True) -> DebugOutput:
         if isinstance(clips, dict):
-            self.__init__(
+            self.__init__(  # type: ignore
                 props=self._props, num=self._num, scale=self._scale, check_curr_env=env,
-                **{name: (i, clip) for i, (name, clip) in zip(yield_func, clips.items())},
+                **{name: (i, clip) for i, (name, clip) in zip(yield_func, clips.items())}
             )
         elif isinstance(clips, tuple):
             if isinstance(clips[0], vs.VideoNode):
-                self.__init__(
+                self.__init__(  # type: ignore
                     *zip(yield_func, (c for c in clips if isinstance(c, vs.VideoNode))),
                     props=self._props, num=self._num, scale=self._scale, check_curr_env=env,
                 )
             else:
-                self.__init__(
+                self.__init__(  # type: ignore
                     *zip(yield_func, (c for c in clips if isinstance(c, list))),
                     props=self._props, num=self._num, scale=self._scale, check_curr_env=env,
                 )
         elif isinstance(clips, list):
-            self.__init__(
+            self.__init__(  # type: ignore
                 *zip(yield_func, [clips]),
                 props=self._props, num=self._num, scale=self._scale, check_curr_env=env,
             )
         else:
-            self.__init__(
+            self.__init__(  # type: ignore
                 *zip(yield_func, [clips]),
                 props=self._props, num=self._num, scale=self._scale, check_curr_env=env,
             )
         return self
 
     def _index_not_used_gen(self) -> Iterable[int]:
-        for i in self._index_gen(self._min_idx if self._min_idx is not None else 0):
-            if i not in self._ouputs.keys():
+        for i in self._index_gen(self._min_idx):
+            if i not in self.keys():
                 yield i
 
-    @staticmethod
     @overload
-    def catch(*, op: Union[OpDebug, str] = '<<=') -> FD:  # type: ignore
+    def catch(self, *, op: Union[OpDebug, str] = '<<=') -> F_OpInput:  # type: ignore
         ...
 
-    @staticmethod
     @overload
-    def catch(func: Optional[FD] = None) -> FD:
+    def catch(self, func: Optional[F_OpInput] = None) -> F_OpInput:
         ...
 
-    @staticmethod
     @overload
-    def catch(func: Optional[FD] = None, *, op: Union[OpDebug, str] = '<<=') -> FD:
+    def catch(self, func: Optional[F_OpInput] = None, *, op: Union[OpDebug, str] = '<<=') -> F_OpInput:
         ...
 
-    @staticmethod
-    def catch(func: Optional[FD] = None, *, op: Union[OpDebug, str] = '<<=') -> FD:
+    def catch(self, func: Optional[F_OpInput] = None, *, op: Union[OpDebug, str] = '<<=') -> F_OpInput:
         """Decorator to catch the output of the function decorated"""
         if func is None:
-            return cast(FD, partial(DebugOutput.catch, op=op))
+            return cast(F_OpInput, partial(self.catch, op=op))
 
         @wraps(func)
         def _wrapper(*args: Any, **kwargs: Any) -> OpInput:
             assert func
             out = func(*args, **kwargs)
             opera = _OPS[op] if isinstance(op, str) else op
-            opera(DebugOutput(), out)
+            opera(self, out)
             return out
 
-        return cast(FD, _wrapper)
+        return cast(F_OpInput, _wrapper)
 
     @staticmethod
     def _index_gen(start: int) -> Iterable[int]:
