@@ -20,7 +20,7 @@ def nnedi3(*, opencl: bool) -> Callable[..., vs.VideoNode]:
 
 class SuperSampler(ABC):
     def __init__(self) -> None:
-        super().__init__()
+        pass
 
     @abstractmethod
     def do_ss(self) -> Callable[[vs.VideoNode, int, int], vs.VideoNode]:
@@ -113,7 +113,7 @@ class Eedi3SS(SuperSampler):
 
 class SingleRater(ABC):
     def __init__(self) -> None:
-        super().__init__()
+        pass
 
     @abstractmethod
     def do_aa(self) -> Callable[[vs.VideoNode], vs.VideoNode]:

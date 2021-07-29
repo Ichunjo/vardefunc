@@ -68,7 +68,7 @@ class Graigasm():
 
     def __init__(self,
                  thrs: Sequence[float], strengths: Sequence[Tuple[float, float]], sizes: Sequence[float], sharps: Sequence[float], *,
-                 overflows: Union[float, Sequence[float]] = None,
+                 overflows: Union[float, Sequence[float], None] = None,
                  grainers: Union[Grainer, Sequence[Grainer]] = AddGrain(seed=-1, constant=False)) -> None:
         """Constructor checks and initializes the values.
            Length of thrs must be equal to strengths, sizes and sharps.
@@ -124,7 +124,7 @@ class Graigasm():
 
     def graining(self,
                  clip: vs.VideoNode, /, *,
-                 prefilter: vs.VideoNode = None, show_masks: bool = False) -> vs.VideoNode:
+                 prefilter: Optional[vs.VideoNode] = None, show_masks: bool = False) -> vs.VideoNode:
         """Do grain stuff using settings from constructor.
 
         Args:
@@ -183,7 +183,7 @@ class Graigasm():
 
         out = clip
         for clip_adg in clips_adg:
-            out = core.std.MergeDiff(clip_adg, clip.std.MakeDiff(out))
+            out = core.std.MergeDiff(clip_adg, core.std.MakeDiff(clip, out))  # type: ignore
 
 
         return out
@@ -252,9 +252,9 @@ class Graigasm():
 
 
 def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
-           min_in: Union[int, float] = None, max_in: Union[int, float] = None, gamma: float = 1.0,
-           protect_mask: vs.VideoNode = None, prefilter: bool = True,
-           planes: List[int] = None, show_mask: bool = False) -> vs.VideoNode:
+           min_in: Optional[float] = None, max_in: Optional[float] = None, gamma: float = 1.0,
+           protect_mask: Optional[vs.VideoNode] = None, prefilter: bool = True,
+           planes: Optional[List[int]] = None, show_mask: bool = False) -> vs.VideoNode:
     """Denoising function using Bilateral intended to decrease the filesize
        by just blurring the invisible grain above max_in and keeping all of it
        below min_in. The range in between is progressive.
@@ -329,7 +329,7 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
 
     denoise_mask = pick_px_op(
         is_float, (f'x {min_in} max {max_in} min {min_in} - {max_in} {min_in} - / {gamma} pow 0 max 1 min {peak} *',
-                   lambda x: round(min(1, max(0, pow((min(max_in, max(min_in, x)) - min_in) / (max_in - min_in), gamma))) * peak))
+                   lambda x: round(min(1, max(0, pow((min(max_in, max(min_in, x)) - min_in) / (max_in - min_in), gamma))) * peak))  # type: ignore
     )(pre)
 
     mask = core.std.Expr(

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Optional, Tuple, TypeVar, Union, cast
+from typing import (Any, Callable, Dict, List, Literal, NoReturn, Optional,
+                    Sequence, Tuple, TypeVar, Union, cast)
 
-from vapoursynth import VideoNode, Format
+from vapoursynth import Format, VideoNode
 
 Range = Union[int, Tuple[Optional[int], Optional[int]]]
 Trim = Tuple[Optional[int], Optional[int]]
@@ -23,13 +24,11 @@ OpInput = Union[
     Dict[str, List[VideoNode]]
 ]
 # Function Debug
-FD = TypeVar('FD', bound=Callable[..., OpInput])
+F_OpInput = TypeVar('F_OpInput', bound=Callable[..., OpInput])
 # Function finalise
-FF = TypeVar('FF', bound=Callable[..., VideoNode])
+F_VN = TypeVar('F_VN', bound=Callable[..., VideoNode])
 # Generic function
-F = TypeVar('F', bound=Callable)
-# Function return a VideoNode_F
-F_VNF = TypeVar('F_VNF', bound=Callable[..., 'VideoNode_F'])
+F = TypeVar('F', bound=Callable[..., Any])
 
 
 class VideoNode_F(VideoNode):

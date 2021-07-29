@@ -1,8 +1,8 @@
 """Helper functions for the main functions in this module"""
 from functools import partial, wraps
 from string import ascii_lowercase
-from typing import (Any, Callable, List, Optional, Sequence, Tuple, Union,
-                    cast, overload)
+from typing import (Any, Callable, Iterable, List, Optional, Sequence, Set,
+                    Tuple, Union, cast, overload)
 
 import vapoursynth as vs
 from vsutil import Range as CRange
@@ -139,7 +139,7 @@ def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: List[Union[Trim, DF]]) 
     clips: List[vs.VideoNode] = []
     for trim_or_df in trims_or_dfs:
         if isinstance(trim_or_df, tuple):
-            start, end = normalise_ranges(clip, trim_or_df)[0]
+            start, end = normalise_ranges(clip, trim_or_df).pop()
             clips.append(clip[start:end])
         else:
             df = trim_or_df
@@ -147,11 +147,11 @@ def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: List[Union[Trim, DF]]) 
     return core.std.Splice(clips)
 
 
-def pick_px_op(use_expr: bool,
-               operations: Tuple[str, Union[Sequence[int], Sequence[float], int, float, Callable[..., Any]]]
-               ):
-    """Pick either std.Lut or std.Expr
-       Returns partial[VideoNode]"""
+def pick_px_op(
+    use_expr: bool,
+    operations: Tuple[str, Union[Sequence[int], Sequence[float], int, float, F]]
+) -> Callable[..., vs.VideoNode]:
+    """Pick either std.Lut or std.Expr"""
     expr, lut = operations
     if use_expr:
         func = partial(core.std.Expr, expr=expr)

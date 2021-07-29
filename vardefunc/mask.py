@@ -481,7 +481,7 @@ def detail_mask(clip: vs.VideoNode, brz_mm: float, brz_ed: float,
     return mask
 
 
-def get_all_edge_detects(clip: vs.VideoNode, **kwargs) -> List[vs.VideoNode]:
+def get_all_edge_detects(clip: vs.VideoNode, **kwargs: Any) -> List[vs.VideoNode]:
     """Allows you to get all masks inheriting from EdgeDetect.
 
     Args:

@@ -1,6 +1,7 @@
 """(Up/De)scaling functions"""
 from functools import partial
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import (Any, Callable, Dict, List, Literal, Optional, Union,
+                    overload)
 
 import lvsfunc
 import vapoursynth as vs
@@ -14,7 +15,7 @@ core = vs.core
 
 def nnedi3cl_double(clip: vs.VideoNode,
                     scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom(),
-                    correct_shift: bool = True, use_znedi: bool = False, **nnedi3_args) -> vs.VideoNode:
+                    correct_shift: bool = True, use_znedi: bool = False, **nnedi3_args: Any) -> vs.VideoNode:
     """Double the clip using nnedi3 for even frames and nnedi3cl for odd frames
        Intended to speed up encoding speed without hogging the GPU either.
 
@@ -54,7 +55,7 @@ def nnedi3cl_double(clip: vs.VideoNode,
 
 
 def nnedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom(),
-                   correct_shift: bool = True, use_znedi: bool = False, **nnedi3_args) -> vs.VideoNode:
+                   correct_shift: bool = True, use_znedi: bool = False, **nnedi3_args: Any) -> vs.VideoNode:
     """Classic based nnedi3 upscale.
 
     Args:
@@ -126,11 +127,11 @@ def eedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.k
     return scaler.scale(clip, clip.width, clip.height, shift=(.5, .5)) if correct_shift else clip
 
 
-def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, shader_file: str = None,
-                    downscaler: Callable[[vs.VideoNode, int, int], vs.VideoNode] = core.resize.Bicubic,
+def fsrcnnx_upscale(clip: vs.VideoNode, width: Optional[int] = None, height: int = 1080, shader_file: Optional[str] = None,
+                    downscaler: Optional[Callable[[vs.VideoNode, int, int], vs.VideoNode]] = core.resize.Bicubic,
                     upscaled_smooth: Optional[vs.VideoNode] = None,
                     strength: float = 100.0, profile: str = 'slow',
-                    lmode: int = 1, overshoot: float = None, undershoot: float = None,
+                    lmode: int = 1, overshoot: Optional[float] = None, undershoot: Optional[float] = None,
                     sharpener: Callable[[vs.VideoNode], vs.VideoNode] = partial(z4usm, radius=2, strength=65)
                     ) -> vs.VideoNode:
     """
@@ -251,7 +252,7 @@ def fsrcnnx_upscale(clip: vs.VideoNode, width: int = None, height: int = 1080, s
     return depth(scaled, bits)
 
 
-def placebo_shader(clip: vs.VideoNode, width: int, height: int, shader_file: str, luma_only: bool = True, **kwargs) -> vs.VideoNode:
+def placebo_shader(clip: vs.VideoNode, width: int, height: int, shader_file: str, luma_only: bool = True, **kwargs: Any) -> vs.VideoNode:
     """Wrapper for placebo.Resample
        https://github.com/Lypheo/vs-placebo#vs-placebo
 
@@ -295,9 +296,36 @@ def placebo_shader(clip: vs.VideoNode, width: int, height: int, shader_file: str
     return get_y(clip) if luma_only else clip
 
 
+@overload
 def to_444(clip: vs.VideoNode,
-           width: int = None, height: int = None,
-           join_planes: bool = True, znedi: bool = True,
+           width: Optional[int], height: Optional[int],
+           join_planes: Literal[True], znedi: bool = True,
+           scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom()
+           ) -> vs.VideoNode:
+    ...
+
+
+@overload
+def to_444(clip: vs.VideoNode,
+           width: Optional[int], height: Optional[int],
+           join_planes: Literal[False], znedi: bool = True,
+           scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom()
+           ) -> List[vs.VideoNode]:
+    ...
+
+
+@overload
+def to_444(clip: vs.VideoNode,
+           width: Optional[int], height: Optional[int],
+           join_planes: bool, znedi: bool = True,
+           scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom()
+           ) -> Union[vs.VideoNode, List[vs.VideoNode]]:
+    ...
+
+
+def to_444(clip: vs.VideoNode,
+           width: Optional[int], height: Optional[int],
+           join_planes: bool, znedi: bool = True,
            scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom()
            ) -> Union[vs.VideoNode, List[vs.VideoNode]]:
     """Zastin’s nnedi3 chroma upscaler.
