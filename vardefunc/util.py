@@ -196,11 +196,13 @@ def max_expr(n: int) -> str:
     ) + ' max'
 
 
-def normalise_ranges(clip: vs.VideoNode, ranges: Union[Range, List[Range], Trim, List[Trim]]) -> List[Tuple[int, int]]:
+
+def normalise_ranges(clip: vs.VideoNode, ranges: Union[Range, List[Range], Trim, List[Trim]],
+                     *, norm_dups: bool = False) -> List[Tuple[int, int]]:
     """Modified version of lvsfunc.util.normalize_ranges following python slicing syntax"""
     ranges = ranges if isinstance(ranges, list) else [ranges]
 
-    out: List[Tuple[int, int]] = []
+    nranges: Set[Tuple[int, int]] = set()
     for r in ranges:
         if isinstance(r, tuple):
             start, end = r
@@ -215,7 +217,27 @@ def normalise_ranges(clip: vs.VideoNode, ranges: Union[Range, List[Range], Trim,
             start += clip.num_frames
         if end <= 0:
             end += clip.num_frames
-        out.append((start, end))
+
+        if start >= clip.num_frames or end > clip.num_frames:
+            warnings.warn(f'normalise_ranges: {r} out of range')
+        else:
+            start, end = min(start, clip.num_frames - 1), min(end, clip.num_frames)
+            nranges.add((start, end))
+
+    out = sorted(nranges)
+
+    if norm_dups:
+        nranges_d = dict(out)
+        nranges_rev = sorted(nranges_d.items(), reverse=True)
+
+        for (start1, end1), (start2, end2) in zip(nranges_rev, nranges_rev[1:]):
+            if start2 < start1 <= end2 < end1:
+                nranges_d[start2] = max(end1, nranges_d[start1])
+                del nranges_d[start1]
+            if start2 < start1 and end1 <= end2:
+                del nranges_d[start1]
+
+        out = list(nranges_d.items())
 
     return out
 
