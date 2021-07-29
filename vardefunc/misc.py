@@ -404,29 +404,6 @@ def get_bicubic_params(cubic_filter: str) -> Tuple[float, float]:
     return cubic_filters[cubic_filter]
 
 
-def generate_keyframes(clip: vs.VideoNode, out_path: str) -> None:
-    """Generate qp filename for keyframes to pass the file into the encoder
-       to force I frames. Use both scxvid and wwxd. Original function stolen from kagefunc.
-
-    Args:
-        clip (vs.VideoNode): Source clip
-        out_path (str): output path
-    """
-    clip = core.resize.Bilinear(clip, 640, 360)
-    clip = core.scxvid.Scxvid(clip)
-    clip = core.wwxd.WWXD(clip)
-    out_txt = ""
-    for i in range(clip.num_frames):
-        if clip.get_frame(i).props["_SceneChangePrev"] == 1 \
-                or clip.get_frame(i).props["Scenechange"] == 1:
-            out_txt += "%d I -1\n" % i
-        if i % 2000 == 0:
-            print(i)
-    text_file = open(out_path, "w")
-    text_file.write(out_txt)
-    text_file.close()
-
-
 def set_ffms2_log_level(level: Union[str, int] = 0) -> None:
     """A more friendly set of log level in ffms2
 
