@@ -1,4 +1,6 @@
 """Helper functions for the main functions in this module"""
+import inspect
+import warnings
 from functools import partial, wraps
 from string import ascii_lowercase
 from typing import (Any, Callable, Iterable, List, Optional, Sequence, Set,
@@ -10,7 +12,7 @@ from vsutil import depth
 
 from .types import F_VN, MATRIX, PRIMARIES, TRANSFER
 from .types import DuplicateFrame as DF
-from .types import F, PropsVal, Range, Trim
+from .types import Zimg, format_not_none
 
 core = vs.core
 
@@ -52,6 +54,99 @@ def finalise_output(func: Optional[F_VN] = None, /, *, bits: int = 10, clamp: bo
 
     return cast(F_VN, _wrapper)
 
+
+@overload
+def initialise_input(
+    *, bits: Optional[int] = 16,
+    matrix: Union[Zimg.Matrix, MATRIX] = Zimg.Matrix.BT709,
+    transfer: Union[Zimg.Transfer, TRANSFER] = Zimg.Transfer.BT709,
+    primaries: Union[Zimg.Primaries, PRIMARIES] = Zimg.Primaries.BT709
+) -> F:  # type: ignore
+    ...
+
+
+@overload
+def initialise_input(func: Optional[F] = None, /) -> F:
+    ...
+
+
+@overload
+def initialise_input(
+    func: Optional[F] = None, /, *, bits: Optional[int] = 16,
+    matrix: Union[Zimg.Matrix, MATRIX] = Zimg.Matrix.BT709,
+    transfer: Union[Zimg.Transfer, TRANSFER] = Zimg.Transfer.BT709,
+    primaries: Union[Zimg.Primaries, PRIMARIES] = Zimg.Primaries.BT709
+) -> F:
+    ...
+
+
+def initialise_input(
+    func: Optional[F] = None, /, *, bits: Optional[int] = 16,
+    matrix: Union[Zimg.Matrix, MATRIX] = Zimg.Matrix.BT709,
+    transfer: Union[Zimg.Transfer, TRANSFER] = Zimg.Transfer.BT709,
+    primaries: Union[Zimg.Primaries, PRIMARIES] = Zimg.Primaries.BT709
+) -> F:
+    """
+    Function decorator that dither up the input clip and set matrix, transfer and primaries.
+    """
+    if func is None:
+        return cast(F, partial(initialise_input, bits=bits, matrix=matrix, transfer=transfer, primaries=primaries))
+
+    @wraps(func)
+    def _wrapper(*args: Any, **kwargs: Any) -> Any:
+        assert func
+
+        i, j = 0, 0
+        args_l, kwargs_l = list(args), list(kwargs.items())
+        in_kwargs = False
+        while True:
+            # Checks positional arguments
+            try:
+                obj = args_l[i]
+                if isinstance(obj, vs.VideoNode):
+                    clip = obj
+                    break
+                else:
+                    i += 1
+            except IndexError:
+                # Check keyword arguments
+                in_kwargs = True
+                try:
+                    name, obj = kwargs_l[i]
+                    if isinstance(obj, vs.VideoNode):
+                        clip = obj
+                        break
+                    else:
+                        j += 1
+                except IndexError:
+                    # Check default arguments
+                    signature = inspect.signature(func)
+                    default_args = {
+                        k: v.default
+                        for k, v in signature.parameters.items()
+                        if v.default is not inspect.Parameter.empty and isinstance(v.default, vs.VideoNode)
+                    }
+                    if default_args:
+                        name, clip = list(default_args.items())[0]
+                    else:
+                        raise ValueError(
+                            'initialise_input: None VideoNode found in positional, keyword nor default arguments!'
+                        )
+                    break
+
+        if bits:
+            clip = depth(clip, bits)
+        for prop, val in zip(('_Matrix', '_Transfer', '_Primaries'), (matrix, transfer, primaries)):
+            clip = clip.std.SetFrameProp(prop, intval=val)
+
+        if in_kwargs:
+            kwargs[name] = clip  # type: ignore
+        else:
+            args_l[i] = clip
+
+        return func(*args_l, **kwargs)
+
+    return cast(F, _wrapper)
 
 
 def get_colour_range(clip: vs.VideoNode) -> PropsVal.ColorRange:
