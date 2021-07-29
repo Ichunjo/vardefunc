@@ -16,7 +16,7 @@ DEBUG = DebugOutput(SOURCE, props=7, num=9, scale=1)
 # DEBUG = DebugOutput()
 
 
-@DebugOutput.catch  # Catch the output of main_filter(). Here it's the grained clip
+@DEBUG.catch  # Catch the output of main_filter(). Here it's the grained clip
 def main_filter() -> vs.VideoNode:
     debug = DEBUG
     src = SOURCE
