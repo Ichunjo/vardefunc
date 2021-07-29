@@ -6,13 +6,14 @@ from string import ascii_lowercase
 from typing import (Any, Callable, Iterable, List, Optional, Sequence, Set,
                     Tuple, Union, cast, overload)
 
+import numpy as np
 import vapoursynth as vs
-from vsutil import Range as CRange
 from vsutil import depth
 
-from .types import F_VN, MATRIX, PRIMARIES, TRANSFER
+from .types import F_VN, MATRIX, PRIMARIES, TRANSFER, AnyInt
 from .types import DuplicateFrame as DF
-from .types import F, PropsVal, Range, Trim
+from .types import F, NDArray, PropsVal, Range, Trim
+from .types import VNumpy as vnp
 from .types import Zimg, format_not_none
 
 core = vs.core
@@ -194,6 +195,40 @@ def max_expr(n: int) -> str:
     ) + ' max'
 
 
+def select_frames(clips: Union[vs.VideoNode, Sequence[vs.VideoNode]],
+                  indicies: Union[NDArray[AnyInt], List[int], List[Tuple[int, int]]],
+                  *, mismatch: bool = False) -> vs.VideoNode:
+
+    clips = (clips, ) if isinstance(clips, vs.VideoNode) else clips
+    indicies = vnp.array(indicies) if isinstance(indicies, list) else indicies
+
+    if indicies.ndim == 1:
+        indicies = vnp.zip_arrays(
+            np.zeros(len(indicies), np.uint32),
+            indicies
+        )
+    elif indicies.ndim == 2:
+        pass
+    else:
+        raise ValueError('select_frames: only 1D and 2D array is allowed!')
+
+    placeholder = clips[0].std.BlankClip(length=len(indicies))
+
+    if mismatch:
+        if placeholder.format and placeholder.format.id == vs.GRAY8:
+            ph_fmt = vs.GRAY16
+        else:
+            ph_fmt = vs.GRAY8
+        placeholder = core.std.Splice(
+            [placeholder[:-1], placeholder.std.BlankClip(format=ph_fmt, length=1)],
+            mismatch=True
+        )
+
+    def _select_func(n: int, clips: Sequence[vs.VideoNode], indicies: NDArray[AnyInt]) -> vs.VideoNode:
+        return clips[int(indicies[n][0])][int(indicies[n][1])]
+
+    return core.std.FrameEval(placeholder, partial(_select_func, clips=clips, indicies=indicies))
+
 
 def normalise_ranges(clip: vs.VideoNode, ranges: Union[Range, List[Range], Trim, List[Trim]],
                      *, norm_dups: bool = False) -> List[Tuple[int, int]]:
@@ -240,22 +275,27 @@ def normalise_ranges(clip: vs.VideoNode, ranges: Union[Range, List[Range], Trim,
     return out
 
 
-def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode,
-                   ranges: Union[Range, List[Range]], *, mismatch: bool = False) -> vs.VideoNode:
+def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Union[Range, List[Range]],
+                   *, mismatch: bool = False) -> vs.VideoNode:
     """Modified version of lvsfunc.util.replace_ranges following python slicing syntax"""
-    out = clip_a
+    num_frames = clip_a.num_frames
+    nranges = normalise_ranges(clip_a, ranges)
 
-    nranges = normalise_ranges(clip_b, ranges)
+    def _gen_indicies(nranges: List[Tuple[int, int]]) -> Iterable[int]:
+        for f in range(num_frames):
+            i = 0
+            for start, end in nranges:
+                if start <= f < end:
+                    i = 1
+                    break
+            yield i
 
-    for start, end in nranges:
-        tmp = clip_b[start:end]
-        if start != 0:
-            tmp = core.std.Splice([out[:start], tmp], mismatch=mismatch)
-        if end < out.num_frames:
-            tmp = core.std.Splice([tmp, out[end:]], mismatch=mismatch)
-        out = tmp
+    indicies = vnp.zip_arrays(
+        np.fromiter(_gen_indicies(nranges), np.uint32, num_frames),
+        np.arange(num_frames, dtype=np.uint32)
+    )
 
-    return out
+    return select_frames([clip_a, clip_b], indicies, mismatch=mismatch)
 
 
 def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: List[Union[Trim, DF]]) -> vs.VideoNode:

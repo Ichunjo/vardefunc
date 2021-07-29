@@ -3,8 +3,12 @@ from __future__ import annotations
 from enum import IntEnum
 from os import PathLike
 from typing import (Any, Callable, Dict, List, Literal, NoReturn, Optional,
-                    Tuple, TypeVar, Union, cast)
+                    Sequence, Tuple, TypeVar, Union, cast)
 
+from numpy import array as np_array
+from numpy import int8, int16, int32, uint8, uint16, uint32
+from numpy.lib.index_tricks import CClass as NP_CClass
+from numpy.typing import NDArray
 from vapoursynth import Format, VideoNode
 
 Range = Union[int, Tuple[Optional[int], Optional[int]]]
@@ -31,6 +35,9 @@ F_OpInput = TypeVar('F_OpInput', bound=Callable[..., OpInput])
 F_VN = TypeVar('F_VN', bound=Callable[..., VideoNode])
 # Generic function
 F = TypeVar('F', bound=Callable[..., Any])
+# Any Numpy integrer
+AnyInt = Union[int8, int16, int32, uint8, uint16, uint32]
+
 
 AnyPath = Union[PathLike[str], str]
 
@@ -144,6 +151,19 @@ class PropsVal:
         TOP_FIELD_FIRST = 2
         TFF = 2
 
+
+class VNumpy:
+    class _CClass(NP_CClass):
+        def __getitem__(self, key: Union[NDArray[AnyInt], Tuple[NDArray[AnyInt], ...], slice]) -> NDArray[AnyInt]:
+            return cast(NDArray[AnyInt], super().__getitem__(key))
+
+    @staticmethod
+    def array(obj: Union[NDArray[AnyInt], Sequence[Any]], **kwargs: Any) -> NDArray[AnyInt]:
+        return np_array(obj, **kwargs)
+
+    @classmethod
+    def zip_arrays(cls, *arrays: NDArray[AnyInt]) -> NDArray[AnyInt]:
+        return cls._CClass()[arrays]
 
 
 class VideoNode_F(VideoNode):
