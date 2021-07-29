@@ -8,49 +8,57 @@ import vapoursynth as vs
 from vsutil import Range as CRange
 from vsutil import depth
 
-from .types import FF
+from .types import F_VN, MATRIX, PRIMARIES, TRANSFER
 from .types import DuplicateFrame as DF
-from .types import Range, Trim, format_not_none
+from .types import F, PropsVal, Range, Trim
 
 core = vs.core
 
 
 @overload
-def finalise_output(*, bits: int = 10, clamp_range: bool = True) -> FF:  # type: ignore
+def finalise_output(*, bits: int = 10, clamp: bool = True) -> F_VN:  # type: ignore
     ...
 
 
 @overload
-def finalise_output(func: Optional[FF] = None, /) -> FF:
+def finalise_output(func: Optional[F_VN] = None, /) -> F_VN:
     ...
 
 
 @overload
-def finalise_output(func: Optional[FF] = None, /, *, bits: int = 10, clamp_range: bool = True) -> FF:
+def finalise_output(func: Optional[F_VN] = None, /, *, bits: int = 10, clamp: bool = True) -> F_VN:
     ...
 
 
-def finalise_output(func: Optional[FF] = None, /, *, bits: int = 10, clamp_range: bool = True) -> FF:
-    """Decorator to dither down the final output clip and clamp range to legal values"""
+def finalise_output(func: Optional[F_VN] = None, /, *, bits: int = 10, clamp: bool = True) -> F_VN:
+    """
+    Function decorator that dither down the final output clip and clamp range to legal values.
+
+    Decorated `func`'s output must be of type `vapoursynth.VideoNode`.
+    """
     if func is None:
-        return cast(FF, partial(finalise_output, bits=bits, clamp_range=clamp_range))
+        return cast(F_VN, partial(finalise_output, bits=bits, clamp=clamp))
 
     @wraps(func)
     def _wrapper(*args: Any, **kwargs: Any) -> vs.VideoNode:
         assert func
         out = func(*args, **kwargs)
-        rng = CRange.FULL if get_colour_range(out) == 0 else CRange.LIMITED
+        rng = get_colour_range(out)
+
         out = depth(out, bits, range=rng, range_in=rng)
-        if rng == CRange.LIMITED:
+        if rng == PropsVal.ColorRange.LIMITED and clamp:
             out = out.std.Limiter(16 << (bits - 8), [235 << (bits - 8), 240 << (bits - 8)], [0, 1, 2])
         return out
 
-    return cast(FF, _wrapper)
+    return cast(F_VN, _wrapper)
 
 
-def get_colour_range(clip: vs.VideoNode) -> int:
+
+def get_colour_range(clip: vs.VideoNode) -> PropsVal.ColorRange:
     """Get the colour range from the VideoProps"""
-    return cast(int, clip.get_frame(0).props['_ColorRange'])
+    return PropsVal.ColorRange[
+        {crange.value: crange.name for crange in PropsVal.ColorRange}[cast(int, clip.get_frame(0).props['_ColorRange'])]
+    ]
 
 
 def get_sample_type(clip: vs.VideoNode) -> vs.SampleType:

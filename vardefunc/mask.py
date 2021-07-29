@@ -5,10 +5,10 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import lvsfunc
 import vapoursynth as vs
-from vsutil import (Range, depth, get_depth, get_w, get_y, insert_clip,
-                    iterate, join, scale_value, split)
+from vsutil import (depth, get_depth, get_w, get_y, insert_clip, iterate, join,
+                    scale_value, split)
 
-from .types import format_not_none
+from .types import Zimg, format_not_none
 from .util import get_sample_type, mae_expr, max_expr, pick_px_op
 
 core = vs.core
@@ -49,7 +49,7 @@ class EdgeDetect(ABC):
         clip_p = self._preprocess(clip)
         mask = self._compute_mask(clip_p)
 
-        mask = depth(mask, bits, range=Range.FULL, range_in=Range.FULL)
+        mask = depth(mask, bits, range=Zimg.PixelRange.FULL, range_in=Zimg.PixelRange.FULL)
 
 
         if multi != 1:

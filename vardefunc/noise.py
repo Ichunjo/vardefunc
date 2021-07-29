@@ -1,17 +1,16 @@
 """Noising/denoising functions"""
 from abc import ABC, abstractmethod
 from functools import partial
-from typing import Any, Dict, List, Sequence, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, cast
 
 import lvsfunc
 import vapoursynth as vs
-from vsutil import (Dither, Range, depth, get_depth, get_plane_size, get_y,
-                    join, split)
+from vsutil import Dither, depth, get_depth, get_plane_size, get_y, join, split
 
 from .deband import dumb3kdb
 from .mask import FDOG
 from .placebo import deband
-from .types import FormatError, format_not_none
+from .types import FormatError, Zimg, format_not_none
 from .util import get_sample_type, pick_px_op
 
 core = vs.core
@@ -333,7 +332,8 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
     )(pre)
 
     mask = core.std.Expr(
-        [depth(protect_mask, bits, range=Range.FULL, range_in=Range.FULL, dither_type=Dither.NONE), denoise_mask],
+        [depth(protect_mask, bits, range=Zimg.PixelRange.FULL, range_in=Zimg.PixelRange.FULL, dither_type=Dither.NONE),
+         denoise_mask],
         'y x -'
     )
 
