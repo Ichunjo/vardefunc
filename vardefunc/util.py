@@ -12,6 +12,7 @@ from vsutil import depth
 
 from .types import F_VN, MATRIX, PRIMARIES, TRANSFER
 from .types import DuplicateFrame as DF
+from .types import F, PropsVal, Range, Trim
 from .types import Zimg, format_not_none
 
 core = vs.core
