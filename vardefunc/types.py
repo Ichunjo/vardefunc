@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import IntEnum
+from os import PathLike
 from typing import (Any, Callable, Dict, List, Literal, NoReturn, Optional,
                     Sequence, Tuple, TypeVar, Union, cast)
 
@@ -37,6 +38,7 @@ F = TypeVar('F', bound=Callable[..., Any])
 # Any Numpy integrer
 AnyInt = Union[int8, int16, int32, uint8, uint16, uint32]
 
+AnyPath = Union[PathLike[str], str]
 
 MATRIX = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 TRANSFER = Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
