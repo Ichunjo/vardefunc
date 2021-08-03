@@ -19,7 +19,7 @@ core = vs.core
 
 
 @overload
-def finalise_output(*, bits: int = 10, clamp: bool = True) -> F_VN:  # type: ignore
+def finalise_output(*, bits: int = 10, clamp_tv_range: bool = True) -> F_VN:  # type: ignore
     ...
 
 
@@ -29,27 +29,25 @@ def finalise_output(func: Optional[F_VN] = None, /) -> F_VN:
 
 
 @overload
-def finalise_output(func: Optional[F_VN] = None, /, *, bits: int = 10, clamp: bool = True) -> F_VN:
+def finalise_output(func: Optional[F_VN] = None, /, *, bits: int = 10, clamp_tv_range: bool = True) -> F_VN:
     ...
 
 
-def finalise_output(func: Optional[F_VN] = None, /, *, bits: int = 10, clamp: bool = True) -> F_VN:
+def finalise_output(func: Optional[F_VN] = None, /, *, bits: int = 10, clamp_tv_range: bool = True) -> F_VN:
     """
     Function decorator that dither down the final output clip and clamp range to legal values.
 
     Decorated `func`'s output must be of type `vapoursynth.VideoNode`.
     """
     if func is None:
-        return cast(F_VN, partial(finalise_output, bits=bits, clamp=clamp))
+        return cast(F_VN, partial(finalise_output, bits=bits, clamp=clamp_tv_range))
 
     @wraps(func)
     def _wrapper(*args: Any, **kwargs: Any) -> vs.VideoNode:
         assert func
         out = func(*args, **kwargs)
-        rng = get_colour_range(out)
-
-        out = depth(out, bits, range=rng, range_in=rng)
-        if rng == PropsVal.ColorRange.LIMITED and clamp:
+        out = depth(out, bits)
+        if clamp_tv_range:
             out = out.std.Limiter(16 << (bits - 8), [235 << (bits - 8), 240 << (bits - 8)], [0, 1, 2])
         return out
 
