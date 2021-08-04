@@ -1,7 +1,7 @@
 
-from functools import partial
 import math
 from fractions import Fraction
+from functools import partial
 from typing import Any, Dict, List, Optional, Sequence, Set, Tuple, Union, cast
 
 import vapoursynth as vs
@@ -9,6 +9,7 @@ from lvsfunc.render import clip_async_render
 
 from .mask import region_mask
 from .types import AnyPath
+from .util import select_frames
 
 core = vs.core
 
@@ -29,6 +30,18 @@ class OCR:
                  coord_alt: Optional[Tuple[int, int, int]] = None,
                  thr_in: Union[int, Tuple[int, int, int]] = 225,
                  thr_out: Union[int, Tuple[int, int, int]] = 80) -> None:
+        """[summary]
+
+        Args:
+            clip (vs.VideoNode): [description]
+            coord (Tuple[int, int, int]): [description]
+            coord_alt (Optional[Tuple[int, int, int]], optional): [description]. Defaults to None.
+            thr_in (Union[int, Tuple[int, int, int]], optional): [description]. Defaults to 225.
+            thr_out (Union[int, Tuple[int, int, int]], optional): [description]. Defaults to 80.
+
+        Raises:
+            ValueError: [description]
+        """
         self.clip = clip
         assert self.clip.format
 
@@ -45,23 +58,27 @@ class OCR:
     def launch(self, **kwargs: Any) -> None:
         """http://www.vapoursynth.com/doc/plugins/ocr.html"""
         ppclip = self._cleaning(self._cropping(self.clip, self.coord, False))
-        ocred = core.ocr.Recognize(ppclip, **kwargs)
 
-        def _select_clips(n: int, f: vs.VideoFrame, clips: List[vs.VideoNode]) -> vs.VideoNode:
-            return clips[1] if cast(int, f.props['PlaneStatsMax']) > 0 else clips[0]
+        focr: Set[int] = set()
 
-        ocred = core.std.FrameEval(
-            ppclip, partial(_select_clips, clips=[ppclip, ocred]),
-            prop_src=ppclip.std.PlaneStats()
-        )
+        def _callback_a(n: int, f: vs.VideoFrame) -> None:
+            if cast(int, f.props['PlaneStatsMax']) > 0:
+                focr.add(n)
+
+        clip_async_render(ppclip.std.PlaneStats(), callback=_callback_a, progress='Selecting frames...')
+
+        focr_ = sorted(focr)
+        ocrable = select_frames(ppclip, focr_)
+        ocred = core.ocr.Recognize(ocrable, **kwargs)
 
         results: Set[Tuple[int, bytes]] = set()
 
-        def _callback(n: int, f: vs.VideoFrame) -> None:
-            if (prop_ocr := 'OCRString') in f.props.keys():
-                results.add((n, cast(bytes, f.props[prop_ocr])))
+        def _callback_b(n: int, f: vs.VideoFrame) -> None:
+            results.add(
+                (focr_[n], cast(bytes, f.props['OCRString']))
+            )
 
-        clip_async_render(ocred, callback=_callback)
+        clip_async_render(ocred, callback=_callback_b, progress='OCRing frames...')
         self.results = sorted(results)
 
     def write_ass(
