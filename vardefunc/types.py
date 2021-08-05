@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from enum import IntEnum
+from os import PathLike
 from typing import (Any, Callable, Dict, List, Literal, NoReturn, Optional,
-                    Sequence, Tuple, TypeVar, Union, cast)
+                    Tuple, TypeVar, Union, cast)
 
 from vapoursynth import Format, VideoNode
 
@@ -30,6 +31,8 @@ F_OpInput = TypeVar('F_OpInput', bound=Callable[..., OpInput])
 F_VN = TypeVar('F_VN', bound=Callable[..., VideoNode])
 # Generic function
 F = TypeVar('F', bound=Callable[..., Any])
+
+AnyPath = Union[PathLike[str], str]
 
 MATRIX = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 TRANSFER = Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
