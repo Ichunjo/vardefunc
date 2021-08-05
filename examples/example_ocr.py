@@ -5,7 +5,7 @@ from vsutil import get_y
 core = vs.core
 
 # Import your clip
-SOURCE = core.std.BlankClip(format=vs.YUV420P16)
+SOURCE = core.std.BlankClip(format=vs.YUV410P8)
 
 
 def ocring() -> None:
