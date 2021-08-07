@@ -298,6 +298,33 @@ def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Union[Ran
     return select_frames([clip_a, clip_b], indicies, mismatch=mismatch)
 
 
+def replace_ranges_simple(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Union[Range, List[Range]]) -> vs.VideoNode:
+    nranges = normalise_ranges(clip_a, ranges)
+
+    # franged: List[int] = []
+    # for nrange in nranges:
+    #     franged.extend(list(range(*nrange)))
+
+    # franged_np = vnp.array(franged)
+    # arrays: List[NDArray[AnyInt]] = []
+    # for nrange in nranges:
+    #     arrays.append(np.arange(*nrange, dtype=np.uint32))
+
+    # array = np.concatenate(arrays, axis=None)
+
+    def _gen_indicies(nranges: List[Tuple[int, int]]) -> Iterable[int]:
+        for nrange in nranges:
+            for x in range(*nrange):
+                yield x
+
+    array = np.fromiter(_gen_indicies(nranges), np.uint32)
+
+    def _select_frames(n: int, f: Tuple[vs.VideoFrame, vs.VideoFrame]) -> vs.VideoFrame:
+        return f[1] if n in array else f[0]
+
+    return core.std.ModifyFrame(clip_a, [clip_a, clip_b], _select_frames)
+
+
 def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: List[Union[Trim, DF]]) -> vs.VideoNode:
     """Trims and/or duplicates frames"""
 
