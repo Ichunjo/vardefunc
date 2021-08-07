@@ -300,15 +300,17 @@ def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Union[Ran
 
 def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: List[Union[Trim, DF]]) -> vs.VideoNode:
     """Trims and/or duplicates frames"""
-    clips: List[vs.VideoNode] = []
+
+    indicies: List[int] = []
     for trim_or_df in trims_or_dfs:
         if isinstance(trim_or_df, tuple):
-            start, end = normalise_ranges(clip, trim_or_df).pop()
-            clips.append(clip[start:end])
+            ntrim = normalise_ranges(clip, trim_or_df).pop()
+            indicies.extend(list(range(*ntrim)))
         else:
             df = trim_or_df
-            clips.append(clip[df] * df.dup)
-    return core.std.Splice(clips)
+            indicies.extend([df.numerator] * df.dup)
+
+    return select_frames(clip, indicies)
 
 
 def pick_px_op(
