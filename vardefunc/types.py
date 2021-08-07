@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import IntEnum
+from enum import Enum, IntEnum
 from os import PathLike
 from typing import (Any, Callable, Dict, List, Literal, NoReturn, Optional,
                     Sequence, Tuple, TypeVar, Union, cast)
@@ -10,6 +10,7 @@ from numpy import int8, int16, int32, uint8, uint16, uint32
 from numpy.lib.index_tricks import CClass as NP_CClass
 from numpy.typing import NDArray
 from vapoursynth import Format, VideoNode
+from vsutil import Dither
 
 Range = Union[int, Tuple[Optional[int], Optional[int]]]
 Trim = Tuple[Optional[int], Optional[int]]
@@ -121,6 +122,18 @@ class Zimg:
         """Pixel range (ITU-T H.265 Eq E-4 to E-15)"""
         LIMITED = 0
         FULL = 1
+
+    DitherType = Dither
+
+    class ResampleFilterUV(str, Enum):
+        """Scaling method for UV channels to be used in core.resize.XXXXX(..., resample_filter_uv=)"""
+        POINT = 'point'
+        BILINEAR = 'bilinear'
+        BICUBIC = 'bicubic'
+        SPLINE16 = 'spline16'
+        SPLINE36 = 'spline36'
+        SPLINE64 = 'spline64'
+        LANCZOS = 'lanczos'
 
 
 class PropsVal:
