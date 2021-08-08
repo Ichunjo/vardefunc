@@ -19,28 +19,27 @@ core = vs.core
 
 
 @overload
-def finalise_output(*, bits: int = 10, clamp_tv_range: bool = True) -> F_VN:  # type: ignore
+def finalise_output(func: Optional[F_VN], /) -> F_VN:
     ...
 
 
 @overload
-def finalise_output(func: Optional[F_VN] = None, /) -> F_VN:
+def finalise_output(*, bits: int = 10, clamp_tv_range: bool = True) -> Callable[[F_VN], F_VN]:
     ...
 
 
-@overload
-def finalise_output(func: Optional[F_VN] = None, /, *, bits: int = 10, clamp_tv_range: bool = True) -> F_VN:
-    ...
-
-
-def finalise_output(func: Optional[F_VN] = None, /, *, bits: int = 10, clamp_tv_range: bool = True) -> F_VN:
+def finalise_output(func: Optional[F_VN] = None, /, *, bits: int = 10, clamp_tv_range: bool = True
+                    ) -> Union[Callable[[F_VN], F_VN], F_VN]:
     """
     Function decorator that dither down the final output clip and clamp range to legal values.
 
     Decorated `func`'s output must be of type `vapoursynth.VideoNode`.
     """
     if func is None:
-        return cast(F_VN, partial(finalise_output, bits=bits, clamp=clamp_tv_range))
+        return cast(
+            Callable[[F_VN], F_VN],
+            partial(finalise_output, bits=bits, clamp=clamp_tv_range)
+        )
 
     @wraps(func)
     def _wrapper(*args: Any, **kwargs: Any) -> vs.VideoNode:
@@ -55,44 +54,37 @@ def finalise_output(func: Optional[F_VN] = None, /, *, bits: int = 10, clamp_tv_
 
 
 @overload
-def initialise_input(
-    *, bits: Optional[int] = 16,
-    matrix: Union[Zimg.Matrix, MATRIX] = Zimg.Matrix.BT709,
-    transfer: Union[Zimg.Transfer, TRANSFER] = Zimg.Transfer.BT709,
-    primaries: Union[Zimg.Primaries, PRIMARIES] = Zimg.Primaries.BT709
-) -> F:  # type: ignore
-    ...
-
-
-@overload
-def initialise_input(func: Optional[F] = None, /) -> F:
+def initialise_input(func: Optional[F_VN], /) -> F_VN:
     ...
 
 
 @overload
 def initialise_input(
-    func: Optional[F] = None, /, *, bits: Optional[int] = 16,
-    matrix: Union[Zimg.Matrix, MATRIX] = Zimg.Matrix.BT709,
-    transfer: Union[Zimg.Transfer, TRANSFER] = Zimg.Transfer.BT709,
-    primaries: Union[Zimg.Primaries, PRIMARIES] = Zimg.Primaries.BT709
-) -> F:
+    *, bits: int = ...,
+    matrix: Union[Zimg.Matrix, MATRIX] = ...,
+    transfer: Union[Zimg.Transfer, TRANSFER] = ...,
+    primaries: Union[Zimg.Primaries, PRIMARIES] = ...
+) -> Callable[[F_VN], F_VN]:
     ...
 
 
 def initialise_input(
-    func: Optional[F] = None, /, *, bits: Optional[int] = 16,
+    func: Optional[F_VN] = None, /, *, bits: int = 16,
     matrix: Union[Zimg.Matrix, MATRIX] = Zimg.Matrix.BT709,
     transfer: Union[Zimg.Transfer, TRANSFER] = Zimg.Transfer.BT709,
     primaries: Union[Zimg.Primaries, PRIMARIES] = Zimg.Primaries.BT709
-) -> F:
+) -> Union[Callable[[F_VN], F_VN], F_VN]:
     """
     Function decorator that dither up the input clip and set matrix, transfer and primaries.
     """
     if func is None:
-        return cast(F, partial(initialise_input, bits=bits, matrix=matrix, transfer=transfer, primaries=primaries))
+        return cast(
+            Callable[[F_VN], F_VN],
+            partial(initialise_input, bits=bits, matrix=matrix, transfer=transfer, primaries=primaries)
+        )
 
     @wraps(func)
-    def _wrapper(*args: Any, **kwargs: Any) -> Any:
+    def _wrapper(*args: Any, **kwargs: Any) -> vs.VideoNode:
         assert func
 
         i, j = 0, 0
@@ -145,7 +137,7 @@ def initialise_input(
 
         return func(*args_l, **kwargs)
 
-    return cast(F, _wrapper)
+    return cast(F_VN, _wrapper)
 
 
 def get_colour_range(clip: vs.VideoNode) -> PropsVal.ColorRange:

@@ -217,21 +217,21 @@ class DebugOutput(DebugOutputMMap):
                 yield i
 
     @overload
-    def catch(self, *, op: Union[OpDebug, str] = '<<=') -> F_OpInput:  # type: ignore
+    def catch(self, func: Optional[F_OpInput], /) -> F_OpInput:
         ...
 
     @overload
-    def catch(self, func: Optional[F_OpInput] = None) -> F_OpInput:
+    def catch(self, /, *, op: Union[OpDebug, str] = '<<=') -> Callable[[F_OpInput], F_OpInput]:
         ...
 
-    @overload
-    def catch(self, func: Optional[F_OpInput] = None, *, op: Union[OpDebug, str] = '<<=') -> F_OpInput:
-        ...
-
-    def catch(self, func: Optional[F_OpInput] = None, *, op: Union[OpDebug, str] = '<<=') -> F_OpInput:
+    def catch(self, func: Optional[F_OpInput] = None, /, *, op: Union[OpDebug, str] = '<<='
+              ) -> Union[Callable[[F_OpInput], F_OpInput], F_OpInput]:
         """Decorator to catch the output of the function decorated"""
         if func is None:
-            return cast(F_OpInput, partial(self.catch, op=op))
+            return cast(
+                Callable[[F_OpInput], F_OpInput],
+                partial(self.catch, op=op)
+            )
 
         @wraps(func)
         def _wrapper(*args: Any, **kwargs: Any) -> OpInput:
