@@ -3,15 +3,18 @@ import inspect
 import warnings
 from functools import partial, wraps
 from string import ascii_lowercase
-from typing import (Any, Callable, List, Optional, Sequence, Set, Tuple, Union,
-                    cast, overload)
+from typing import (Any, Callable, Iterable, List, Optional, Sequence, Set,
+                    Tuple, Union, cast, overload)
 
+import numpy as np
 import vapoursynth as vs
 from vsutil import depth
 
-from .types import F_VN, MATRIX, PRIMARIES, TRANSFER
+from .types import F_VN, MATRIX, PRIMARIES, TRANSFER, AnyInt
 from .types import DuplicateFrame as DF
-from .types import F, PropsVal, Range, Trim, Zimg, format_not_none
+from .types import F, NDArray, PropsVal, Range, Trim
+from .types import VNumpy as vnp
+from .types import Zimg, format_not_none
 
 core = vs.core
 
@@ -184,6 +187,65 @@ def max_expr(n: int) -> str:
     ) + ' max'
 
 
+def select_frames(clips: Union[vs.VideoNode, Sequence[vs.VideoNode]],
+                  indicies: Union[NDArray[AnyInt], List[int], List[Tuple[int, int]]],
+                  *, mismatch: bool = False) -> vs.VideoNode:
+    """
+    Select frames from one or more clips at specified indices.
+    Written by EoE. Modified by me.
+
+    Args:
+        clips (Union[vs.VideoNode, Sequence[vs.VideoNode]]):
+            A clip or a list of clips to select the frames from
+
+        indicies (Union[NDArray[AnyInt], List[int], List[Tuple[int, int]]]):
+            Indices of frames to select. Provide a list of indices for a single clip,
+            or for multiple clips, a list of tuples in the form ``(clip_index, frame_index)``
+
+        mismatch (bool, optional):
+            Splicing clips with different formats or dimensions is considered an error
+            unless mismatch is true. Defaults to False.
+
+    Returns:
+        vs.VideoNode: The selected frames in a single clip
+    """
+
+    clips = (clips, ) if isinstance(clips, vs.VideoNode) else clips
+    indicies = vnp.array(indicies) if isinstance(indicies, list) else indicies
+
+    if indicies.ndim == 1:
+        indicies = vnp.zip_arrays(
+            np.zeros(len(indicies), np.uint32),
+            indicies
+        )
+    elif indicies.ndim == 2:
+        pass
+    else:
+        raise ValueError('select_frames: only 1D and 2D array is allowed!')
+
+    plh = clips[0].std.BlankClip(length=len(indicies))
+
+    if mismatch:
+        if plh.format and plh.format.id == vs.GRAY8:
+            ph_fmt = vs.GRAY16
+        else:
+            ph_fmt = vs.GRAY8
+        plh = core.std.Splice(
+            [plh[:-1], plh.std.BlankClip(plh.width+1, plh.height+1, format=ph_fmt, length=1)],
+            True
+        )
+
+    def _select_func(n: int, clips: Sequence[vs.VideoNode], indicies: NDArray[AnyInt]) -> vs.VideoNode:
+        # index: NDArray[AnyInt] = indicies[n]  # Get the index / num_frame pair
+        # i_clip = int(index[0])  # Get the index
+        # num = int(index[1])  # Get the num_frame
+        # nclip = clips[i_clip]  # Select the clip to be returned
+        # tclip = nclip[num]  # Slice the clip
+        # return tclip
+        return clips[int(indicies[n][0])][int(indicies[n][1])]
+
+    return core.std.FrameEval(plh, partial(_select_func, clips=clips, indicies=indicies))
+
 
 def normalise_ranges(clip: vs.VideoNode, ranges: Union[Range, List[Range], Trim, List[Trim]],
                      *, norm_dups: bool = False) -> List[Tuple[int, int]]:
@@ -230,35 +292,40 @@ def normalise_ranges(clip: vs.VideoNode, ranges: Union[Range, List[Range], Trim,
     return out
 
 
-def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode,
-                   ranges: Union[Range, List[Range]], *, mismatch: bool = False) -> vs.VideoNode:
+def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Union[Range, List[Range]],
+                   *, mismatch: bool = False) -> vs.VideoNode:
     """Modified version of lvsfunc.util.replace_ranges following python slicing syntax"""
-    out = clip_a
+    num_frames = clip_a.num_frames
+    nranges = normalise_ranges(clip_a, ranges)
 
-    nranges = normalise_ranges(clip_b, ranges)
+    def _gen_indicies(nranges: List[Tuple[int, int]]) -> Iterable[int]:
+        for f in range(num_frames):
+            i = 0
+            for start, end in nranges:
+                if start <= f < end:
+                    i = 1
+                    break
+            yield i
 
-    for start, end in nranges:
-        tmp = clip_b[start:end]
-        if start != 0:
-            tmp = core.std.Splice([out[:start], tmp], mismatch=mismatch)
-        if end < out.num_frames:
-            tmp = core.std.Splice([tmp, out[end:]], mismatch=mismatch)
-        out = tmp
+    indicies = vnp.zip_arrays(
+        np.fromiter(_gen_indicies(nranges), np.uint32, num_frames),
+        np.arange(num_frames, dtype=np.uint32)
+    )
 
-    return out
+    return select_frames([clip_a, clip_b], indicies, mismatch=mismatch)
 
 
 def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: List[Union[Trim, DF]]) -> vs.VideoNode:
     """Trims and/or duplicates frames"""
-    clips: List[vs.VideoNode] = []
+    indicies: List[int] = []
     for trim_or_df in trims_or_dfs:
         if isinstance(trim_or_df, tuple):
-            start, end = normalise_ranges(clip, trim_or_df).pop()
-            clips.append(clip[start:end])
+            ntrim = normalise_ranges(clip, trim_or_df).pop()
+            indicies.extend(list(range(*ntrim)))
         else:
             df = trim_or_df
-            clips.append(clip[df] * df.dup)
-    return core.std.Splice(clips)
+            indicies.extend([df.numerator] * df.dup)
+    return select_frames(clip, indicies)
 
 
 def remap_rfs(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Union[Range, List[Range]]) -> vs.VideoNode:
