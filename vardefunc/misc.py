@@ -35,8 +35,8 @@ class DebugOutputMMap(MutableMapping[int, vs.VideoNode], ABC):
     _num: int
     _scale: int
 
-    _min_idx: int = 0
-    _max_idx: int = 0
+    _min_idx: int
+    _max_idx: int
 
     def __getitem__(self, index: int) -> vs.VideoNode:
         return self.ouputs[index]
@@ -73,6 +73,11 @@ class DebugOutputMMap(MutableMapping[int, vs.VideoNode], ABC):
 
     def __repr__(self) -> str:
         return repr(self.ouputs)
+
+    def __del__(self) -> None:
+        self.ouputs.clear()
+        del self._min_idx
+        del self._max_idx
 
 
 class DebugOutput(DebugOutputMMap):
@@ -132,7 +137,11 @@ class DebugOutput(DebugOutputMMap):
         self._props = props
         self._num = num
         self._scale = scale
+        self._max_idx = 0
+        self._min_idx = 0
+        self._load_clips(*clips, clear_outputs=clear_outputs, check_curr_env=check_curr_env, **named_clips)
 
+    def _load_clips(self, *clips: Output, clear_outputs: bool = False, check_curr_env: bool = True, **named_clips: Output) -> None:
         rclips = [
             self._resolve_clips(i, clip, None) for i, clip in enumerate(clips)
         ]
@@ -184,31 +193,21 @@ class DebugOutput(DebugOutputMMap):
 
     def _resolve_input_operator(self, yield_func: Iterable[int], clips: OpInput, env: bool = True) -> DebugOutput:
         if isinstance(clips, dict):
-            self.__init__(  # type: ignore
-                props=self._props, num=self._num, scale=self._scale, check_curr_env=env,
+            self._load_clips(
+                check_curr_env=env,
                 **{name: (i, clip) for i, (name, clip) in zip(yield_func, clips.items())}
             )
         elif isinstance(clips, tuple):
             if isinstance(clips[0], vs.VideoNode):
-                self.__init__(  # type: ignore
-                    *zip(yield_func, (c for c in clips if isinstance(c, vs.VideoNode))),
-                    props=self._props, num=self._num, scale=self._scale, check_curr_env=env,
+                self._load_clips(
+                    *zip(yield_func, (c for c in clips if isinstance(c, vs.VideoNode))), check_curr_env=env,
                 )
             else:
-                self.__init__(  # type: ignore
-                    *zip(yield_func, (c for c in clips if isinstance(c, list))),
-                    props=self._props, num=self._num, scale=self._scale, check_curr_env=env,
-                )
+                self._load_clips(*zip(yield_func, (c for c in clips if isinstance(c, list))), check_curr_env=env,)
         elif isinstance(clips, list):
-            self.__init__(  # type: ignore
-                *zip(yield_func, [clips]),
-                props=self._props, num=self._num, scale=self._scale, check_curr_env=env,
-            )
+            self._load_clips(*zip(yield_func, [clips]), check_curr_env=env,)
         else:
-            self.__init__(  # type: ignore
-                *zip(yield_func, [clips]),
-                props=self._props, num=self._num, scale=self._scale, check_curr_env=env,
-            )
+            self._load_clips(*zip(yield_func, [clips]), check_curr_env=env)
         return self
 
     def _index_not_used_gen(self) -> Iterable[int]:
