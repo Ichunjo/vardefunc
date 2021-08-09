@@ -3,17 +3,15 @@ import inspect
 import warnings
 from functools import partial, wraps
 from string import ascii_lowercase
-from typing import (Any, Callable, Iterable, List, Optional, Sequence, Set,
-                    Tuple, Union, cast, overload)
+from typing import (Any, Callable, List, Optional, Sequence, Set, Tuple, Union,
+                    cast, overload)
 
 import vapoursynth as vs
-from vsutil import Range as CRange
 from vsutil import depth
 
 from .types import F_VN, MATRIX, PRIMARIES, TRANSFER
 from .types import DuplicateFrame as DF
-from .types import F, PropsVal, Range, Trim
-from .types import Zimg, format_not_none
+from .types import F, PropsVal, Range, Trim, Zimg, format_not_none
 
 core = vs.core
 
@@ -261,6 +259,14 @@ def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: List[Union[Trim, DF]]) 
             df = trim_or_df
             clips.append(clip[df] * df.dup)
     return core.std.Splice(clips)
+
+
+def remap_rfs(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Union[Range, List[Range]]) -> vs.VideoNode:
+    """Replace ranges function using remap plugin"""
+    return core.remap.ReplaceFramesSimple(
+        clip_a, clip_b,
+        mappings=' '.join(f'[{s} {e-1}]' for s, e in normalise_ranges(clip_a, ranges, norm_dups=True))
+    )
 
 
 def pick_px_op(
