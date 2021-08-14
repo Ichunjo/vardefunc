@@ -188,7 +188,7 @@ def max_expr(n: int) -> str:
 
 
 def select_frames(clips: Union[vs.VideoNode, Sequence[vs.VideoNode]],
-                  indicies: Union[NDArray[AnyInt], List[int], List[Tuple[int, int]]],
+                  indices: Union[NDArray[AnyInt], List[int], List[Tuple[int, int]]],
                   *, mismatch: bool = False) -> vs.VideoNode:
     """
     Select frames from one or more clips at specified indices.
@@ -198,7 +198,7 @@ def select_frames(clips: Union[vs.VideoNode, Sequence[vs.VideoNode]],
         clips (Union[vs.VideoNode, Sequence[vs.VideoNode]]):
             A clip or a list of clips to select the frames from
 
-        indicies (Union[NDArray[AnyInt], List[int], List[Tuple[int, int]]]):
+        indices (Union[NDArray[AnyInt], List[int], List[Tuple[int, int]]]):
             Indices of frames to select. Provide a list of indices for a single clip,
             or for multiple clips, a list of tuples in the form ``(clip_index, frame_index)``
 
@@ -211,19 +211,19 @@ def select_frames(clips: Union[vs.VideoNode, Sequence[vs.VideoNode]],
     """
 
     clips = (clips, ) if isinstance(clips, vs.VideoNode) else clips
-    indicies = vnp.array(indicies) if isinstance(indicies, list) else indicies
+    indices = vnp.array(indices) if isinstance(indices, list) else indices
 
-    if indicies.ndim == 1:
-        indicies = vnp.zip_arrays(
-            np.zeros(len(indicies), np.uint32),
-            indicies
+    if indices.ndim == 1:
+        indices = vnp.zip_arrays(
+            np.zeros(len(indices), np.uint32),
+            indices
         )
-    elif indicies.ndim == 2:
+    elif indices.ndim == 2:
         pass
     else:
         raise ValueError('select_frames: only 1D and 2D array is allowed!')
 
-    plh = clips[0].std.BlankClip(length=len(indicies))
+    plh = clips[0].std.BlankClip(length=len(indices))
 
     if mismatch:
         if plh.format and plh.format.id == vs.GRAY8:
@@ -235,16 +235,16 @@ def select_frames(clips: Union[vs.VideoNode, Sequence[vs.VideoNode]],
             True
         )
 
-    def _select_func(n: int, clips: Sequence[vs.VideoNode], indicies: NDArray[AnyInt]) -> vs.VideoNode:
-        # index: NDArray[AnyInt] = indicies[n]  # Get the index / num_frame pair
+    def _select_func(n: int, clips: Sequence[vs.VideoNode], indices: NDArray[AnyInt]) -> vs.VideoNode:
+        # index: NDArray[AnyInt] = indices[n]  # Get the index / num_frame pair
         # i_clip = int(index[0])  # Get the index
         # num = int(index[1])  # Get the num_frame
         # nclip = clips[i_clip]  # Select the clip to be returned
         # tclip = nclip[num]  # Slice the clip
         # return tclip
-        return clips[int(indicies[n][0])][int(indicies[n][1])]
+        return clips[int(indices[n][0])][int(indices[n][1])]
 
-    return core.std.FrameEval(plh, partial(_select_func, clips=clips, indicies=indicies))
+    return core.std.FrameEval(plh, partial(_select_func, clips=clips, indices=indices))
 
 
 def normalise_ranges(clip: vs.VideoNode, ranges: Union[Range, List[Range], Trim, List[Trim]],
@@ -298,7 +298,7 @@ def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Union[Ran
     num_frames = clip_a.num_frames
     nranges = normalise_ranges(clip_a, ranges)
 
-    def _gen_indicies(nranges: List[Tuple[int, int]]) -> Iterable[int]:
+    def _gen_indices(nranges: List[Tuple[int, int]]) -> Iterable[int]:
         for f in range(num_frames):
             i = 0
             for start, end in nranges:
@@ -307,25 +307,25 @@ def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Union[Ran
                     break
             yield i
 
-    indicies = vnp.zip_arrays(
-        np.fromiter(_gen_indicies(nranges), np.uint32, num_frames),
+    indices = vnp.zip_arrays(
+        np.fromiter(_gen_indices(nranges), np.uint32, num_frames),
         np.arange(num_frames, dtype=np.uint32)
     )
 
-    return select_frames([clip_a, clip_b], indicies, mismatch=mismatch)
+    return select_frames([clip_a, clip_b], indices, mismatch=mismatch)
 
 
 def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: List[Union[Trim, DF]]) -> vs.VideoNode:
     """Trims and/or duplicates frames"""
-    indicies: List[int] = []
+    indices: List[int] = []
     for trim_or_df in trims_or_dfs:
         if isinstance(trim_or_df, tuple):
             ntrim = normalise_ranges(clip, trim_or_df).pop()
-            indicies.extend(list(range(*ntrim)))
+            indices.extend(range(*ntrim))
         else:
             df = trim_or_df
-            indicies.extend([df.numerator] * df.dup)
-    return select_frames(clip, indicies)
+            indices.extend([df.numerator] * df.dup)
+    return select_frames(clip, indices)
 
 
 def remap_rfs(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Union[Range, List[Range]]) -> vs.VideoNode:
