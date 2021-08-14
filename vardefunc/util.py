@@ -270,9 +270,9 @@ def normalise_ranges(clip: vs.VideoNode, ranges: Union[Range, List[Range], Trim,
 
         if start >= clip.num_frames or end > clip.num_frames:
             warnings.warn(f'normalise_ranges: {r} out of range')
-        else:
-            start, end = min(start, clip.num_frames - 1), min(end, clip.num_frames)
-            nranges.add((start, end))
+
+        start, end = min(start, clip.num_frames - 1), min(end, clip.num_frames)
+        nranges.add((start, end))
 
     out = sorted(nranges)
 
