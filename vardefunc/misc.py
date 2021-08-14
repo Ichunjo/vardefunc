@@ -194,8 +194,8 @@ class DebugOutput(DebugOutputMMap):
     def _resolve_input_operator(self, yield_func: Iterable[int], clips: OpInput, env: bool = True) -> DebugOutput:
         if isinstance(clips, dict):
             self._load_clips(
-                check_curr_env=env,
-                **{name: (i, clip) for i, (name, clip) in zip(yield_func, clips.items())}
+                clear_outputs=False, check_curr_env=env,
+                **{name: cast(Output, (i, clip)) for i, (name, clip) in zip(yield_func, clips.items())}
             )
         elif isinstance(clips, tuple):
             if isinstance(clips[0], vs.VideoNode):
