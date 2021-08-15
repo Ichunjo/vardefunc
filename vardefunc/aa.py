@@ -130,6 +130,7 @@ class Eedi3SR(SingleRater):
     gamma: float = 40
     nrad: int = 2
     mdis: int = 20
+    mclip: Optional[vs.VideoNode] = None
 
     eedi3_args: Dict[str, Any] = field(default_factory=dict)
     nnedi3_args: Dict[str, Any] = field(default_factory=dict)
@@ -143,10 +144,23 @@ class Eedi3SR(SingleRater):
         nnargs |= self.nnedi3_args
 
         def func(clip: vs.VideoNode) -> vs.VideoNode:
+            if self.mclip:
+                self.mclip = self.mclip.resize.Point(clip.width, clip.height)
+
             clip = clip.std.Transpose()
-            clip = eedi3(opencl=self.eedi3cl)(clip, 0, sclip=nnedi3(opencl=self.nnedi3cl)(clip, 0, **nnargs), **eeargs)
+            clip = eedi3(opencl=self.eedi3cl)(
+                clip, 0,
+                sclip=nnedi3(opencl=self.nnedi3cl)(clip, 0, **nnargs),
+                mclip=self.mclip.std.Transpose() if self.mclip else None,
+                **eeargs
+            )
             clip = clip.std.Transpose()
-            clip = eedi3(opencl=self.eedi3cl)(clip, 0, sclip=nnedi3(opencl=self.nnedi3cl)(clip, 0, **nnargs), **eeargs)
+            clip = eedi3(opencl=self.eedi3cl)(
+                clip, 0,
+                sclip=nnedi3(opencl=self.nnedi3cl)(clip, 0, **nnargs),
+                mclip=self.mclip if self.mclip else None,
+                **eeargs
+            )
 
             return clip
 
