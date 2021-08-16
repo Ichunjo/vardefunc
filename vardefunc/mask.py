@@ -633,7 +633,7 @@ class Difference():
             format=src_clip.format.replace(color_family=vs.GRAY).id
         )
 
-        mask = PrewittStd().get_mask(diff).std.Binarize(thr)
+        mask = ExLaplacian4().get_mask(diff).std.Binarize(thr)
         mask = self._minmax(mask, 2 + expand, True)
 
         blank = core.std.BlankClip(
