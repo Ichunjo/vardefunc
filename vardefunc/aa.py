@@ -147,18 +147,23 @@ class Eedi3SR(SingleRater):
             if self.mclip:
                 self.mclip = self.mclip.resize.Point(clip.width, clip.height)
 
+            if not self.eedi3cl:
+                eeargs.update(mclip=self.mclip.std.Transpose() if self.mclip else None)
+
             clip = clip.std.Transpose()
             clip = eedi3(opencl=self.eedi3cl)(
                 clip, 0,
                 sclip=nnedi3(opencl=self.nnedi3cl)(clip, 0, **nnargs),
-                mclip=self.mclip.std.Transpose() if self.mclip else None,
                 **eeargs
             )
+
+            if not self.eedi3cl:
+                eeargs.update(mclip=self.mclip)
+
             clip = clip.std.Transpose()
             clip = eedi3(opencl=self.eedi3cl)(
                 clip, 0,
                 sclip=nnedi3(opencl=self.nnedi3cl)(clip, 0, **nnargs),
-                mclip=self.mclip if self.mclip else None,
                 **eeargs
             )
 
