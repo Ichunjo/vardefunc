@@ -149,10 +149,9 @@ class OCR:
         with open(output, 'w', encoding='utf-8-sig') as ass:
             ass.write('[Events]\n')
             ass.write('Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n')
-            ass.writelines(
-                f'Dialogue: 0,{self._f2assts(s, fps)},{self._f2assts(e, fps)},Default,,0,0,0,,{string}\n'
-                for s, (e, string) in sorted(resultsd.items())
-            )
+            for s, (e, string) in sorted(resultsd.items()):
+                if string:
+                    ass.write(f'Dialogue: 0,{self._f2assts(s, fps)},{self._f2assts(e, fps)},Default,,0,0,0,,{string}\n')
 
     def _f2assts(self, f: int, fps: Fraction, /) -> str:
         s = self._f2seconds(f, fps) - fps ** -1 * 0.5
