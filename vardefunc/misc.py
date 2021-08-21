@@ -29,7 +29,7 @@ _OPS = {
 
 class DebugOutputMMap(MutableMapping[int, vs.VideoNode], ABC):
     """Abstract Debug Output interface implementing the mutable mapping methods"""
-    ouputs: ClassVar[Dict[int, vs.VideoNode]] = {}
+    outputs: ClassVar[Dict[int, vs.VideoNode]] = {}
 
     _props: int
     _num: int
@@ -39,12 +39,12 @@ class DebugOutputMMap(MutableMapping[int, vs.VideoNode], ABC):
     _max_idx: int
 
     def __getitem__(self, index: int) -> vs.VideoNode:
-        return self.ouputs[index]
+        return self.outputs[index]
 
     def __setitem__(self, index: int, clip: vs.VideoNode) -> None:
-        self.ouputs[index] = clip
+        self.outputs[index] = clip
 
-        self._min_idx, self._max_idx = min(self.ouputs.keys()), max(self.ouputs.keys())
+        self._min_idx, self._max_idx = min(self.outputs.keys()), max(self.outputs.keys())
 
         if self._props:
             clip = clip.text.FrameProps(alignment=self._props, scale=self._scale)
@@ -54,15 +54,15 @@ class DebugOutputMMap(MutableMapping[int, vs.VideoNode], ABC):
         clip.set_output(index)
 
     def __delitem__(self, index: int) -> None:
-        del self.ouputs[index]
-        self._min_idx, self._max_idx = min(self.ouputs.keys()), max(self.ouputs.keys())
+        del self.outputs[index]
+        self._min_idx, self._max_idx = min(self.outputs.keys()), max(self.outputs.keys())
         vs.clear_output(index)
 
     def __len__(self) -> int:
-        return len(self.ouputs)
+        return len(self.outputs)
 
     def __iter__(self) -> Iterator[int]:
-        for i in self.ouputs:
+        for i in self.outputs:
             yield i
 
     def __str__(self) -> str:
@@ -72,10 +72,10 @@ class DebugOutputMMap(MutableMapping[int, vs.VideoNode], ABC):
         return string
 
     def __repr__(self) -> str:
-        return repr(self.ouputs)
+        return repr(self.outputs)
 
     def __del__(self) -> None:
-        self.ouputs.clear()
+        self.outputs.clear()
         del self._min_idx
         del self._max_idx
 
