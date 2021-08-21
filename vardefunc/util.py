@@ -39,7 +39,7 @@ def finalise_output(func: Optional[F_VN] = None, /, *, bits: int = 10, clamp_tv_
     if func is None:
         return cast(
             Callable[[F_VN], F_VN],
-            partial(finalise_output, bits=bits, clamp=clamp_tv_range)
+            partial(finalise_output, bits=bits, clamp_tv_range=clamp_tv_range)
         )
 
     @wraps(func)
