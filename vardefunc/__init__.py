@@ -12,7 +12,7 @@ lcm = mask.luma_credit_mask
 
 def __check_vs_version() -> None:
     if vs_version.release_major < 56:
-        raise ImportError('"vardautomation" only supports Vapoursynth R56 and above!')
+        raise ImportError('"vardefunc" only supports Vapoursynth R56 and above!')
 
 
 __check_vs_version()
