@@ -277,11 +277,11 @@ class DebugOutput(DebugOutputMMap):
     @staticmethod
     def _get_outputs() -> Dict[int, vs.VideoNode]:
         outputs: Dict[int, vs.VideoNode] = {}
-        for idx, clip in vs.get_outputs().items():
-            if isinstance(clip, vs.VideoNode):
-                outputs[idx] = clip
-            else:
-                warnings.warn('DebugOutput: AlphaOutputTuple detected; this is not supported', Warning)
+        for idx, output in vs.get_outputs().items():
+            if isinstance(output, vs.VideoOutputTuple):
+                outputs[idx] = output.clip
+                if output.alpha:
+                    warnings.warn('DebugOutput: VideoOutputTuple.alpha detected; this is not supported', Warning)
         return outputs
 
 

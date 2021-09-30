@@ -12,9 +12,9 @@ from vsutil import depth
 
 from .types import F_VN, MATRIX, PRIMARIES, TRANSFER, AnyInt
 from .types import DuplicateFrame as DF
-from .types import F, NDArray, PropsVal, Range, Trim
+from .types import F, NDArray, Range, Trim
 from .types import VNumpy as vnp
-from .types import Zimg, format_not_none
+from .types import format_not_none
 
 core = vs.core
 
@@ -62,18 +62,18 @@ def initialise_input(func: Optional[F_VN], /) -> F_VN:
 @overload
 def initialise_input(
     *, bits: int = ...,
-    matrix: Union[Zimg.Matrix, MATRIX] = ...,
-    transfer: Union[Zimg.Transfer, TRANSFER] = ...,
-    primaries: Union[Zimg.Primaries, PRIMARIES] = ...
+    matrix: Union[vs.MatrixCoefficients, MATRIX] = ...,
+    transfer: Union[vs.TransferCharacteristics, TRANSFER] = ...,
+    primaries: Union[vs.ColorPrimaries, PRIMARIES] = ...
 ) -> Callable[[F_VN], F_VN]:
     ...
 
 
 def initialise_input(
     func: Optional[F_VN] = None, /, *, bits: int = 16,
-    matrix: Union[Zimg.Matrix, MATRIX] = Zimg.Matrix.BT709,
-    transfer: Union[Zimg.Transfer, TRANSFER] = Zimg.Transfer.BT709,
-    primaries: Union[Zimg.Primaries, PRIMARIES] = Zimg.Primaries.BT709
+    matrix: Union[vs.MatrixCoefficients, MATRIX] = vs.MATRIX_BT709,
+    transfer: Union[vs.TransferCharacteristics, TRANSFER] = vs.TRANSFER_BT709,
+    primaries: Union[vs.ColorPrimaries, PRIMARIES] = vs.PRIMARIES_BT709
 ) -> Union[Callable[[F_VN], F_VN], F_VN]:
     """
     Function decorator that dither up the input clip and set matrix, transfer and primaries.
@@ -139,13 +139,6 @@ def initialise_input(
         return func(*args_l, **kwargs)
 
     return cast(F_VN, _wrapper)
-
-
-def get_colour_range(clip: vs.VideoNode) -> PropsVal.ColorRange:
-    """Get the colour range from the VideoProps"""
-    return PropsVal.ColorRange[
-        {crange.value: crange.name for crange in PropsVal.ColorRange}[cast(int, clip.get_frame(0).props['_ColorRange'])]
-    ]
 
 
 def get_sample_type(clip: vs.VideoNode) -> vs.SampleType:
