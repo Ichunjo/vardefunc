@@ -630,7 +630,7 @@ class Difference():
         diff = core.std.Expr(
             sum(map(split, clips), []),
             mae_expr(gray_only),
-            format=src_clip.format.replace(color_family=vs.GRAY).id
+            format=src_clip.format.replace(color_family=vs.GRAY, subsampling_w=0, subsampling_h=0).id
         )
 
         mask = ExLaplacian4().get_mask(diff).std.Binarize(thr)
