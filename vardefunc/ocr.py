@@ -131,8 +131,8 @@ class OCR:
                 Defaults to [ ('_', '-'), ('…', '...'), ('‘', "'"), ('’', "'"), (" '", "'") ].
         """
         resultsd: Dict[int, Tuple[int, str]] = {}
-        for frame, string in sorted(self.results):
-            nstring = string.decode('utf-8').replace('\n', '\\N')
+        for frame, string_byte in sorted(self.results):
+            nstring = string_byte.decode('utf-8').replace('\n', '\\N')
             for r in string_replace:
                 nstring = nstring.replace(*r)
             resultsd[frame] = (frame + 1, nstring)
