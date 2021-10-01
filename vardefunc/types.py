@@ -49,7 +49,7 @@ PIXEL_RANGE = Literal[0, 1]
 
 
 class Zimg:
-    class PresetFormatEx(PresetFormat):
+    class PresetFormatEx(IntEnum):
         GRAY11 = 269156352
         GRAY13 = 269287424
         GRAY15 = 269418496
