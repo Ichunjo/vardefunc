@@ -9,7 +9,7 @@ from numpy import array as np_array
 from numpy import int8, int16, int32, uint8, uint16, uint32
 from numpy.lib.index_tricks import CClass as NP_CClass
 from numpy.typing import NDArray
-from vapoursynth import VideoFormat, VideoNode, PresetFormat
+from vapoursynth import VideoFormat, VideoNode
 from vsutil import Dither
 
 Range = Union[int, Tuple[Optional[int], Optional[int]]]
