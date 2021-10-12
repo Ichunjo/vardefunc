@@ -83,19 +83,6 @@ class DebugOutputMMap(MutableMapping[int, vs.VideoNode], ABC):
 class DebugOutput(DebugOutputMMap):
     """Utility class to ouput multiple clips"""
 
-    @overload
-    def __init__(self, *clips: Output) -> None:
-        """
-        Args:
-            clips (vs.VideoNode | List[vs.VideoNode] | Tuple[int, vs.VideoNode] | Tuple[int, List[vs.VideoNode]]):
-                `clips` can be a VideoNode, a list of planes,
-                a tuple of an index and VideoNode or a tuple of an index and a list of planes.
-                If a list of planes is passed, DebugOutput will try to stack the planes for previewing.
-                Only 444 and 420 format are allowed. Otherwise a warning will be raise and a garbage clip will be displayed.
-        """
-        ...
-
-    @overload
     def __init__(self, *clips: Output, props: int = 0, num: int = 0, scale: int = 1,
                  clear_outputs: bool = False, check_curr_env: bool = True, **named_clips: Output) -> None:
         """
@@ -130,10 +117,6 @@ class DebugOutput(DebugOutputMMap):
                 Check all clips set for output in the current environment.
                 Defaults to True.
         """
-        ...
-
-    def __init__(self, *clips: Output, props: int = 0, num: int = 0, scale: int = 1,
-                 clear_outputs: bool = False, check_curr_env: bool = True, **named_clips: Output) -> None:
         self._props = props
         self._num = num
         self._scale = scale
