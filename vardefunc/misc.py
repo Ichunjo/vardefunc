@@ -44,7 +44,7 @@ class DebugOutputMMap(MutableMapping[int, vs.VideoNode], ABC):
     def __setitem__(self, index: int, clip: vs.VideoNode) -> None:
         self.outputs[index] = clip
 
-        self._min_idx, self._max_idx = min(self.outputs.keys()), max(self.outputs.keys())
+        self._update_minmax()
 
         if self._props:
             clip = clip.text.FrameProps(alignment=self._props, scale=self._scale)
@@ -55,15 +55,14 @@ class DebugOutputMMap(MutableMapping[int, vs.VideoNode], ABC):
 
     def __delitem__(self, index: int) -> None:
         del self.outputs[index]
-        self._min_idx, self._max_idx = min(self.outputs.keys()), max(self.outputs.keys())
+        self._update_minmax()
         vs.clear_output(index)
 
     def __len__(self) -> int:
         return len(self.outputs)
 
     def __iter__(self) -> Iterator[int]:
-        for i in self.outputs:
-            yield i
+        yield from self.outputs.keys()
 
     def __str__(self) -> str:
         string = ''
@@ -75,9 +74,26 @@ class DebugOutputMMap(MutableMapping[int, vs.VideoNode], ABC):
         return repr(self.outputs)
 
     def __del__(self) -> None:
+        """
+        Deleting an item will effectively freed the memory since we're invoking vs.clear_output.
+        Indexes are also updated.
+
+        However, we can't clear the outputs in the destructor of the DebugOutput instance.
+        Previewers won't be able to get the outputs because they run after the end of the script,
+        and the destructor is already used.
+
+        So ``del debug[0]`` will clear the output 0 but ``del debug`` won't.
+        If you want to clear outputs just do: ``debug.clear()`` and ``del debug``
+        """
         self.outputs.clear()
-        del self._min_idx
-        del self._max_idx
+        for name in set(self.__dict__):
+            delattr(self, name)
+
+    def _update_minmax(self) -> None:
+        try:
+            self._min_idx, self._max_idx = min(self.outputs.keys()), max(self.outputs.keys())
+        except ValueError:
+            del self._min_idx, self._max_idx
 
 
 class DebugOutput(DebugOutputMMap):
@@ -227,8 +243,7 @@ class DebugOutput(DebugOutputMMap):
 
     @staticmethod
     def _index_gen(start: int) -> Iterable[int]:
-        for i in count(start=start):
-            yield i
+        yield from count(start=start)
 
     @staticmethod
     def _stack_planes(planes: List[vs.VideoNode]) -> vs.VideoNode:
