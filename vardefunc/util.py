@@ -336,6 +336,20 @@ def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: List[Union[Trim, DF]]) 
     return select_frames(clip, indices)
 
 
+def adjust_audio_frames(audio: vs.AudioNode, trims_or_dfs: List[Union[Trim, DF]], *, ref_fps: Optional[Fraction] = None) -> vs.AudioNode:
+    audios: List[vs.AudioNode] = []
+    for trim_or_df in trims_or_dfs:
+        if isinstance(trim_or_df, tuple):
+            ntrim = normalise_ranges(audio, trim_or_df, ref_fps=ref_fps).pop()
+            audios.append(audio[slice(*ntrim)])
+        else:
+            df = trim_or_df
+            if ref_fps:
+                df = df.to_samples(ref_fps, audio.sample_rate)
+            audios.append(audio[int(df)] * df.dup)
+    return core.std.AudioSplice(audios)
+
+
 def remap_rfs(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Union[Range, List[Range]]) -> vs.VideoNode:
     """Replace ranges function using remap plugin"""
     return core.remap.ReplaceFramesSimple(
