@@ -3,3 +3,4 @@ vsutil>=0.5.0
 lvsfunc>=0.3.7
 vs-debandshit>=0.4.4
 numpy>=1.21.1
+pytimeconv>=0.0.2
