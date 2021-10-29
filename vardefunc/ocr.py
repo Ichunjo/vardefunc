@@ -1,11 +1,11 @@
 
 import math
-from fractions import Fraction
 from functools import partial
 from typing import Dict, List, Optional, Sequence, Set, Tuple, Union
 
 import vapoursynth as vs
 from lvsfunc.render import clip_async_render
+from pytimeconv import Convert
 from vsutil import split
 
 from .mask import region_mask
@@ -151,25 +151,7 @@ class OCR:
             ass.write('Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n')
             for s, (e, string) in sorted(resultsd.items()):
                 if string:
-                    ass.write(f'Dialogue: 0,{self._f2assts(s, fps)},{self._f2assts(e, fps)},Default,,0,0,0,,{string}\n')
-
-    def _f2assts(self, f: int, fps: Fraction, /) -> str:
-        s = self._f2seconds(f, fps) - fps ** -1 * 0.5
-        s = max(0, s)
-        m = s // 60
-        s %= 60
-        h = m // 60
-        m %= 60
-        return f"{h:02.0f}:{m:02.0f}:{s:06.3f}"[:-1]
-
-    @staticmethod
-    def _f2seconds(f: int, fps: Fraction, /) -> float:
-        if f == 0:
-            return 0.0
-
-        t = round(float(10 ** 9 * f * fps ** -1))
-        s = t / 10 ** 9
-        return s
+                    ass.write(f'Dialogue: 0,{Convert.f2assts(s, fps)},{Convert.f2assts(e, fps)},Default,,0,0,0,,{string}\n')
 
     def _cropping(self, clip: vs.VideoNode, c: Tuple[int, int, int], alt: bool) -> vs.VideoNode:
         cw, ch, h = c
