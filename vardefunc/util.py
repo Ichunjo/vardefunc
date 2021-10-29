@@ -1,6 +1,7 @@
 """Helper functions for the main functions in this module"""
 import inspect
 import warnings
+from fractions import Fraction
 from functools import partial, wraps
 from string import ascii_lowercase
 from typing import (Any, Callable, Iterable, List, Optional, Sequence, Set,
@@ -8,6 +9,7 @@ from typing import (Any, Callable, Iterable, List, Optional, Sequence, Set,
 
 import numpy as np
 import vapoursynth as vs
+from pytimeconv import Convert
 from vsutil import depth
 
 from .types import F_VN, MATRIX, PRIMARIES, TRANSFER, AnyInt
@@ -240,31 +242,44 @@ def select_frames(clips: Union[vs.VideoNode, Sequence[vs.VideoNode]],
     return core.std.FrameEval(plh, partial(_select_func, clips=clips, indices=indices))
 
 
-def normalise_ranges(clip: vs.VideoNode, ranges: Union[Range, List[Range], Trim, List[Trim]],
-                     *, norm_dups: bool = False) -> List[Tuple[int, int]]:
+def normalise_ranges(clip: Union[vs.VideoNode, vs.AudioNode], ranges: Union[Range, List[Range], Trim, List[Trim]],
+                     *, norm_dups: bool = False, ref_fps: Optional[Fraction] = None) -> List[Tuple[int, int]]:
     """Modified version of lvsfunc.util.normalize_ranges following python slicing syntax"""
+    if isinstance(clip, vs.VideoNode):
+        num_frames = clip.num_frames
+    else:
+        if ref_fps is not None:
+            num_frames = clip.num_samples
+        else:
+            num_frames = clip.num_frames
+
     ranges = ranges if isinstance(ranges, list) else [ranges]
 
     nranges: Set[Tuple[int, int]] = set()
+    f2s = Convert.f2samples
     for r in ranges:
         if isinstance(r, tuple):
             start, end = r
             if start is None:
                 start = 0
             if end is None:
-                end = clip.num_frames
+                end = num_frames
         else:
             start = r
             end = r + 1
+        if isinstance(clip, vs.AudioNode) and ref_fps is not None:
+            start = f2s(start, ref_fps, clip.sample_rate)
+            end = f2s(end, ref_fps, clip.sample_rate)
         if start < 0:
-            start += clip.num_frames
+            start += num_frames
         if end <= 0:
-            end += clip.num_frames
+            end += num_frames
 
-        if start >= clip.num_frames or end > clip.num_frames:
+        if start >= num_frames or end > num_frames:
+            core.log_message(vs.MESSAGE_TYPE_WARNING, f'normalise_ranges: "{r}" out of range')
             warnings.warn(f'normalise_ranges: {r} out of range')
 
-        start, end = min(start, clip.num_frames - 1), min(end, clip.num_frames)
+        start, end = min(start, num_frames - 1), min(end, num_frames)
         nranges.add((start, end))
 
     out = sorted(nranges)
