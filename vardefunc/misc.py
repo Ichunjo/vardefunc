@@ -154,7 +154,7 @@ class DebugOutput(DebugOutputMMap):
 
         if clear_outputs:
             self.clear()
-            self.update(dict(rclips))
+            self.update(rclips)
         else:
             if check_curr_env:
                 self._check_curr_env(all_idx)
