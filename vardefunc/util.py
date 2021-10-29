@@ -1,11 +1,13 @@
 """Helper functions for the main functions in this module"""
+from __future__ import annotations
+
 import inspect
 import warnings
 from fractions import Fraction
 from functools import partial, wraps
 from string import ascii_lowercase
 from typing import (Any, Callable, Iterable, List, Optional, Sequence, Set,
-                    Tuple, Union, cast, overload)
+                    Tuple, cast, overload)
 
 import numpy as np
 import vapoursynth as vs
@@ -32,7 +34,7 @@ def finalise_output(*, bits: int = 10, clamp_tv_range: bool = True) -> Callable[
 
 
 def finalise_output(func: Optional[F_VN] = None, /, *, bits: int = 10, clamp_tv_range: bool = True
-                    ) -> Union[Callable[[F_VN], F_VN], F_VN]:
+                    ) -> Callable[[F_VN], F_VN] | F_VN:
     """
     Function decorator that dither down the final output clip and clamp range to legal values.
 
@@ -64,19 +66,19 @@ def initialise_input(func: Optional[F_VN], /) -> F_VN:
 @overload
 def initialise_input(
     *, bits: int = ...,
-    matrix: Union[vs.MatrixCoefficients, MATRIX] = ...,
-    transfer: Union[vs.TransferCharacteristics, TRANSFER] = ...,
-    primaries: Union[vs.ColorPrimaries, PRIMARIES] = ...
+    matrix: vs.MatrixCoefficients | MATRIX = ...,
+    transfer: vs.TransferCharacteristics | TRANSFER = ...,
+    primaries: vs.ColorPrimaries | PRIMARIES = ...
 ) -> Callable[[F_VN], F_VN]:
     ...
 
 
 def initialise_input(
     func: Optional[F_VN] = None, /, *, bits: int = 16,
-    matrix: Union[vs.MatrixCoefficients, MATRIX] = vs.MATRIX_BT709,
-    transfer: Union[vs.TransferCharacteristics, TRANSFER] = vs.TRANSFER_BT709,
-    primaries: Union[vs.ColorPrimaries, PRIMARIES] = vs.PRIMARIES_BT709
-) -> Union[Callable[[F_VN], F_VN], F_VN]:
+    matrix: vs.MatrixCoefficients | MATRIX = vs.MATRIX_BT709,
+    transfer: vs.TransferCharacteristics | TRANSFER = vs.TRANSFER_BT709,
+    primaries: vs.ColorPrimaries | PRIMARIES = vs.PRIMARIES_BT709
+) -> Callable[[F_VN], F_VN] | F_VN:
     """
     Function decorator that dither up the input clip and set matrix, transfer and primaries.
     """
@@ -182,8 +184,8 @@ def max_expr(n: int) -> str:
     ) + ' max'
 
 
-def select_frames(clips: Union[vs.VideoNode, Sequence[vs.VideoNode]],
-                  indices: Union[NDArray[AnyInt], List[int], List[Tuple[int, int]]],
+def select_frames(clips: vs.VideoNode | Sequence[vs.VideoNode],
+                  indices: NDArray[AnyInt] | List[int] | List[Tuple[int, int]],
                   *, mismatch: bool = False) -> vs.VideoNode:
     """
     Select frames from one or more clips at specified indices.
@@ -242,7 +244,7 @@ def select_frames(clips: Union[vs.VideoNode, Sequence[vs.VideoNode]],
     return core.std.FrameEval(plh, partial(_select_func, clips=clips, indices=indices))
 
 
-def normalise_ranges(clip: Union[vs.VideoNode, vs.AudioNode], ranges: Union[Range, List[Range], Trim, List[Trim]],
+def normalise_ranges(clip: vs.VideoNode | vs.AudioNode, ranges: Range | List[Range] | Trim | List[Trim],
                      *, norm_dups: bool = False, ref_fps: Optional[Fraction] = None) -> List[Tuple[int, int]]:
     """Modified version of lvsfunc.util.normalize_ranges following python slicing syntax"""
     if isinstance(clip, vs.VideoNode):
@@ -300,7 +302,7 @@ def normalise_ranges(clip: Union[vs.VideoNode, vs.AudioNode], ranges: Union[Rang
     return out
 
 
-def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Union[Range, List[Range]],
+def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Range | List[Range],
                    *, mismatch: bool = False) -> vs.VideoNode:
     """Modified version of lvsfunc.util.replace_ranges following python slicing syntax"""
     num_frames = clip_a.num_frames
@@ -323,8 +325,9 @@ def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Union[Ran
     return select_frames([clip_a, clip_b], indices, mismatch=mismatch)
 
 
-def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: List[Union[Trim, DF]]) -> vs.VideoNode:
+def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: List[Trim | DF] | Trim) -> vs.VideoNode:
     """Trims and/or duplicates frames"""
+    trims_or_dfs = [trims_or_dfs] if isinstance(trims_or_dfs, tuple) else trims_or_dfs
     indices: List[int] = []
     for trim_or_df in trims_or_dfs:
         if isinstance(trim_or_df, tuple):
@@ -336,8 +339,9 @@ def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: List[Union[Trim, DF]]) 
     return select_frames(clip, indices)
 
 
-def adjust_audio_frames(audio: vs.AudioNode, trims_or_dfs: List[Union[Trim, DF]], *, ref_fps: Optional[Fraction] = None) -> vs.AudioNode:
+def adjust_audio_frames(audio: vs.AudioNode, trims_or_dfs: List[Trim | DF] | Trim, *, ref_fps: Optional[Fraction] = None) -> vs.AudioNode:
     audios: List[vs.AudioNode] = []
+    trims_or_dfs = [trims_or_dfs] if isinstance(trims_or_dfs, tuple) else trims_or_dfs
     for trim_or_df in trims_or_dfs:
         if isinstance(trim_or_df, tuple):
             ntrim = normalise_ranges(audio, trim_or_df, ref_fps=ref_fps).pop()
@@ -350,7 +354,7 @@ def adjust_audio_frames(audio: vs.AudioNode, trims_or_dfs: List[Union[Trim, DF]]
     return core.std.AudioSplice(audios)
 
 
-def remap_rfs(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Union[Range, List[Range]]) -> vs.VideoNode:
+def remap_rfs(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Range | List[Range]) -> vs.VideoNode:
     """Replace ranges function using remap plugin"""
     return core.remap.ReplaceFramesSimple(
         clip_a, clip_b,
@@ -360,7 +364,7 @@ def remap_rfs(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Union[Range, L
 
 def pick_px_op(
     use_expr: bool,
-    operations: Tuple[str, Union[Sequence[int], Sequence[float], int, float, F]]
+    operations: Tuple[str, Sequence[int] | Sequence[float] | int | float | F]
 ) -> Callable[..., vs.VideoNode]:
     """Pick either std.Lut or std.Expr"""
     expr, lut = operations
