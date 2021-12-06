@@ -261,7 +261,7 @@ class Scharr(EdgeDetect):
 
 
 class FDOG(EdgeDetect):
-    """Flow-based Difference Of Gaussian operator. 3x3 matrices from G41Fun."""
+    """Flow-based Difference Of Gaussian operator. 5x5 matrices from G41Fun."""
     @staticmethod
     def _get_matrices() -> List[List[float]]:
         return [[1, 1, 0, -1, -1, 2, 2, 0, -2, -2, 3, 3, 0, -3, -3, 2, 2, 0, -2, -2, 1, 1, 0, -1, -1],
