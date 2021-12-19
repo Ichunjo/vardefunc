@@ -1,7 +1,9 @@
 """Noising/denoising functions"""
 from abc import ABC, abstractmethod
+from enum import Enum
 from functools import partial
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union, cast
+from typing import (Any, Callable, Dict, List, Optional, Sequence, Tuple,
+                    Union, cast)
 
 import lvsfunc
 import vapoursynth as vs
@@ -250,8 +252,24 @@ class Graigasm():
 
 
 
+class BilateralMethod(Enum):
+    BILATERAL = 0
+    BILATERAL_GPU = 1
+    BILATERAL_GPU_RTC = 2
+
+    @property
+    def func(self) -> Callable[..., vs.VideoNode]:
+        return [
+            core.bilateral.Bilateral,
+            core.bilateralgpu.Bilateral,
+            core.bilateralgpu_rtc.Bilateral
+        ][self.value]
+
+
+
 def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
            min_in: Optional[float] = None, max_in: Optional[float] = None, gamma: float = 1.0,
+           blur_method: BilateralMethod = BilateralMethod.BILATERAL,
            protect_mask: Optional[vs.VideoNode] = None, prefilter: bool = True,
            planes: Optional[List[int]] = None, show_mask: bool = False) -> vs.VideoNode:
     """Denoising function using Bilateral intended to decrease the filesize
@@ -340,8 +358,10 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
     if show_mask:
         return mask
 
-
-    denoise = core.bilateral.Bilateral(clip, sigmaS=sigmaS, sigmaR=sigmaR, planes=planes, algorithm=0)
+    if blur_method == BilateralMethod.BILATERAL:
+        denoise = core.bilateral.Bilateral(clip, sigmaS=sigmaS, sigmaR=sigmaR, planes=planes, algorithm=0)
+    else:
+        denoise = blur_method.func(clip, sigmaS, sigmaR)
 
     return core.std.MaskedMerge(clip, denoise, mask, planes)
 
