@@ -11,7 +11,7 @@ from numpy import int8, int16, int32, uint8, uint16, uint32
 from numpy.lib.index_tricks import CClass as NP_CClass
 from numpy.typing import NDArray
 from pytimeconv import Convert
-from vapoursynth import VideoFormat, VideoNode
+from vapoursynth import VideoFormat, VideoNode, PresetFormat
 from vsutil import Dither
 
 Range = Union[int, Tuple[Optional[int], Optional[int]]]
@@ -52,9 +52,15 @@ PIXEL_RANGE = Literal[0, 1]
 
 class Zimg:
     class PresetFormatEx(IntEnum):
+        GRAY8 = PresetFormat.GRAY8
+        GRAY9 = PresetFormat.GRAY9
+        GRAY10 = PresetFormat.GRAY10
         GRAY11 = 269156352
+        GRAY12 = PresetFormat.GRAY12
         GRAY13 = 269287424
+        GRAY14 = PresetFormat.GRAY14
         GRAY15 = 269418496
+        GRAY16 = PresetFormat.GRAY16
         GRAY17 = 269549568
         GRAY18 = 269615104
         GRAY19 = 269680640
@@ -70,10 +76,48 @@ class Zimg:
         GRAY29 = 270336000
         GRAY30 = 270401536
         GRAY31 = 270467072
+        GRAY32 = PresetFormat.GRAY32
 
+        GRAYH = PresetFormat.GRAYH
+        GRAYS = PresetFormat.GRAYS
+
+        YUV420P8 = PresetFormat.YUV420P8
+        YUV420P9 = PresetFormat.YUV420P9
+        YUV420P10 = PresetFormat.YUV420P10
+        YUV420P11 = 806027521
+        YUV420P12 = PresetFormat.YUV420P12
+        YUV420P13 = 806158593
+        YUV420P15 = 806289665
+        YUV420P16 = PresetFormat.YUV420P16
+        YUV420P17 = 806420737
+        YUV420P18 = 806486273
+        YUV420P19 = 806551809
+        YUV420P20 = 806617345
+        YUV420P21 = 806682881
+        YUV420P22 = 806748417
+        YUV420P23 = 806813953
+        YUV420P24 = 806879489
+        YUV420P25 = 806945025
+        YUV420P26 = 807010561
+        YUV420P27 = 807076097
+        YUV420P28 = 807141633
+        YUV420P29 = 807207169
+        YUV420P30 = 807272705
+        YUV420P31 = 807338241
+        YUV420P32 = 807403777
+
+        YUV420PH = 823132417
+        YUV420PS = 824180993
+
+        YUV444P8 = PresetFormat.YUV444P8
+        YUV444P9 = PresetFormat.YUV444P9
+        YUV444P10 = PresetFormat.YUV444P10
         YUV444P11 = 806027264
+        YUV444P12 = PresetFormat.YUV444P12
         YUV444P13 = 806158336
+        YUV444P14 = PresetFormat.YUV444P14
         YUV444P15 = 806289408
+        YUV444P16 = PresetFormat.YUV444P16
         YUV444P17 = 806420480
         YUV444P18 = 806486016
         YUV444P19 = 806551552
@@ -91,9 +135,18 @@ class Zimg:
         YUV444P31 = 807337984
         YUV444P32 = 807403520
 
+        YUV444PH = PresetFormat.YUV444PH
+        YUV444PS = PresetFormat.YUV444PS
+
+        YUV422P8 = PresetFormat.YUV422P8
+        YUV422P9 = PresetFormat.YUV422P9
+        YUV422P10 = PresetFormat.YUV422P10
         YUV422P11 = 806027520
+        YUV422P12 = PresetFormat.YUV422P12
         YUV422P13 = 806158592
+        YUV422P14 = PresetFormat.YUV422P14
         YUV422P15 = 806289664
+        YUV422P16 = PresetFormat.YUV422P16
         YUV422P17 = 806420736
         YUV422P18 = 806486272
         YUV422P19 = 806551808
@@ -111,6 +164,10 @@ class Zimg:
         YUV422P31 = 807338240
         YUV422P32 = 807403776
 
+        YUV422PH = 823132416
+        YUV422PS = 824180992
+
+        YUV411P8 = PresetFormat.YUV411P8
         YUV411P9 = 805896704
         YUV411P10 = 805962240
         YUV411P11 = 806027776
@@ -136,6 +193,10 @@ class Zimg:
         YUV411P31 = 807338496
         YUV411P32 = 807404032
 
+        YUV411PH = 823132672
+        YUV411PS = 824181248
+
+        YUV440P8 = PresetFormat.YUV440P8
         YUV440P9 = 805896193
         YUV440P10 = 805961729
         YUV440P11 = 806027265
@@ -161,6 +222,10 @@ class Zimg:
         YUV440P31 = 807337985
         YUV440P32 = 807403521
 
+        YUV440PH = 823132161
+        YUV440PS = 824180737
+
+        YUV410P8 = PresetFormat.YUV410P8
         YUV410P9 = 805896706
         YUV410P10 = 805962242
         YUV410P11 = 806027778
@@ -186,9 +251,18 @@ class Zimg:
         YUV410P31 = 807338498
         YUV410P32 = 807404034
 
+        YUV410PH = 823132674
+        YUV410PS = 824181250
+
+        RGB24 = PresetFormat.RGB24
+        RGB27 = PresetFormat.RGB27
+        RGB30 = PresetFormat.RGB30
         RGB33 = 537591808
+        RGB36 = PresetFormat.RGB36
         RGB39 = 537722880
+        RGB42 = PresetFormat.RGB42
         RGB45 = 537853952
+        RGB48 = PresetFormat.RGB48
         RGB51 = 537985024
         RGB54 = 538050560
         RGB57 = 538116096
@@ -205,6 +279,9 @@ class Zimg:
         RGB90 = 538836992
         RGB93 = 538902528
         RGB96 = 538968064
+
+        RGBH = PresetFormat.RGBH
+        RGBS = PresetFormat.RGBS
 
     class PixelRange(IntEnum):
         """Pixel range (ITU-T H.265 Eq E-4 to E-15)"""
