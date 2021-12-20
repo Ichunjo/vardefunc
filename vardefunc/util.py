@@ -88,59 +88,35 @@ def initialise_input(
             partial(initialise_input, bits=bits, matrix=matrix, transfer=transfer, primaries=primaries)
         )
 
+    init_args: Dict[str, Any] = dict(
+        bits=bits,
+        matrix=matrix, transfer=transfer, primaries=primaries,
+        chroma_location=chroma_location, colour_range=colour_range
+    )
+
     @wraps(func)
     def _wrapper(*args: Any, **kwargs: Any) -> vs.VideoNode:
         assert func
 
-        i, j = 0, 0
-        args_l, kwargs_l = list(args), list(kwargs.items())
-        in_kwargs = False
-        while True:
-            # Checks positional arguments
-            try:
-                obj = args_l[i]
-                if isinstance(obj, vs.VideoNode):
-                    clip = obj
-                    break
-                else:
-                    i += 1
-            except IndexError:
-                # Check keyword arguments
-                in_kwargs = True
-                try:
-                    name, obj = kwargs_l[i]
-                    if isinstance(obj, vs.VideoNode):
-                        clip = obj
-                        break
-                    else:
-                        j += 1
-                except IndexError:
-                    # Check default arguments
-                    signature = inspect.signature(func)
-                    default_args = {
-                        k: v.default
-                        for k, v in signature.parameters.items()
-                        if v.default is not inspect.Parameter.empty and isinstance(v.default, vs.VideoNode)
-                    }
-                    if default_args:
-                        name, clip = list(default_args.items())[0]
-                    else:
-                        raise ValueError(
-                            'initialise_input: None VideoNode found in positional, keyword nor default arguments!'
-                        )
-                    break
+        args_l = list(args)
+        for i, obj in enumerate(args_l):
+            if isinstance(obj, vs.VideoNode):
+                args_l[i] = initialise_clip(obj, **init_args)
+                return func(*args_l, **kwargs)
 
-        if bits:
-            clip = depth(clip, bits)
-        for prop, val in zip(('_Matrix', '_Transfer', '_Primaries'), (matrix, transfer, primaries)):
-            clip = clip.std.SetFrameProp(prop, intval=val)
+        kwargs2 = kwargs.copy()
+        for name, obj in kwargs2.items():
+            if isinstance(obj, vs.VideoNode):
+                kwargs2[name] = initialise_clip(obj, **init_args)
+                return func(*args, **kwargs2)
 
-        if in_kwargs:
-            kwargs[name] = clip  # type: ignore
-        else:
-            args_l[i] = clip
+        for name, param in inspect.signature(func).parameters.items():
+            if param.default is not inspect.Parameter.empty and isinstance(param.default, vs.VideoNode):
+                return func(*args, **kwargs2 | {name: initialise_clip(param.default, **init_args)})
 
-        return func(*args_l, **kwargs)
+        raise ValueError(
+            'initialise_input: None VideoNode found in positional, keyword nor default arguments!'
+        )
 
     return cast(F_VN, _wrapper)
 
