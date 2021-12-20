@@ -6,7 +6,7 @@ import warnings
 from fractions import Fraction
 from functools import partial, wraps
 from string import ascii_lowercase
-from typing import (Any, Callable, Iterable, List, Optional, Sequence, Set,
+from typing import (Any, Callable, Dict, Iterable, List, Optional, Sequence, Set,
                     Tuple, cast, overload)
 
 import numpy as np
@@ -14,7 +14,8 @@ import vapoursynth as vs
 from pytimeconv import Convert
 from vsutil import depth
 
-from .types import F_VN, MATRIX, PRIMARIES, TRANSFER, AnyInt
+from .types import (CHROMA_LOCATION, COLOUR_RANGE, F_VN, MATRIX, PRIMARIES,
+                    TRANSFER, AnyInt)
 from .types import DuplicateFrame as DF
 from .types import F, NDArray, Range, Trim
 from .types import VNumpy as vnp
@@ -23,9 +24,28 @@ from .types import format_not_none
 core = vs.core
 
 
-@overload
-def finalise_output(func: Optional[F_VN], /) -> F_VN:
-    ...
+def finalise_clip(clip: vs.VideoNode, bits: int = 10, clamp_tv_range: bool = True) -> vs.VideoNode:
+    """
+    Converts bitdepth and optionally clamps the pixel values in TV range
+
+    Args:
+        clip (vs.VideoNode):
+            Source clip
+
+        bits (int, optional):
+            Target bitdepth. Defaults to 10.
+
+        clamp_tv_range (bool, optional):
+            Clamp in TV range or not. Defaults to True.
+
+    Returns:
+        vs.VideoNode: Finalised clip
+    """
+    out = depth(clip, bits)
+    if clamp_tv_range:
+        out = out.std.Expr([f'x {16 << (bits - 8)} max {235 << (bits - 8)} min',
+                            f'x {16 << (bits - 8)} max {240 << (bits - 8)} min'])
+    return out
 
 
 @overload
@@ -33,12 +53,15 @@ def finalise_output(*, bits: int = 10, clamp_tv_range: bool = True) -> Callable[
     ...
 
 
+@overload
+def finalise_output(func: Optional[F_VN], /) -> F_VN:
+    ...
+
+
 def finalise_output(func: Optional[F_VN] = None, /, *, bits: int = 10, clamp_tv_range: bool = True
                     ) -> Callable[[F_VN], F_VN] | F_VN:
     """
-    Function decorator that dither down the final output clip and clamp range to legal values.
-
-    Decorated `func`'s output must be of type `vapoursynth.VideoNode`.
+    Decorator implementation of ``finalise_clip``
     """
     if func is None:
         return cast(
@@ -49,18 +72,55 @@ def finalise_output(func: Optional[F_VN] = None, /, *, bits: int = 10, clamp_tv_
     @wraps(func)
     def _wrapper(*args: Any, **kwargs: Any) -> vs.VideoNode:
         assert func
-        out = func(*args, **kwargs)
-        out = depth(out, bits)
-        if clamp_tv_range:
-            out = out.std.Limiter(16 << (bits - 8), [235 << (bits - 8), 240 << (bits - 8)], [0, 1, 2])
-        return out
+        return finalise_clip(func(*args, **kwargs), bits, clamp_tv_range)
 
     return cast(F_VN, _wrapper)
 
 
-@overload
-def initialise_input(func: Optional[F_VN], /) -> F_VN:
-    ...
+def initialise_clip(
+    clip: vs.VideoNode, bits: int = 16,
+    matrix: vs.MatrixCoefficients | MATRIX = vs.MATRIX_BT709,
+    transfer: vs.TransferCharacteristics | TRANSFER = vs.TRANSFER_BT709,
+    primaries: vs.ColorPrimaries | PRIMARIES = vs.PRIMARIES_BT709,
+    chroma_location: vs.ChromaLocation | CHROMA_LOCATION = vs.CHROMA_LEFT,
+    colour_range: vs.ColorRange | COLOUR_RANGE = vs.RANGE_LIMITED
+) -> vs.VideoNode:
+    """
+    Initialise a clip by converting its bitdepth and setting its VideoProps
+
+    Args:
+        clip (vs.VideoNode):
+            Source clip
+
+        bits (int, optional):
+            Target bitdepth. Defaults to 16.
+
+        matrix (vs.MatrixCoefficients, optional):
+            Matrix coefficients. Defaults to vs.MATRIX_BT709.
+
+        transfer (vs.TransferCharacteristics, optional):
+            Transfer characteristics. Defaults to vs.TRANSFER_BT709.
+
+        primaries (vs.ColorPrimaries, optional):
+            Colour primaries. Defaults to vs.PRIMARIES_BT709.
+
+        chroma_location (vs.ChromaLocation, optional):
+            Chroma location. Defaults to vs.CHROMA_LEFT.
+
+        colour_range (vs.ColorRange, optional):
+            Colour range. Defaults to vs.RANGE_LIMITED.
+
+    Returns:
+        vs.VideoNode:
+            Initialised clip
+    """
+    return depth(
+        clip.std.SetFrameProps(
+            _Matrix=matrix, _Transfer=transfer, _Primaries=primaries,
+            _ChromaLocation=chroma_location, _ColorRange=colour_range
+        ),
+        bits
+    )
 
 
 @overload
@@ -68,8 +128,14 @@ def initialise_input(
     *, bits: int = ...,
     matrix: vs.MatrixCoefficients | MATRIX = ...,
     transfer: vs.TransferCharacteristics | TRANSFER = ...,
-    primaries: vs.ColorPrimaries | PRIMARIES = ...
+    primaries: vs.ColorPrimaries | PRIMARIES = ...,
+    chroma_location: vs.ChromaLocation | CHROMA_LOCATION = ...
 ) -> Callable[[F_VN], F_VN]:
+    ...
+
+
+@overload
+def initialise_input(func: Optional[F_VN], /) -> F_VN:
     ...
 
 
@@ -77,10 +143,12 @@ def initialise_input(
     func: Optional[F_VN] = None, /, *, bits: int = 16,
     matrix: vs.MatrixCoefficients | MATRIX = vs.MATRIX_BT709,
     transfer: vs.TransferCharacteristics | TRANSFER = vs.TRANSFER_BT709,
-    primaries: vs.ColorPrimaries | PRIMARIES = vs.PRIMARIES_BT709
+    primaries: vs.ColorPrimaries | PRIMARIES = vs.PRIMARIES_BT709,
+    chroma_location: vs.ChromaLocation | CHROMA_LOCATION = vs.CHROMA_LEFT,
+    colour_range: vs.ColorRange | COLOUR_RANGE = vs.RANGE_LIMITED
 ) -> Callable[[F_VN], F_VN] | F_VN:
     """
-    Function decorator that dither up the input clip and set matrix, transfer and primaries.
+    Decorator implementation of ``initialise_clip``
     """
     if func is None:
         return cast(
