@@ -4,16 +4,19 @@ from __future__ import annotations
 import math
 import warnings
 from abc import ABC
+from contextlib import AbstractContextManager
 from functools import partial, wraps
 from itertools import count
 from operator import ilshift, imatmul, ior
-from typing import (Any, Callable, ClassVar, Dict, Iterable, Iterator, List,
-                    MutableMapping, NamedTuple, Optional, Sequence, Tuple,
-                    Union, cast, overload)
+from types import TracebackType
+from typing import (
+    Any, Callable, ClassVar, Dict, Iterable, Iterator, List, MutableMapping, NamedTuple, Optional,
+    Sequence, Tuple, Type, TypeVar, Union, cast, overload
+)
 
 import vapoursynth as vs
 from lvsfunc.comparison import Stack
-from vsutil import get_w, insert_clip
+from vsutil import depth, get_depth, get_w, insert_clip, plane
 
 from .types import F_OpInput, OpInput, Output
 
@@ -407,6 +410,164 @@ def merge_chroma(luma: vs.VideoNode, ref: vs.VideoNode) -> vs.VideoNode:
         vs.VideoNode:
     """
     return core.std.ShufflePlanes([luma, ref], [0, 1, 2], vs.YUV)
+
+
+
+PlanesT = TypeVar('PlanesT', bound='Planes')
+
+
+class Planes(AbstractContextManager[vs.VideoNode]):
+    """General context manager for easier planes management"""
+
+    __slots__ = ('__clip', '_family', '_final_clip')
+
+    def __init__(self, clip: vs.VideoNode, bits: Optional[int] = None, family: vs.ColorFamily = vs.YUV) -> None:
+        """
+        Args:
+            clip (vs.VideoNode):
+                Source clip
+
+            bits (Optional[int], optional):
+                Target bitdepth. Defaults to None.
+
+            family (vs.ColorFamily, optional):
+                Colour family. Defaults to vs.YUV.
+        """
+        self._clip = depth(clip, bits) if bits else clip
+        self._family = family
+        super().__init__()
+
+    def __enter__(self: PlanesT) -> PlanesT:
+        return self
+
+    def __exit__(self, __exc_type: Type[BaseException] | None, __exc_value: BaseException | None,
+                 __traceback: TracebackType | None) -> bool | None:
+        self._final_clip = self._clip
+        return super().__exit__(__exc_type, __exc_value, __traceback)
+
+    def __getitem__(self, i: int) -> vs.VideoNode:
+        return plane(self._clip, i)
+
+    def __setitem__(self, index: int, gray: vs.VideoNode) -> None:
+        try:
+            planes = ([0, 1, 2], [0, 0, 2], [0, 1, 0])[index]
+        except IndexError as i_err:
+            raise ValueError(f'{self.__class__.__name__}: plane number out of range') from i_err
+        clips = [self._clip, self._clip]
+        if get_depth(gray) != (bits := get_depth(self._clip)):
+            gray = depth(gray, bits)
+        clips.insert(index, gray)
+
+        self._clip = core.std.ShufflePlanes(clips, planes, self._family)
+
+    def __delitem__(self, index: int) -> None:
+        assert self._clip.format
+        self[index] = self._clip.std.BlankClip(
+            format=self._clip.format.replace(color_family=vs.GRAY, subsampling_h=0, subsampling_w=0).id
+        )
+
+    def insert(self, index: int, gray: vs.VideoNode) -> None:
+        self[index] = gray
+
+    def __len__(self) -> int:
+        assert self._clip.format
+        return self._clip.format.num_planes
+
+    @property
+    def clip(self) -> vs.VideoNode:
+        """Get final merged clip"""
+        try:
+            clip = self._final_clip
+        except AttributeError as attr_err:
+            raise ValueError(
+                f'{self.__class__.__name__}: you can only get "clip" outside of the context manager and once'
+            ) from attr_err
+        else:
+            del self._final_clip, self._clip, self._family
+            return clip
+
+
+class YUVPlanes(Planes):
+    def __init__(self, clip: vs.VideoNode, bits: Optional[int] = None) -> None:
+        super().__init__(clip, bits, vs.YUV)
+
+    @property
+    def Y(self) -> vs.VideoNode:
+        return self[0]
+
+    @Y.setter
+    def Y(self, _x: vs.VideoNode) -> None:
+        self[0] = _x
+
+    @Y.deleter
+    def Y(self) -> None:
+        del self[0]
+
+    @property
+    def U(self) -> vs.VideoNode:
+        return self[1]
+
+    @U.setter
+    def U(self, _x: vs.VideoNode) -> None:
+        self[1] = _x
+
+    @U.deleter
+    def U(self) -> None:
+        del self[1]
+
+    @property
+    def V(self) -> vs.VideoNode:
+        return self[2]
+
+    @V.setter
+    def V(self, _x: vs.VideoNode) -> None:
+        self[2] = _x
+
+    @V.deleter
+    def V(self) -> None:
+        del self[2]
+
+
+class RGBPlanes(Planes):
+    def __init__(self, clip: vs.VideoNode, bits: Optional[int] = None) -> None:
+        super().__init__(clip, bits, vs.RGB)
+
+    @property
+    def R(self) -> vs.VideoNode:
+        return self[0]
+
+    @R.setter
+    def R(self, _x: vs.VideoNode) -> None:
+        self[0] = _x
+
+    @R.deleter
+    def R(self) -> None:
+        del self[0]
+
+    @property
+    def G(self) -> vs.VideoNode:
+        return self[1]
+
+    @G.setter
+    def G(self, _x: vs.VideoNode) -> None:
+        self[1] = _x
+
+    @G.deleter
+    def G(self) -> None:
+        del self[1]
+
+    @property
+    def B(self) -> vs.VideoNode:
+        return self[2]
+
+    @B.setter
+    def B(self, _x: vs.VideoNode) -> None:
+        self[2] = _x
+
+    @B.deleter
+    def B(self) -> None:
+        del self[2]
+
 
 
 def get_chroma_shift(src_h: int, dst_h: int, aspect_ratio: float = 16 / 9) -> float:
