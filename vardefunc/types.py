@@ -3,15 +3,14 @@ from __future__ import annotations
 from enum import Enum, IntEnum
 from fractions import Fraction
 from os import PathLike
-from typing import (Any, Callable, Dict, List, Literal, Optional, Sequence,
-                    Tuple, TypeVar, Union, cast)
+from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Tuple, TypeVar, Union, cast
 
 from numpy import array as np_array
 from numpy import int8, int16, int32, uint8, uint16, uint32
 from numpy.lib.index_tricks import CClass as NP_CClass
 from numpy.typing import NDArray
 from pytimeconv import Convert
-from vapoursynth import VideoFormat, VideoNode, PresetFormat
+from vapoursynth import PresetFormat, VideoFormat, VideoNode
 from vsutil import Dither
 
 Range = Union[int, Tuple[Optional[int], Optional[int]]]
