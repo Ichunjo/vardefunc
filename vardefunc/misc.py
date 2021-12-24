@@ -16,9 +16,9 @@ from typing import (
 
 import vapoursynth as vs
 from lvsfunc.comparison import Stack
-from vsutil import depth, get_depth, get_w, insert_clip, plane
+from vsutil import depth, get_depth, get_w, insert_clip, join, plane
 
-from .types import F_OpInput, OpInput, Output
+from .types import F_OpInput, FormatError, OpInput, Output
 
 core = vs.core
 
@@ -416,10 +416,10 @@ def merge_chroma(luma: vs.VideoNode, ref: vs.VideoNode) -> vs.VideoNode:
 PlanesT = TypeVar('PlanesT', bound='Planes')
 
 
-class Planes(AbstractContextManager[vs.VideoNode]):
+class Planes(AbstractContextManager[vs.VideoNode], Sequence[vs.VideoNode]):
     """General context manager for easier planes management"""
 
-    __slots__ = ('__clip', '_family', '_final_clip')
+    __slots__ = ('_clip', '_family', '_final_clip', '_planes')
 
     def __init__(self, clip: vs.VideoNode, bits: Optional[int] = None, family: vs.ColorFamily = vs.YUV) -> None:
         """
@@ -435,56 +435,54 @@ class Planes(AbstractContextManager[vs.VideoNode]):
         """
         self._clip = depth(clip, bits) if bits else clip
         self._family = family
+        # Initialisation
+        self._final_clip: vs.VideoNode
+        self._planes: List[vs.VideoNode]
         super().__init__()
 
     def __enter__(self: PlanesT) -> PlanesT:
+        if isinstance(planes := self._clip.std.SplitPlanes(), Sequence):
+            self._planes = list(planes)
+        else:
+            raise FormatError(f'{self.__class__.__name__}: GRAY colour family isn\'t supported!')
         return self
 
     def __exit__(self, __exc_type: Type[BaseException] | None, __exc_value: BaseException | None,
                  __traceback: TracebackType | None) -> bool | None:
-        self._final_clip = self._clip
+        self._final_clip = join(self._planes, self._family)
         return super().__exit__(__exc_type, __exc_value, __traceback)
 
     def __getitem__(self, i: int) -> vs.VideoNode:
-        return plane(self._clip, i)
+        return self._planes[i]
 
     def __setitem__(self, index: int, gray: vs.VideoNode) -> None:
         try:
-            planes = ([0, 1, 2], [0, 0, 2], [0, 1, 0])[index]
+            self._planes[index] = gray
         except IndexError as i_err:
             raise ValueError(f'{self.__class__.__name__}: plane number out of range') from i_err
-        clips = [self._clip, self._clip]
         if get_depth(gray) != (bits := get_depth(self._clip)):
-            gray = depth(gray, bits)
-        clips.insert(index, gray)
-
-        self._clip = core.std.ShufflePlanes(clips, planes, self._family)
+            # 32 bits float in YUV and doing on chroma planes
+            if bits == 32 and self._family == vs.YUV and index in {1, 2}:
+                gray = plane(depth(join([gray] * 3, self._family), bits), index)
+            else:
+                gray = depth(gray, bits)
+            self._planes[index] = depth(gray, bits)
 
     def __delitem__(self, index: int) -> None:
-        assert self._clip.format
-        self[index] = self._clip.std.BlankClip(
-            format=self._clip.format.replace(color_family=vs.GRAY, subsampling_h=0, subsampling_w=0).id
-        )
-
-    def insert(self, index: int, gray: vs.VideoNode) -> None:
-        self[index] = gray
-
-    def __len__(self) -> int:
-        assert self._clip.format
-        return self._clip.format.num_planes
+        self[index] = self[index].std.BlankClip()
 
     @property
     def clip(self) -> vs.VideoNode:
         """Get final merged clip"""
         try:
-            clip = self._final_clip
+            out = self._final_clip
         except AttributeError as attr_err:
             raise ValueError(
                 f'{self.__class__.__name__}: you can only get "clip" outside of the context manager and once'
             ) from attr_err
         else:
-            del self._final_clip, self._clip, self._family
-            return clip
+            del self._clip, self._family, self._final_clip, self._planes
+            return out
 
 
 class YUVPlanes(Planes):
