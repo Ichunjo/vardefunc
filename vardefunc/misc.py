@@ -10,8 +10,8 @@ from itertools import count
 from operator import ilshift, imatmul, ior
 from types import TracebackType
 from typing import (
-    Any, Callable, ClassVar, Dict, Iterable, Iterator, List, MutableMapping, NamedTuple, Optional,
-    Sequence, Tuple, Type, TypeVar, Union, cast, overload
+    Any, Callable, ClassVar, Dict, Iterable, Iterator, List, Literal, MutableMapping, NamedTuple,
+    Optional, Sequence, Tuple, Type, TypeVar, Union, cast, overload
 )
 
 import vapoursynth as vs
@@ -416,7 +416,7 @@ def merge_chroma(luma: vs.VideoNode, ref: vs.VideoNode) -> vs.VideoNode:
 PlanesT = TypeVar('PlanesT', bound='Planes')
 
 
-class Planes(AbstractContextManager[vs.VideoNode], Sequence[vs.VideoNode]):
+class Planes(AbstractContextManager[PlanesT], Sequence[vs.VideoNode]):
     """General context manager for easier planes management"""
 
     __slots__ = ('_clip', '_family', '_final_clip', '_planes')
@@ -452,7 +452,15 @@ class Planes(AbstractContextManager[vs.VideoNode], Sequence[vs.VideoNode]):
         self._final_clip = join(self._planes, self._family)
         return super().__exit__(__exc_type, __exc_value, __traceback)
 
+    @overload
     def __getitem__(self, i: int) -> vs.VideoNode:
+        ...
+
+    @overload
+    def __getitem__(self, i: slice) -> Sequence[vs.VideoNode]:
+        ...
+
+    def __getitem__(self, i: int | slice) -> vs.VideoNode | Sequence[vs.VideoNode]:
         return self._planes[i]
 
     def __setitem__(self, index: int, gray: vs.VideoNode) -> None:
@@ -470,6 +478,9 @@ class Planes(AbstractContextManager[vs.VideoNode], Sequence[vs.VideoNode]):
 
     def __delitem__(self, index: int) -> None:
         self[index] = self[index].std.BlankClip()
+
+    def __len__(self) -> Literal[3]:
+        return 3
 
     @property
     def clip(self) -> vs.VideoNode:
