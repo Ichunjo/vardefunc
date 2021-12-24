@@ -319,7 +319,7 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
 
     bits = clip.format.bits_per_sample
     is_float = get_sample_type(clip) == vs.FLOAT
-    peak = (1 << bits) - 1
+    peak = (1 << bits) - 1 if not is_float else 1.0
     gamma = 1 / gamma
     if clip.format.color_family == vs.GRAY:
         planes = [0]
