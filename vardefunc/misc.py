@@ -416,7 +416,7 @@ def merge_chroma(luma: vs.VideoNode, ref: vs.VideoNode) -> vs.VideoNode:
 PlanesT = TypeVar('PlanesT', bound='Planes')
 
 
-class Planes(AbstractContextManager[PlanesT], Sequence[vs.VideoNode]):
+class Planes(AbstractContextManager[vs.VideoNode], Sequence[vs.VideoNode]):
     """General context manager for easier planes management"""
 
     __slots__ = ('_clip', '_family', '_final_clip', '_planes')
