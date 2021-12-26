@@ -1,6 +1,14 @@
 """Miscellaneous functions and wrappers that didn't really have a place in any other submodules."""
 from __future__ import annotations
 
+__all__ = [
+    'DebugOutput', 'Thresholds', 'thresholding',
+    'fade_filter', 'merge_chroma',
+    'Planes', 'YUVPlanes', 'RGBPlanes',
+    'get_chroma_shift', 'get_bicubic_params',
+    'set_ffms2_log_level'
+]
+
 import math
 import warnings
 from abc import ABC

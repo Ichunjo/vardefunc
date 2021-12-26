@@ -1,7 +1,12 @@
 """(Up/De)scaling functions"""
+
+__all__ = [
+    'nnedi3cl_double', 'nnedi3_upscale', 'eedi3_upscale',
+    'fsrcnnx_upscale', 'placebo_shader', 'to_444'
+]
+
 from functools import partial
-from typing import (Any, Callable, Dict, List, Literal, Optional, Union,
-                    overload)
+from typing import Any, Callable, Dict, List, Literal, Optional, Union, overload
 
 import lvsfunc
 import vapoursynth as vs

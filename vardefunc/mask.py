@@ -1,4 +1,10 @@
 """Wrappers and masks for denoising, debanding, rescaling etc."""
+
+__all__ = [
+    'detail_mask',
+    'Difference', 'diff_creditless_mask', 'diff_rescale_mask', 'luma_mask', 'luma_credit_mask', 'region_mask'
+]
+
 import math
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union

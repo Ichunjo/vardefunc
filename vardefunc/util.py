@@ -1,6 +1,14 @@
 """Helper functions for the main functions in this module"""
 from __future__ import annotations
 
+__all__ = [
+    'finalise_clip', 'finalise_output',
+    'initialise_clip', 'initialise_input',
+    'select_frames', 'normalise_ranges', 'replace_ranges',
+    'adjust_clip_frames', 'adjust_audio_frames',
+    'remap_rfs'
+]
+
 import inspect
 import warnings
 from fractions import Fraction

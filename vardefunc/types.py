@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+__all__ = ['Zimg', 'DuplicateFrame']
+
 from enum import Enum, IntEnum
 from fractions import Fraction
 from os import PathLike

@@ -1,4 +1,6 @@
 
+__all__ = ['OCR']
+
 import math
 from functools import partial
 from typing import Dict, List, Optional, Sequence, Set, Tuple, Union
