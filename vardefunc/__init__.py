@@ -1,7 +1,7 @@
 """Some cool functions"""
 
 # flake8: noqa
-from . import aa, deband, mask, misc, noise, placebo, scale, sharp, types, util
+from . import aa, mask, misc, noise, scale, sharp, types, util
 from .aa import *
 from .mask import *
 from .misc import *
