@@ -32,6 +32,9 @@ class SuperSampler(ABC):
     def __init__(self) -> None:
         pass
 
+    def __call__(self,) -> Callable[[vs.VideoNode, int, int], vs.VideoNode]:
+        return self.do_ss()
+
     @abstractmethod
     def do_ss(self) -> Callable[[vs.VideoNode, int, int], vs.VideoNode]:
         pass
@@ -124,6 +127,9 @@ class Eedi3SS(SuperSampler):
 class SingleRater(ABC):
     def __init__(self) -> None:
         pass
+
+    def __call__(self,) -> Callable[[vs.VideoNode], vs.VideoNode]:
+        return self.do_aa()
 
     @abstractmethod
     def do_aa(self) -> Callable[[vs.VideoNode], vs.VideoNode]:
