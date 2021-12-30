@@ -812,5 +812,10 @@ def region_mask(clip: vs.VideoNode,
     Returns:
         vs.VideoNode: Cropped clip.
     """
+    warnings.warn(
+        'vardefunc.mask.region_mask s deprecated in favor of vsmask.\n'
+        'Please install it at https://github.com/Irrational-Encoding-Wizardry/vsmask'
+    )
+
     crop = core.std.Crop(clip, left, right, top, bottom)
     return core.std.AddBorders(crop, left, right, top, bottom)
