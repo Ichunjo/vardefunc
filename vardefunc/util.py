@@ -14,16 +14,14 @@ import warnings
 from fractions import Fraction
 from functools import partial, wraps
 from string import ascii_lowercase
-from typing import (Any, Callable, Dict, Iterable, List, Optional, Sequence, Set,
-                    Tuple, cast, overload)
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple, cast, overload
 
 import numpy as np
 import vapoursynth as vs
 from pytimeconv import Convert
 from vsutil import depth
 
-from .types import (CHROMA_LOCATION, COLOUR_RANGE, F_VN, MATRIX, PRIMARIES,
-                    TRANSFER, AnyInt)
+from .types import CHROMA_LOCATION, COLOUR_RANGE, F_VN, MATRIX, PRIMARIES, TRANSFER, AnyInt
 from .types import DuplicateFrame as DF
 from .types import F, NDArray, Range, Trim
 from .types import VNumpy as vnp
