@@ -1,14 +1,14 @@
 from setuptools import setup
 
 
-with open("README.md") as fh:
+with open("README.md", encoding='utf-8') as fh:
     long_description = fh.read()
 
-with open("requirements.txt") as fh:
+with open("requirements.txt", encoding='utf-8') as fh:
     install_requires = fh.read()
 
 NAME = "vardefunc"
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 
 setup(
     name=NAME,
