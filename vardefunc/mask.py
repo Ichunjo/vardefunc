@@ -133,7 +133,7 @@ class Difference():
                 Defaults to False.
 
             bilateral_args (Dict[str, Any], optional):
-                Additionnal and overrided Bilateral parameters if prefilter=True. Defaults to {}.
+                Additionnal and overrided Bilateral parameters if prefilter=True. Defaults to None.
 
         Returns:
             vs.VideoNode: Credit mask clip.
@@ -219,7 +219,7 @@ class Difference():
 
 def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_clip: vs.VideoNode,
                          start_frame: int, thr: int, expand: int = 2, *,
-                         prefilter: bool = False, bilateral_args: Dict[str, Any] = {}) -> vs.VideoNode:
+                         prefilter: bool = False, bilateral_args: Optional[Dict[str, Any]] = None) -> vs.VideoNode:
     """Legacy function of Difference().creditless"""
     return Difference().creditless(src_clip, credit_clip, nc_clip, start_frame, thr, expand,
                                    prefilter=prefilter, bilateral_args=bilateral_args)
