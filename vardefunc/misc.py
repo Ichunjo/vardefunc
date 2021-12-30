@@ -23,7 +23,7 @@ from typing import (
 )
 
 import vapoursynth as vs
-from lvsfunc.comparison import Stack
+from lvsfunc.comparison import Direction, Stack
 from vsutil import depth, get_depth, get_w, insert_clip, join, plane
 
 from .types import F_OpInput, FormatError, OpInput, Output
@@ -288,9 +288,10 @@ class DebugOutput(DebugOutputMMap):
         outputs: Dict[int, vs.VideoNode] = {}
         for idx, output in vs.get_outputs().items():
             if isinstance(output, vs.VideoOutputTuple):
-                outputs[idx] = output.clip
                 if output.alpha:
-                    warnings.warn('DebugOutput: VideoOutputTuple.alpha detected; this is not supported', Warning)
+                    outputs[idx] = output.clip.std.ClipToProp(output.alpha)
+                else:
+                    outputs[idx] = output.clip
         return outputs
 
 
