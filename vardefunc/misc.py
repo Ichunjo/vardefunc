@@ -265,12 +265,11 @@ class DebugOutput(DebugOutputMMap):
                 format=vs.GRAY8, color=128
             ).text.Text('Problematic output: \noutput list out of range', 5, 2)
         else:
-            ws, hs = {c.width for c in planes}, {c.height for c in planes}
-            if len(ws) == len(hs) == 1:
+            if len({c.width for c in planes}) == len({c.height for c in planes}) == 1:
                 out = Stack(planes).clip
             else:
                 try:
-                    out = Stack([planes[0], Stack(planes[1:]).clip]).clip
+                    out = Stack([planes[0], Stack(planes[1:], direction=Direction.VERTICAL).clip]).clip
                 except ValueError:
                     warnings.warn('DebugOutput: unexpected subsampling')
                     out = core.std.BlankClip(
