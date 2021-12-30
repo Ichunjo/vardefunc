@@ -6,13 +6,13 @@ __all__ = [
 ]
 
 import math
+import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import lvsfunc
 import vapoursynth as vs
-from vsutil import (depth, get_depth, get_w, get_y, insert_clip, iterate, join,
-                    scale_value, split)
+from vsutil import depth, get_depth, get_w, get_y, insert_clip, iterate, join, scale_value, split
 
 from .types import Zimg, format_not_none
 from .util import get_sample_type, mae_expr, max_expr, pick_px_op
@@ -23,6 +23,12 @@ core = vs.core
 
 class EdgeDetect(ABC):
     """Abstract edge detection interface."""
+
+    def __init__(self) -> None:
+        warnings.warn(
+            'vardefunc.mask.EdgeDetect and all its subclasses are deprecated in favor of vsmask.\n'
+            'Please install it at https://github.com/Irrational-Encoding-Wizardry/vsmask'
+        )
 
     def get_mask(self, clip: vs.VideoNode, lthr: float = 0.0, hthr: Optional[float] = None, multi: float = 1.0) -> vs.VideoNode:
         """Makes edge mask based on convolution kernel.
@@ -508,6 +514,10 @@ def get_all_edge_detects(clip: vs.VideoNode, **kwargs: Any) -> List[vs.VideoNode
         for i, mask in enumerate(get_all_edge_detect(get_y(clip)), start=1):
             mask.set_output(i)
     """
+    warnings.warn(
+        'vardefunc.mask.get_all_edge_detects is deprecated in favor of vsmask.\n'
+        'Please install it at https://github.com/Irrational-Encoding-Wizardry/vsmask'
+    )
     masks = [
         edge_detect().get_mask(clip, **kwargs).text.Text(edge_detect.__name__)  # type: ignore
         for edge_detect in EdgeDetect.__subclasses__()
@@ -576,7 +586,7 @@ class Difference():
 
     def creditless(self, src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_clip: vs.VideoNode,
                    start_frame: int, thr: int, expand: int = 2, *,
-                   prefilter: bool = False, bilateral_args: Dict[str, Any] = {}) -> vs.VideoNode:
+                   prefilter: bool = False, bilateral_args: Optional[Dict[str, Any]] = None) -> vs.VideoNode:
         """Makes a mask based on difference from 2 clips.
 
         Args:
@@ -622,7 +632,8 @@ class Difference():
 
         if prefilter:
             bilargs: Dict[str, Any] = dict(sigmaS=((5 ** 2 - 1) / 12) ** 0.5, sigmaR=0.5)
-            bilargs |= bilateral_args
+            if bilateral_args:
+                bilargs |= bilateral_args
             clips = [c.bilateral.Bilateral(**bilargs) for c in clips]
 
 
