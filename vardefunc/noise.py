@@ -1,7 +1,7 @@
 """Noising/denoising functions"""
 
 __all__ = [
-    'Grainer', 'AddGrain', 'PlaceboGrain', 'F3kdbGrain',
+    'Grainer', 'AddGrain', 'F3kdbGrain',
     'Graigasm', 'BilateralMethod', 'decsiz',
     'adaptative_regrain'
 ]
@@ -15,9 +15,7 @@ import lvsfunc
 import vapoursynth as vs
 from vsutil import Dither, depth, get_depth, get_plane_size, get_y, join, split
 
-from .deband import dumb3kdb
 from .mask import FDOG
-from .placebo import deband
 from .types import FormatError, Zimg, format_not_none
 from .util import get_sample_type, pick_px_op
 
@@ -52,16 +50,10 @@ class AddGrain(Grainer):
         return clip.grain.Add(var=strength[0], uvar=strength[1], **self.kwargs)
 
 
-class PlaceboGrain(Grainer):
-    """Built-in placebo.Deband plugin"""
-    def grain(self, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
-        return deband(clip, threshold=0.0, grain=list(strength), **self.kwargs)
-
-
 class F3kdbGrain(Grainer):
     """Built-in f3kdb.Deband plugin"""
     def grain(self, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
-        return dumb3kdb(clip, threshold=1, grain=list((int(strength[0]), int(strength[1]))), **self.kwargs)
+        return core.f3kdb.Deband(clip, None, 1, 1, 1, int(strength[0]), int(strength[1]), **self.kwargs)
 
 
 class Graigasm():
@@ -257,7 +249,6 @@ class Graigasm():
         return x - x % mod
 
 
-
 class BilateralMethod(Enum):
     BILATERAL = 0
     BILATERAL_GPU = 1
@@ -270,7 +261,6 @@ class BilateralMethod(Enum):
             core.bilateralgpu.Bilateral,
             core.bilateralgpu_rtc.Bilateral
         ][self.value]
-
 
 
 def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
