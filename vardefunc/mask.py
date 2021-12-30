@@ -310,7 +310,8 @@ class EdgeDetect(ABC):
     def __init__(self) -> None:
         warnings.warn(
             'vardefunc.mask.EdgeDetect and all its subclasses are deprecated in favor of vsmask.\n'
-            'Please install it at https://github.com/Irrational-Encoding-Wizardry/vsmask'
+            'Please install it at https://github.com/Irrational-Encoding-Wizardry/vsmask',
+            DeprecationWarning
         )
 
     def get_mask(self, clip: vs.VideoNode, lthr: float = 0.0, hthr: Optional[float] = None, multi: float = 1.0) -> vs.VideoNode:
@@ -780,7 +781,8 @@ def get_all_edge_detects(clip: vs.VideoNode, **kwargs: Any) -> List[vs.VideoNode
     """
     warnings.warn(
         'vardefunc.mask.get_all_edge_detects is deprecated in favor of vsmask.\n'
-        'Please install it at https://github.com/Irrational-Encoding-Wizardry/vsmask'
+        'Please install it at https://github.com/Irrational-Encoding-Wizardry/vsmask',
+        DeprecationWarning
     )
     masks = [
         edge_detect().get_mask(clip, **kwargs).text.Text(edge_detect.__name__)  # type: ignore
@@ -814,7 +816,8 @@ def region_mask(clip: vs.VideoNode,
     """
     warnings.warn(
         'vardefunc.mask.region_mask s deprecated in favor of vsmask.\n'
-        'Please install it at https://github.com/Irrational-Encoding-Wizardry/vsmask'
+        'Please install it at https://github.com/Irrational-Encoding-Wizardry/vsmask',
+        DeprecationWarning
     )
 
     crop = core.std.Crop(clip, left, right, top, bottom)
