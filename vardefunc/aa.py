@@ -39,6 +39,10 @@ class SuperSampler(ABC):
     def do_ss(self) -> Callable[[vs.VideoNode, int, int], vs.VideoNode]:
         pass
 
+    @property
+    def scale(self) -> Callable[[vs.VideoNode, int, int], vs.VideoNode]:
+        return self.do_ss()
+
 
 @dataclass
 class Nnedi3SS(SuperSampler):
@@ -135,6 +139,10 @@ class SingleRater(ABC):
     def do_aa(self) -> Callable[[vs.VideoNode], vs.VideoNode]:
         pass
 
+    @property
+    def aa(self) -> Callable[[vs.VideoNode], vs.VideoNode]:
+        return self.do_aa()
+
 
 @dataclass
 class Eedi3SR(SingleRater):
@@ -207,7 +215,7 @@ def upscaled_sraa(clip: vs.VideoNode, rfactor: float = 1.5,
     if not width:
         width = get_w(height)
 
-    upscale = supersampler.do_ss()(clip, ssw, ssh)
-    singlerate = singlerater.do_aa()(upscale)
+    upscale = supersampler.scale(clip, ssw, ssh)
+    singlerate = singlerater.aa(upscale)
 
     return downscaler.scale(singlerate, width, height) if downscaler else singlerate
