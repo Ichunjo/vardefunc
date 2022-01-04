@@ -427,7 +427,7 @@ PlanesT = TypeVar('PlanesT', bound='Planes')
 class Planes(AbstractContextManager[vs.VideoNode], Sequence[vs.VideoNode]):
     """General context manager for easier planes management"""
 
-    __slots__ = ('_clip', '_family', '_final_clip', '_planes')
+    __slots__ = ('_clip', '_family', '_final_clip', '_planes', '_in_context')
 
     def __init__(self, clip: vs.VideoNode, bits: Optional[int] = None, family: vs.ColorFamily = vs.YUV) -> None:
         """
@@ -446,6 +446,7 @@ class Planes(AbstractContextManager[vs.VideoNode], Sequence[vs.VideoNode]):
         # Initialisation
         self._final_clip: vs.VideoNode
         self._planes: List[vs.VideoNode]
+        self._in_context = False
         super().__init__()
 
     def __enter__(self: PlanesT) -> PlanesT:
@@ -453,11 +454,14 @@ class Planes(AbstractContextManager[vs.VideoNode], Sequence[vs.VideoNode]):
             self._planes = list(planes)
         else:
             raise FormatError(f'{self.__class__.__name__}: GRAY colour family isn\'t supported!')
+        self._in_context = True
         return self
 
     def __exit__(self, __exc_type: Type[BaseException] | None, __exc_value: BaseException | None,
                  __traceback: TracebackType | None) -> bool | None:
         self._final_clip = join(self._planes, self._family)
+        self._planes.clear()
+        self._in_context = False
         return super().__exit__(__exc_type, __exc_value, __traceback)
 
     @overload
@@ -469,9 +473,17 @@ class Planes(AbstractContextManager[vs.VideoNode], Sequence[vs.VideoNode]):
         ...
 
     def __getitem__(self, i: int | slice) -> vs.VideoNode | Sequence[vs.VideoNode]:
-        return self._planes[i]
+        if self._in_context:
+            return self._planes[i]
+        raise RuntimeError(
+            f'{self.__class__.__name__}: You can only get the planes inside the context manager'
+        )
 
     def __setitem__(self, index: int, gray: vs.VideoNode) -> None:
+        if not self._in_context:
+            raise RuntimeError(
+                f'{self.__class__.__name__}: You can only set the planes inside the context manager'
+            )
         try:
             self._planes[index] = gray
         except IndexError as i_err:
@@ -485,7 +497,11 @@ class Planes(AbstractContextManager[vs.VideoNode], Sequence[vs.VideoNode]):
             self._planes[index] = depth(gray, bits)
 
     def __delitem__(self, index: int) -> None:
-        self[index] = self[index].std.BlankClip()
+        if self._in_context:
+            self[index] = self[index].std.BlankClip()
+        raise RuntimeError(
+            f'{self.__class__.__name__}: You can only delete the planes inside the context manager'
+        )
 
     def __len__(self) -> Literal[3]:
         return 3
