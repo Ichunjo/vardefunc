@@ -4,6 +4,7 @@ __all__ = [
     'SuperSampler',
     'Nnedi3SS', 'Znedi3SS', 'Eedi3SS',
     'SingleRater',
+    'SangNomSR',
     'Eedi3SR',
     'upscaled_sraa'
 ]
@@ -142,6 +143,22 @@ class SingleRater(ABC):
     @property
     def aa(self) -> Callable[[vs.VideoNode], vs.VideoNode]:
         return self.do_aa()
+
+
+@dataclass
+class SangNomSR(SingleRater):
+    aa_param: int = 48
+    order: int = 1
+
+    def do_aa(self) -> Callable[[vs.VideoNode], vs.VideoNode]:
+        def func(clip: vs.VideoNode) -> vs.VideoNode:
+            clip = clip.std.Transpose()
+            clip = clip.sangnom.SangNom(self.order, aa=self.aa_param)
+            clip = clip.std.Transpose()
+            clip = clip.sangnom.SangNom(self.order, aa=self.aa_param)
+            return clip
+
+        return func
 
 
 @dataclass
