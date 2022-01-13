@@ -178,6 +178,8 @@ class Difference():
                 color_family=vs.GRAY, subsampling_w=0, subsampling_h=0
             ).id
         )
+        if blank.num_frames == mask.num_frames:
+            return mask
         mask = insert_clip(blank, mask, start_frame)
 
         return mask
