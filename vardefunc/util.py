@@ -19,7 +19,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set,
 import numpy as np
 import vapoursynth as vs
 from pytimeconv import Convert
-from vsutil import depth
+from vsutil import depth, get_depth
 
 from .types import CHROMA_LOCATION, COLOUR_RANGE, F_VN, MATRIX, PRIMARIES, TRANSFER, AnyInt
 from .types import DuplicateFrame as DF
@@ -30,7 +30,7 @@ from .types import format_not_none
 core = vs.core
 
 
-def finalise_clip(clip: vs.VideoNode, bits: int = 10, clamp_tv_range: bool = True) -> vs.VideoNode:
+def finalise_clip(clip: vs.VideoNode, bits: Optional[int] = 10, clamp_tv_range: bool = True) -> vs.VideoNode:
     """
     Converts bitdepth and optionally clamps the pixel values in TV range
 
@@ -47,15 +47,18 @@ def finalise_clip(clip: vs.VideoNode, bits: int = 10, clamp_tv_range: bool = Tru
     Returns:
         vs.VideoNode: Finalised clip
     """
-    out = depth(clip, bits)
+    if bits:
+        clip = depth(clip, bits)
+    else:
+        bits = get_depth(clip)
     if clamp_tv_range:
-        out = out.std.Expr([f'x {16 << (bits - 8)} max {235 << (bits - 8)} min',
-                            f'x {16 << (bits - 8)} max {240 << (bits - 8)} min'])
-    return out
+        clip = clip.std.Expr([f'x {16 << (bits - 8)} max {235 << (bits - 8)} min',
+                              f'x {16 << (bits - 8)} max {240 << (bits - 8)} min'])
+    return clip
 
 
 @overload
-def finalise_output(*, bits: int = 10, clamp_tv_range: bool = True) -> Callable[[F_VN], F_VN]:
+def finalise_output(*, bits: Optional[int] = 10, clamp_tv_range: bool = True) -> Callable[[F_VN], F_VN]:
     ...
 
 
@@ -64,7 +67,7 @@ def finalise_output(func: Optional[F_VN], /) -> F_VN:
     ...
 
 
-def finalise_output(func: Optional[F_VN] = None, /, *, bits: int = 10, clamp_tv_range: bool = True
+def finalise_output(func: Optional[F_VN] = None, /, *, bits: Optional[int] = 10, clamp_tv_range: bool = True
                     ) -> Callable[[F_VN], F_VN] | F_VN:
     """
     Decorator implementation of ``finalise_clip``
