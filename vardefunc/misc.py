@@ -364,7 +364,7 @@ def thresholding(*thrs: Thresholds, base: Optional[vs.VideoNode] = None, guidanc
 
             str_max = f'x {hard_bound_max[i]} - {soft_bound_max[i]} {hard_bound_max[i]} - /'
             if coef_max:
-                str_max += f' {coef_max} pow'
+                str_max += f' {coef_max[i]} pow'
 
             exprs.append(
                 if_in_min + f' z {str_min} * y 1 {str_min} - * + '
