@@ -257,10 +257,10 @@ class BilateralMethod(Enum):
     @property
     def func(self) -> Callable[..., vs.VideoNode]:
         return [
-            core.bilateral.Bilateral,
-            core.bilateralgpu.Bilateral,
-            core.bilateralgpu_rtc.Bilateral
-        ][self.value]
+            lambda: core.bilateral.Bilateral,
+            lambda: core.bilateralgpu.Bilateral,
+            lambda: core.bilateralgpu_rtc.Bilateral
+        ][self.value]()
 
 
 def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
