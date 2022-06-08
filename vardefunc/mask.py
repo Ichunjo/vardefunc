@@ -14,7 +14,7 @@ import vapoursynth as vs
 import vskernels
 from vsmask.edge import EdgeDetect as EdgeDetectVsM
 from vsmask.edge import ExLaplacian4 as ExLaplacian4VsM
-from vsmask.edge import FDOGTCanny as FDOGTCannyVsM
+from vsmask.edge import FDoGTCanny as FDoGTCannyVsM
 from vsmask.edge import Kirsch as KirschVsM
 from vsmask.edge import MinMax as MinMaxVsM
 from vsmask.util import XxpandMode
@@ -33,8 +33,8 @@ def detail_mask(clip: vs.VideoNode, brz_mm: float, brz_ed: float,
     if clip.format is None:
         raise ValueError("detail_mask: 'Variable-format clips not supported'")
 
-    range_mask = minmax.get_mask(clip).std.Binarize(brz_mm)
-    edges = edgedetect.get_mask(clip).std.Binarize(brz_ed)
+    range_mask = minmax.edgemask(clip).std.Binarize(brz_mm)
+    edges = edgedetect.edgemask(clip).std.Binarize(brz_ed)
 
     mask = core.std.Expr((range_mask, edges), 'x y max')
 
@@ -170,7 +170,7 @@ class Difference():
             format=src_clip.format.replace(color_family=vs.GRAY, subsampling_w=0, subsampling_h=0).id
         )
 
-        mask = ExLaplacian4VsM().get_mask(diff).std.Binarize(thr)
+        mask = ExLaplacian4VsM().edgemask(diff).std.Binarize(thr)
         mask = expand_func(mask, 2 + expand, mode=XxpandMode.ELLIPSE)
 
         blank = core.std.BlankClip(
@@ -271,7 +271,7 @@ def luma_mask(clip: vs.VideoNode, thr_lo: float, thr_hi: float, invert: bool = T
 
 
 def luma_credit_mask(clip: vs.VideoNode, thr: int = 230,
-                     edgemask: EdgeDetectVsM = FDOGTCannyVsM(), draft: bool = False) -> vs.VideoNode:
+                     edgemask: EdgeDetectVsM = FDoGTCannyVsM(), draft: bool = False) -> vs.VideoNode:
     """Makes a mask based on luma value and edges.
 
     Args:
@@ -292,7 +292,7 @@ def luma_credit_mask(clip: vs.VideoNode, thr: int = 230,
     """
     clip = get_y(clip)
 
-    edge_mask = edgemask.get_mask(clip)
+    edge_mask = edgemask.edgemask(clip)
 
     credit_mask = core.std.Expr([edge_mask, clip], f'y {thr} > y 0 ? x min')
 

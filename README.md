@@ -12,9 +12,3 @@ or from Github:
 ```
 python -m pip install git+https://github.com/Ichunjo/vardefunc.git
 ```
-
-# Requirements
-* Python 3.9 or newer
-* VapourSynth r56 or newer
-* vsutil 0.5.0 or newer
-* lvsfunc 0.3.5 or newer
