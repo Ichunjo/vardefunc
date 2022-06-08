@@ -19,8 +19,7 @@ from vsmask.edge import Kirsch as KirschVsM
 from vsmask.edge import MinMax as MinMaxVsM
 from vsmask.util import XxpandMode
 from vsmask.util import expand as expand_func
-from vsutil import (depth, get_depth, get_w, get_y, insert_clip, iterate, join,
-                    scale_value, split)
+from vsutil import depth, get_depth, get_w, get_y, insert_clip, iterate, join, scale_value, split
 
 from .types import Zimg, format_not_none
 from .util import get_sample_type, mae_expr, max_expr, pick_px_op
