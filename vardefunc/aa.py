@@ -15,7 +15,7 @@ from functools import partial
 from typing import Any, Callable, Dict, Optional
 
 import vapoursynth as vs
-from lvsfunc.kernels import Catrom, Kernel
+from vskernels import Catrom, Kernel
 from vsutil import get_w
 
 core = vs.core

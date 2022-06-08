@@ -8,7 +8,7 @@ __all__ = [
 from functools import partial
 from typing import Any, Callable, Dict, List, Literal, Optional, Union, overload
 
-import lvsfunc
+import vskernels
 import vapoursynth as vs
 from vsutil import depth, get_depth, get_w, get_y, join, split
 
@@ -19,7 +19,7 @@ core = vs.core
 
 
 def nnedi3cl_double(clip: vs.VideoNode,
-                    scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom(),
+                    scaler: vskernels.Kernel = vskernels.Catrom(),
                     correct_shift: bool = True, use_znedi: bool = False, **nnedi3_args: Any) -> vs.VideoNode:
     """Double the clip using nnedi3 for even frames and nnedi3cl for odd frames
        Intended to speed up encoding speed without hogging the GPU either.
@@ -27,8 +27,8 @@ def nnedi3cl_double(clip: vs.VideoNode,
     Args:
         clip (vs.VideoNode): Source clip.
 
-        scaler (lvsfunc.kernels.Kernel, optional):
-            Resizer used to correct the shift. Defaults to lvsfunc.kernels.Bicubic().
+        scaler (vskernels.Kernel, optional):
+            Resizer used to correct the shift. Defaults to vskernels.Bicubic().
 
         correct_shift (bool, optional):
             Corrects the shift introduced by nnedi3 or not. Defaults to True.
@@ -59,15 +59,15 @@ def nnedi3cl_double(clip: vs.VideoNode,
     return scaler.scale(clip, clip.width, clip.height, shift=(.5, .5)) if correct_shift else clip
 
 
-def nnedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom(),
+def nnedi3_upscale(clip: vs.VideoNode, scaler: vskernels.Kernel = vskernels.Catrom(),
                    correct_shift: bool = True, use_znedi: bool = False, **nnedi3_args: Any) -> vs.VideoNode:
     """Classic based nnedi3 upscale.
 
     Args:
         clip (vs.VideoNode): Source clip.
 
-        scaler (lvsfunc.kernels.Kernel, optional):
-            Resizer used to correct the shift. Defaults to lvsfunc.kernels.Bicubic().
+        scaler (vskernels.Kernel, optional):
+            Resizer used to correct the shift. Defaults to vskernels.Bicubic().
 
         correct_shift (bool, optional):
             Corrects the shift introduced by nnedi3 or not. Defaults to True.
@@ -91,7 +91,7 @@ def nnedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.
     return scaler.scale(clip, clip.width, clip.height, shift=(.5, .5)) if correct_shift else clip
 
 
-def eedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom(),
+def eedi3_upscale(clip: vs.VideoNode, scaler: vskernels.Kernel = vskernels.Catrom(),
                   correct_shift: bool = True,
                   nnedi3_args: Optional[Dict[str, Any]] = None, eedi3_args: Optional[Dict[str, Any]] = None) -> vs.VideoNode:
     """Upscale function using the power of eedi3 and nnedi3.
@@ -101,8 +101,8 @@ def eedi3_upscale(clip: vs.VideoNode, scaler: lvsfunc.kernels.Kernel = lvsfunc.k
     Args:
         clip (vs.VideoNode): Source clip.
 
-        scaler (lvsfunc.kernels.Kernel, optional):
-            Resizer used to correct the shift. Defaults to lvsfunc.kernels.Bicubic().
+        scaler (vskernels.Kernel, optional):
+            Resizer used to correct the shift. Defaults to vskernels.Bicubic().
 
         correct_shift (bool, optional):
             Corrects the shift introduced by nnedi3 or not. Defaults to True.
@@ -305,7 +305,7 @@ def placebo_shader(clip: vs.VideoNode, width: int, height: int, shader_file: str
 def to_444(clip: vs.VideoNode,
            width: Optional[int], height: Optional[int],
            join_planes: Literal[True], znedi: bool = True,
-           scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom()
+           scaler: vskernels.Kernel = vskernels.Catrom()
            ) -> vs.VideoNode:
     ...
 
@@ -314,7 +314,7 @@ def to_444(clip: vs.VideoNode,
 def to_444(clip: vs.VideoNode,
            width: Optional[int], height: Optional[int],
            join_planes: Literal[False], znedi: bool = True,
-           scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom()
+           scaler: vskernels.Kernel = vskernels.Catrom()
            ) -> List[vs.VideoNode]:
     ...
 
@@ -323,7 +323,7 @@ def to_444(clip: vs.VideoNode,
 def to_444(clip: vs.VideoNode,
            width: Optional[int], height: Optional[int],
            join_planes: bool, znedi: bool = True,
-           scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom()
+           scaler: vskernels.Kernel = vskernels.Catrom()
            ) -> Union[vs.VideoNode, List[vs.VideoNode]]:
     ...
 
@@ -331,7 +331,7 @@ def to_444(clip: vs.VideoNode,
 def to_444(clip: vs.VideoNode,
            width: Optional[int], height: Optional[int],
            join_planes: bool, znedi: bool = True,
-           scaler: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom()
+           scaler: vskernels.Kernel = vskernels.Catrom()
            ) -> Union[vs.VideoNode, List[vs.VideoNode]]:
     """Zastin’s nnedi3 chroma upscaler.
        Modified by Vardë.
@@ -352,8 +352,8 @@ def to_444(clip: vs.VideoNode,
 
         znedi (bool, optional): Defaults to True.
 
-        scaler (lvsfunc.kernels.Kernel, optional):
-            Resizer used to correct the shift. Defaults to lvsfunc.kernels.Bicubic().
+        scaler (vskernels.Kernel, optional):
+            Resizer used to correct the shift. Defaults to vskernels.Bicubic().
 
     Returns:
         Union[vs.VideoNode, List[vs.VideoNode]]: 444'd clip or chroma planes.

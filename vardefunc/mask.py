@@ -10,8 +10,8 @@ import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-import lvsfunc
 import vapoursynth as vs
+import vskernels
 from vsmask.edge import EdgeDetect as EdgeDetectVsM
 from vsmask.edge import ExLaplacian4 as ExLaplacian4VsM
 from vsmask.edge import FDOGTCanny as FDOGTCannyVsM
@@ -50,7 +50,7 @@ class Difference():
     """Collection of function based on differences between prediction and observation"""
 
     def rescale(self, clip: vs.VideoNode, height: int = 720,
-                kernel: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom(),
+                kernel: vskernels.Kernel = vskernels.Catrom(),
                 thr: Union[int, float] = 55, expand: int = 2) -> vs.VideoNode:
         """Makes a mask based on rescaled difference.
            Modified version of Atomchtools.
@@ -64,8 +64,8 @@ class Difference():
             height (int, optional):
                 Height to descale to. Defaults to 720.
 
-            kernel (lvsfunc.kernels.Kernel, optional):
-                Kernel used to descale. Defaults to lvsfunc.kernels.Bicubic(b=0, c=0.5).
+            kernel (vskernels.Kernel, optional):
+                Kernel used to descale. Defaults to vskernels.Bicubic(b=0, c=0.5).
 
             thr (Union[int, float], optional):
                 Binarization threshold. Defaults to 55.
@@ -228,7 +228,7 @@ def diff_creditless_mask(src_clip: vs.VideoNode, credit_clip: vs.VideoNode, nc_c
 
 
 def diff_rescale_mask(clip: vs.VideoNode, height: int = 720,
-                      kernel: lvsfunc.kernels.Kernel = lvsfunc.kernels.Catrom(),
+                      kernel: vskernels.Kernel = vskernels.Catrom(),
                       thr: Union[int, float] = 55, expand: int = 2) -> vs.VideoNode:
     """Legacy function of Difference().rescale"""
     return Difference().rescale(clip, height, kernel, thr, expand)
