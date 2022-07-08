@@ -1,6 +1,6 @@
 VapourSynth>=59
 vsutil>=0.6.0
-vs-kernels>=1.0.0
+vskernels>=1.0.0
 vsmask>=0.4.0
 lvsfunc>=0.4.2
 numpy>=1.22.4
