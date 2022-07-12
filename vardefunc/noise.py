@@ -13,9 +13,9 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, 
 
 import lvsfunc
 import vapoursynth as vs
+from vsmask.edge import FDoGTCanny
 from vsutil import Dither, depth, get_depth, get_plane_size, get_y, join, split
 
-from .mask import FDOG
 from .types import FormatError, Zimg, format_not_none
 from .util import get_sample_type, pick_px_op
 
@@ -328,7 +328,7 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
         masks = split(
             lvsfunc.mask.range_mask(clip16, rad=3, radc=2).resize.Bilinear(format=vs.YUV444P16)
         ) + [
-            FDOG().get_mask(get_y(clip16)).std.Maximum().std.Minimum()
+            FDoGTCanny().edgemask(get_y(clip16)).std.Maximum().std.Minimum()
         ]
         protect_mask = core.std.Expr(masks, 'x y max z max 3250 < 0 65535 ? a max 8192 < 0 65535 ?') \
             .std.BoxBlur(hradius=1, vradius=1, hpasses=2, vpasses=2)
