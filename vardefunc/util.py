@@ -323,8 +323,8 @@ def normalise_ranges(clip: vs.VideoNode | vs.AudioNode, ranges: Range | List[Ran
             start = r
             end = r + 1
         if isinstance(clip, vs.AudioNode) and ref_fps is not None:
-            start = f2s(start, ref_fps, clip.sample_rate)
-            end = f2s(end, ref_fps, clip.sample_rate)
+            start = start if start == 0 else f2s(start, ref_fps, clip.sample_rate)
+            end = end if end == num_frames else f2s(end, ref_fps, clip.sample_rate)
         if start < 0:
             start += num_frames
         if end <= 0:
