@@ -11,6 +11,7 @@ __all__ = [
 
 import math
 import warnings
+
 from abc import ABC
 from contextlib import AbstractContextManager
 from functools import partial, wraps
@@ -23,8 +24,9 @@ from typing import (
 )
 
 import vapoursynth as vs
-from lvsfunc.comparison import Direction, Stack
-from vsutil import depth, get_depth, get_w, insert_clip, join, plane
+
+from lvsfunc.comparison import Stack
+from vstools import Direction, depth, get_depth, get_w, insert_clip, join, plane
 
 from .types import F_OpInput, FormatError, OpInput, Output
 
@@ -462,7 +464,7 @@ class Planes(AbstractContextManager[vs.VideoNode], Sequence[vs.VideoNode]):
         self._final_clip = join(self._planes, self._family)
         self._planes.clear()
         self._in_context = False
-        return super().__exit__(__exc_type, __exc_value, __traceback)
+        return None
 
     @overload
     def __getitem__(self, i: int) -> vs.VideoNode:

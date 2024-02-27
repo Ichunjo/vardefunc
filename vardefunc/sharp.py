@@ -1,5 +1,6 @@
 """Sharpening functions"""
 import math
+
 from typing import Literal
 
 import vapoursynth as vs

@@ -8,9 +8,10 @@ __all__ = [
 from functools import partial
 from typing import Any, Callable, Dict, List, Literal, Optional, Union, overload
 
-import vskernels
 import vapoursynth as vs
-from vsutil import depth, get_depth, get_w, get_y, join, split
+import vskernels
+
+from vstools import depth, get_depth, get_w, get_y, join, split
 
 from .sharp import z4usm
 from .types import format_not_none

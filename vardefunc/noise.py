@@ -11,10 +11,10 @@ from enum import Enum
 from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, cast
 
-import lvsfunc
 import vapoursynth as vs
-from vsmask.edge import FDoGTCanny
-from vsutil import Dither, depth, get_depth, get_plane_size, get_y, join, split
+
+from vsmasktools import FDoGTCanny, range_mask
+from vstools import DitherType, depth, get_depth, get_plane_sizes, get_y, join, split
 
 from .types import FormatError, Zimg, format_not_none
 from .util import get_sample_type, pick_px_op
@@ -107,8 +107,8 @@ class Graigasm():
 
         if overflows is None:
             overflows = [1/length]
-        if isinstance(overflows, float):
-            overflows = [overflows] * length
+        if isinstance(overflows, (float, int)):
+            overflows = [float(overflows)] * length
         else:
             overflows = list(overflows)
             overflows += [overflows[-1]] * (length - len(overflows))
@@ -161,7 +161,7 @@ class Graigasm():
 
         if num_planes == 3:
             if is_float:
-                masks_chroma = [mask.resize.Bilinear(*get_plane_size(clip, 1)) for mask in masks]
+                masks_chroma = [mask.resize.Bilinear(*get_plane_sizes(clip, 1)) for mask in masks]
                 masks = [join([mask, mask_chroma, mask_chroma]) for mask, mask_chroma in zip(masks, masks_chroma)]
             else:
                 masks = [join([mask] * 3).resize.Bilinear(format=clip.format.id) for mask in masks]
@@ -326,7 +326,7 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
     if not protect_mask:
         clip16 = depth(clip, 16)
         masks = split(
-            lvsfunc.mask.range_mask(clip16, rad=3, radc=2).resize.Bilinear(format=vs.YUV444P16)
+            range_mask(clip16, rad=3, radc=2).resize.Bilinear(format=vs.YUV444P16)
         ) + [
             FDoGTCanny().edgemask(get_y(clip16)).std.Maximum().std.Minimum()
         ]
@@ -346,7 +346,7 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
     )(pre)
 
     mask = core.std.Expr(
-        [depth(protect_mask, bits, range=Zimg.PixelRange.FULL, range_in=Zimg.PixelRange.FULL, dither_type=Dither.NONE),
+        [depth(protect_mask, bits, range_out=Zimg.PixelRange.FULL, range_in=Zimg.PixelRange.FULL, dither_type=DitherType.NONE),
          denoise_mask],
         'y x -'
     )

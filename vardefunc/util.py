@@ -11,6 +11,7 @@ __all__ = [
 
 import inspect
 import warnings
+
 from fractions import Fraction
 from functools import partial, wraps
 from string import ascii_lowercase
@@ -18,8 +19,9 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set,
 
 import numpy as np
 import vapoursynth as vs
+
 from pytimeconv import Convert
-from vsutil import depth, get_depth
+from vstools import depth, get_depth
 
 from .types import CHROMA_LOCATION, COLOUR_RANGE, F_VN, MATRIX, PRIMARIES, TRANSFER, AnyInt
 from .types import DuplicateFrame as DF
@@ -237,8 +239,7 @@ def max_expr(n: int) -> str:
     ) + ' max'
 
 
-def select_frames(clips: vs.VideoNode | Sequence[vs.VideoNode],
-                  indices: NDArray[AnyInt] | List[int] | List[Tuple[int, int]],
+def select_frames(clips: vs.VideoNode | Sequence[vs.VideoNode], indices: NDArray[AnyInt] | List[int] | List[Tuple[int, int]],
                   *, mismatch: bool = False) -> vs.VideoNode:
     """
     Select frames from one or more clips at specified indices.
@@ -333,6 +334,10 @@ def normalise_ranges(clip: vs.VideoNode | vs.AudioNode, ranges: Range | List[Ran
         if start >= num_frames or end > num_frames:
             core.log_message(vs.MESSAGE_TYPE_WARNING, f'normalise_ranges: "{r}" out of range')
             warnings.warn(f'normalise_ranges: {r} out of range')
+        
+        if start > end:
+            core.log_message(vs.MESSAGE_TYPE_WARNING, f'normalise_ranges: start frame "{start}" is higher than end frame "{end}"')
+            warnings.warn(f'normalise_ranges: start frame "{start}" is higher than end frame "{end}"')
 
         start, end = min(start, num_frames - 1), min(end, num_frames)
         nranges.add((start, end))

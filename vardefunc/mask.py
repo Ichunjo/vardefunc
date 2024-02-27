@@ -6,18 +6,19 @@ __all__ = [
 ]
 
 import warnings
+
 from typing import Any, Dict, Optional, Union
 
 import vapoursynth as vs
 import vskernels
-from vsmask.edge import EdgeDetect as EdgeDetectVsM
-from vsmask.edge import ExLaplacian4 as ExLaplacian4VsM
-from vsmask.edge import FDoGTCanny as FDoGTCannyVsM
-from vsmask.edge import Kirsch as KirschVsM
-from vsmask.edge import MinMax as MinMaxVsM
-from vsmask.util import XxpandMode
-from vsmask.util import expand as expand_func
-from vsutil import get_depth, get_w, get_y, insert_clip, iterate, scale_value, split
+
+from vsmasktools import EdgeDetect as EdgeDetectVsM
+from vsmasktools import ExLaplacian4 as ExLaplacian4VsM
+from vsmasktools import FDoGTCanny as FDoGTCannyVsM
+from vsmasktools import Kirsch as KirschVsM
+from vsmasktools import MinMax as MinMaxVsM
+from vsmasktools import Morpho, XxpandMode
+from vstools import get_depth, get_w, get_y, insert_clip, iterate, scale_value, split
 
 from .types import format_not_none
 from .util import get_sample_type, mae_expr, pick_px_op
@@ -93,7 +94,7 @@ class Difference():
         mask = iterate(diff, lambda x: core.rgsf.RemoveGrain(x, 2), 2)
         mask = core.std.Expr(mask, f'x 2 4 pow * {thr} < 0 1 ?')
 
-        mask = expand_func(mask, 2 + expand, mode=XxpandMode.ELLIPSE)
+        mask = Morpho.expand(mask, 2 + expand, mode=XxpandMode.ELLIPSE)
         mask = mask.std.Deflate()
 
         return mask.resize.Point(
@@ -169,7 +170,7 @@ class Difference():
         )
 
         mask = ExLaplacian4VsM().edgemask(diff).std.Binarize(thr)
-        mask = expand_func(mask, 2 + expand, mode=XxpandMode.ELLIPSE)
+        mask = Morpho.expand(mask, 2 + expand, mode=XxpandMode.ELLIPSE)
 
         blank = core.std.BlankClip(
             src_clip, format=src_clip.format.replace(

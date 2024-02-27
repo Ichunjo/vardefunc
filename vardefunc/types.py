@@ -13,7 +13,6 @@ from numpy.lib.index_tricks import CClass as NP_CClass
 from numpy.typing import NDArray
 from pytimeconv import Convert
 from vapoursynth import PresetFormat, VideoFormat, VideoNode
-from vsutil import Dither
 
 Range = Union[int, Tuple[Optional[int], Optional[int]]]
 Trim = Tuple[Optional[int], Optional[int]]
@@ -290,8 +289,6 @@ class Zimg:
         """Pixel range (ITU-T H.265 Eq E-4 to E-15)"""
         LIMITED = 0
         FULL = 1
-
-    DitherType = Dither
 
     class ResampleFilterUV(str, Enum):
         """Scaling method for UV channels to be used in core.resize.XXXXX(..., resample_filter_uv=)"""

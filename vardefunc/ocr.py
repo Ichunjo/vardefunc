@@ -2,13 +2,14 @@
 __all__ = ['OCR']
 
 import math
+
 from functools import partial
 from typing import Dict, List, Optional, Sequence, Set, Tuple, Union
 
 import vapoursynth as vs
-from lvsfunc.render import clip_async_render
+
 from pytimeconv import Convert
-from vsutil import split
+from vstools import clip_async_render, split
 
 from .mask import region_mask
 from .types import AnyPath
