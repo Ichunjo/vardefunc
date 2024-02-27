@@ -1,7 +1,7 @@
-VapourSynth>=59
-vsutil>=0.6.0
-vskernels>=1.0.0
-vsmask>=0.4.0
-lvsfunc>=0.4.2
-numpy>=1.22.4
+lvsfunc>=0.8.1
+numpy>=1.26.4
 pytimeconv>=0.0.2
+VapourSynth>=66
+vskernels>=3.1.0
+vsmasktools>=1.2.1
+vstools>=3.1.0

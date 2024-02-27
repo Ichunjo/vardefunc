@@ -24,7 +24,7 @@ setup(
         'vardefunc': ['py.typed'],
     },
     install_requires=install_requires,
-    python_requires=">=3.10",
+    python_requires=">=3.12",
     zip_safe=False,
     classifiers=[
         "Intended Audience :: Developers",
