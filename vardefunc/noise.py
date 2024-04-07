@@ -13,7 +13,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, 
 
 import vapoursynth as vs
 
-from vsmasktools import FDoGTCanny, range_mask
+from vsmasktools import FDoGTCanny, range_mask, adg_mask
 from vstools import DitherType, depth, get_depth, get_plane_sizes, get_y, join, split
 
 from .types import FormatError, Zimg, format_not_none
@@ -53,7 +53,7 @@ class AddGrain(Grainer):
 class F3kdbGrain(Grainer):
     """Built-in f3kdb.Deband plugin"""
     def grain(self, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
-        return core.f3kdb.Deband(clip, None, 1, 1, 1, int(strength[0]), int(strength[1]), **self.kwargs)
+        return core.neo_f3kdb.Deband(clip, None, 1, 1, 1, int(strength[0]), int(strength[1]), **self.kwargs)
 
 
 class Graigasm():
@@ -395,7 +395,7 @@ def adaptative_regrain(denoised: vs.VideoNode, new_grained: vs.VideoNode, origin
     """
 
     avg = core.std.PlaneStats(denoised)
-    adapt_mask = core.adg.Mask(get_y(avg), luma_scaling)
+    adapt_mask = adg_mask(get_y(avg), luma_scaling)
     adapt_grained = core.std.MaskedMerge(new_grained, original_grained, adapt_mask)
 
     avg_max = max(range_avg)
