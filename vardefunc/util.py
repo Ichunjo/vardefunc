@@ -2,207 +2,29 @@
 from __future__ import annotations
 
 __all__ = [
-    'finalise_clip', 'finalise_output',
-    'initialise_clip', 'initialise_input',
     'select_frames', 'normalise_ranges', 'replace_ranges',
     'adjust_clip_frames', 'adjust_audio_frames',
     'remap_rfs'
 ]
 
-import inspect
 import warnings
 
 from fractions import Fraction
-from functools import partial, wraps
+from functools import partial
 from string import ascii_lowercase
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple, cast, overload
+from typing import Any, Callable, Iterable, List, Optional, Sequence, Set, Tuple
 
 import numpy as np
 import vapoursynth as vs
 
 from pytimeconv import Convert
-from vstools import depth, get_depth
 
-from .types import CHROMA_LOCATION, COLOUR_RANGE, F_VN, MATRIX, PRIMARIES, TRANSFER, AnyInt
+from .types import AnyInt
 from .types import DuplicateFrame as DF
-from .types import F, NDArray, Range, Trim
+from .types import NDArray, Range, Trim
 from .types import VNumpy as vnp
-from .types import format_not_none
 
 core = vs.core
-
-
-def finalise_clip(clip: vs.VideoNode, bits: Optional[int] = 10, clamp_tv_range: bool = True) -> vs.VideoNode:
-    """
-    Converts bitdepth and optionally clamps the pixel values in TV range
-
-    Args:
-        clip (vs.VideoNode):
-            Source clip
-
-        bits (int, optional):
-            Target bitdepth. Defaults to 10.
-
-        clamp_tv_range (bool, optional):
-            Clamp in TV range or not. Defaults to True.
-
-    Returns:
-        vs.VideoNode: Finalised clip
-    """
-    if bits:
-        clip = depth(clip, bits)
-    else:
-        bits = get_depth(clip)
-    if clamp_tv_range:
-        clip = clip.std.Expr([f'x {16 << (bits - 8)} max {235 << (bits - 8)} min',
-                              f'x {16 << (bits - 8)} max {240 << (bits - 8)} min'])
-    return clip
-
-
-@overload
-def finalise_output(*, bits: Optional[int] = 10, clamp_tv_range: bool = True) -> Callable[[F_VN], F_VN]:
-    ...
-
-
-@overload
-def finalise_output(func: Optional[F_VN], /) -> F_VN:
-    ...
-
-
-def finalise_output(func: Optional[F_VN] = None, /, *, bits: Optional[int] = 10, clamp_tv_range: bool = True
-                    ) -> Callable[[F_VN], F_VN] | F_VN:
-    """
-    Decorator implementation of ``finalise_clip``
-    """
-    if func is None:
-        return cast(
-            Callable[[F_VN], F_VN],
-            partial(finalise_output, bits=bits, clamp_tv_range=clamp_tv_range)
-        )
-
-    @wraps(func)
-    def _wrapper(*args: Any, **kwargs: Any) -> vs.VideoNode:
-        assert func
-        return finalise_clip(func(*args, **kwargs), bits, clamp_tv_range)
-
-    return cast(F_VN, _wrapper)
-
-
-def initialise_clip(
-    clip: vs.VideoNode, bits: int = 16,
-    matrix: vs.MatrixCoefficients | MATRIX = vs.MATRIX_BT709,
-    transfer: vs.TransferCharacteristics | TRANSFER = vs.TRANSFER_BT709,
-    primaries: vs.ColorPrimaries | PRIMARIES = vs.PRIMARIES_BT709,
-    chroma_location: vs.ChromaLocation | CHROMA_LOCATION = vs.CHROMA_LEFT,
-    colour_range: vs.ColorRange | COLOUR_RANGE = vs.RANGE_LIMITED
-) -> vs.VideoNode:
-    """
-    Initialise a clip by converting its bitdepth and setting its VideoProps
-
-    Args:
-        clip (vs.VideoNode):
-            Source clip
-
-        bits (int, optional):
-            Target bitdepth. Defaults to 16.
-
-        matrix (vs.MatrixCoefficients, optional):
-            Matrix coefficients. Defaults to vs.MATRIX_BT709.
-
-        transfer (vs.TransferCharacteristics, optional):
-            Transfer characteristics. Defaults to vs.TRANSFER_BT709.
-
-        primaries (vs.ColorPrimaries, optional):
-            Colour primaries. Defaults to vs.PRIMARIES_BT709.
-
-        chroma_location (vs.ChromaLocation, optional):
-            Chroma location. Defaults to vs.CHROMA_LEFT.
-
-        colour_range (vs.ColorRange, optional):
-            Colour range. Defaults to vs.RANGE_LIMITED.
-
-    Returns:
-        vs.VideoNode:
-            Initialised clip
-    """
-    return depth(
-        clip.std.SetFrameProps(
-            _Matrix=matrix, _Transfer=transfer, _Primaries=primaries,
-            _ChromaLocation=chroma_location, _ColorRange=colour_range
-        ),
-        bits
-    )
-
-
-@overload
-def initialise_input(
-    *, bits: int = ...,
-    matrix: vs.MatrixCoefficients | MATRIX = ...,
-    transfer: vs.TransferCharacteristics | TRANSFER = ...,
-    primaries: vs.ColorPrimaries | PRIMARIES = ...,
-    chroma_location: vs.ChromaLocation | CHROMA_LOCATION = ...
-) -> Callable[[F_VN], F_VN]:
-    ...
-
-
-@overload
-def initialise_input(func: Optional[F_VN], /) -> F_VN:
-    ...
-
-
-def initialise_input(
-    func: Optional[F_VN] = None, /, *, bits: int = 16,
-    matrix: vs.MatrixCoefficients | MATRIX = vs.MATRIX_BT709,
-    transfer: vs.TransferCharacteristics | TRANSFER = vs.TRANSFER_BT709,
-    primaries: vs.ColorPrimaries | PRIMARIES = vs.PRIMARIES_BT709,
-    chroma_location: vs.ChromaLocation | CHROMA_LOCATION = vs.CHROMA_LEFT,
-    colour_range: vs.ColorRange | COLOUR_RANGE = vs.RANGE_LIMITED
-) -> Callable[[F_VN], F_VN] | F_VN:
-    """
-    Decorator implementation of ``initialise_clip``
-    """
-    if func is None:
-        return cast(
-            Callable[[F_VN], F_VN],
-            partial(initialise_input, bits=bits, matrix=matrix, transfer=transfer, primaries=primaries)
-        )
-
-    init_args: Dict[str, Any] = dict(
-        bits=bits,
-        matrix=matrix, transfer=transfer, primaries=primaries,
-        chroma_location=chroma_location, colour_range=colour_range
-    )
-
-    @wraps(func)
-    def _wrapper(*args: Any, **kwargs: Any) -> vs.VideoNode:
-        assert func
-
-        args_l = list(args)
-        for i, obj in enumerate(args_l):
-            if isinstance(obj, vs.VideoNode):
-                args_l[i] = initialise_clip(obj, **init_args)
-                return func(*args_l, **kwargs)
-
-        kwargs2 = kwargs.copy()
-        for name, obj in kwargs2.items():
-            if isinstance(obj, vs.VideoNode):
-                kwargs2[name] = initialise_clip(obj, **init_args)
-                return func(*args, **kwargs2)
-
-        for name, param in inspect.signature(func).parameters.items():
-            if param.default is not inspect.Parameter.empty and isinstance(param.default, vs.VideoNode):
-                return func(*args, **kwargs2 | {name: initialise_clip(param.default, **init_args)})
-
-        raise ValueError(
-            'initialise_input: None VideoNode found in positional, keyword nor default arguments!'
-        )
-
-    return cast(F_VN, _wrapper)
-
-
-def get_sample_type(clip: vs.VideoNode) -> vs.SampleType:
-    """Returns the sample type of a VideoNode as an SampleType."""
-    return format_not_none(clip).format.sample_type
 
 
 def load_operators_expr() -> List[str]:
@@ -277,14 +99,7 @@ def select_frames(clips: vs.VideoNode | Sequence[vs.VideoNode], indices: NDArray
     plh = clips[0].std.BlankClip(length=len(indices))
 
     if mismatch:
-        if plh.format and plh.format.id == vs.GRAY8:
-            ph_fmt = vs.GRAY16
-        else:
-            ph_fmt = vs.GRAY8
-        plh = core.std.Splice(
-            [plh[:-1], plh.std.BlankClip(plh.width+1, plh.height+1, format=ph_fmt, length=1)],
-            True
-        )
+        plh = plh.std.BlankClip(varsize=True, varformat=True)
 
     def _select_func(n: int, clips: Sequence[vs.VideoNode], indices: NDArray[AnyInt]) -> vs.VideoNode:
         # index: NDArray[AnyInt] = indices[n]  # Get the index / num_frame pair
@@ -422,7 +237,7 @@ def remap_rfs(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Range | List[R
 
 def pick_px_op(
     use_expr: bool,
-    operations: Tuple[str, Sequence[int] | Sequence[float] | int | float | F]
+    operations: Tuple[str, Sequence[int] | Sequence[float] | int | float | Callable[..., Any]]
 ) -> Callable[..., vs.VideoNode]:
     """Pick either std.Lut or std.Expr"""
     expr, lut = operations
@@ -433,7 +248,7 @@ def pick_px_op(
             func = partial(core.std.Lut, function=lut)
         elif isinstance(lut, Sequence):
             if all(isinstance(x, int) for x in lut):
-                func = partial(core.std.Lut, lut=lut)
+                func = partial(core.std.Lut, lut=lut)  # type: ignore
             elif all(isinstance(x, float) for x in lut):
                 func = partial(core.std.Lut, lutf=lut)
             else:

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 __all__ = [
     'DebugOutput', 'Thresholds', 'thresholding',
-    'fade_filter', 'merge_chroma',
+    'fade_filter',
     'Planes', 'YUVPlanes', 'RGBPlanes',
     'get_chroma_shift', 'get_bicubic_params',
     'set_ffms2_log_level'
@@ -28,7 +28,7 @@ import vapoursynth as vs
 from lvsfunc.comparison import Stack
 from vstools import Direction, depth, get_depth, get_w, insert_clip, join, plane
 
-from .types import F_OpInput, FormatError, OpInput, Output
+from .types import F_OpInput, OpInput, Output
 
 core = vs.core
 
@@ -409,24 +409,10 @@ def fade_filter(clip: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode,
     return insert_clip(clip, clip_fad, start_f)
 
 
-def merge_chroma(luma: vs.VideoNode, ref: vs.VideoNode) -> vs.VideoNode:
-    """Merges chroma from ref with luma.
-
-    Args:
-        luma (vs.VideoNode): Source luma clip.
-        ref (vs.VideoNode): Source chroma clip.
-
-    Returns:
-        vs.VideoNode:
-    """
-    return core.std.ShufflePlanes([luma, ref], [0, 1, 2], vs.YUV)
-
-
-
 PlanesT = TypeVar('PlanesT', bound='Planes')
 
 
-class Planes(AbstractContextManager[vs.VideoNode], Sequence[vs.VideoNode]):
+class Planes(AbstractContextManager[PlanesT], Sequence[vs.VideoNode]):
     """General context manager for easier planes management"""
 
     __slots__ = ('_clip', '_family', '_final_clip', '_planes', '_in_context')
@@ -455,7 +441,7 @@ class Planes(AbstractContextManager[vs.VideoNode], Sequence[vs.VideoNode]):
         if isinstance(planes := self._clip.std.SplitPlanes(), Sequence):
             self._planes = list(planes)
         else:
-            raise FormatError(f'{self.__class__.__name__}: GRAY colour family isn\'t supported!')
+            raise ValueError(f'{self.__class__.__name__}: GRAY colour family isn\'t supported!')
         self._in_context = True
         return self
 

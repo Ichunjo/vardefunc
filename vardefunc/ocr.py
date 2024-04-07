@@ -9,9 +9,9 @@ from typing import Dict, List, Optional, Sequence, Set, Tuple, Union
 import vapoursynth as vs
 
 from pytimeconv import Convert
+from vsmasktools import region_rel_mask
 from vstools import clip_async_render, split
 
-from .mask import region_mask
 from .types import AnyPath
 from .util import max_expr
 
@@ -207,7 +207,7 @@ class OCR:
         hcrop = self.clip.height - ch - h, h
         if alt:
             hcrop = hcrop[::-1]
-        return region_mask(
+        return region_rel_mask(
             self.clip.std.BlankClip(format=vs.GRAY8, color=255),
             left, right, *hcrop
         )

@@ -14,10 +14,9 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, 
 import vapoursynth as vs
 
 from vsmasktools import FDoGTCanny, range_mask, adg_mask
-from vstools import DitherType, depth, get_depth, get_plane_sizes, get_y, join, split
+from vstools import DitherType, depth, get_depth, get_plane_sizes, get_y, join, split, ColorRange
 
-from .types import FormatError, Zimg, format_not_none
-from .util import get_sample_type, pick_px_op
+from .util import pick_px_op
 
 core = vs.core
 
@@ -139,13 +138,13 @@ class Graigasm():
         Returns:
             vs.VideoNode: Grained clip.
         """
-        clip = format_not_none(clip)
+        assert clip.format
         if clip.format.color_family not in (vs.YUV, vs.GRAY):
-            raise FormatError('graining: Only YUV and GRAY format are supported!')
+            raise ValueError('graining: Only YUV and GRAY format are supported!')
 
 
         bits = get_depth(clip)
-        is_float = get_sample_type(clip) == vs.FLOAT
+        is_float = clip.format.sample_type == vs.FLOAT
         peak = 1.0 if is_float else (1 << bits) - 1
         num_planes = clip.format.num_planes
         neutral = [0.5] + [0.0] * (num_planes - 1) if is_float else [float(1 << (bits - 1))] * num_planes
@@ -256,11 +255,11 @@ class BilateralMethod(Enum):
 
     @property
     def func(self) -> Callable[..., vs.VideoNode]:
-        return [
-            lambda: core.bilateral.Bilateral,
-            lambda: core.bilateralgpu.Bilateral,
-            lambda: core.bilateralgpu_rtc.Bilateral
-        ][self.value]()
+        return [  # type: ignore
+            lambda: core.bilateral.Bilateral,  # type: ignore
+            lambda: core.bilateralgpu.Bilateral,  # type: ignore
+            lambda: core.bilateralgpu_rtc.Bilateral  # type: ignore
+        ][self.value]()  # type: ignore
 
 
 def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
@@ -311,10 +310,10 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
         clip = vdf.decsiz(clip, min_in=128<<8, max_in=200<<8)
     """
     if clip.format is None:
-        raise FormatError('decsiz: Variable format not allowed!')
+        raise ValueError('decsiz: Variable format not allowed!')
 
     bits = clip.format.bits_per_sample
-    is_float = get_sample_type(clip) == vs.FLOAT
+    is_float = clip.format.sample_type == vs.FLOAT
     peak = (1 << bits) - 1 if not is_float else 1.0
     gamma = 1 / gamma
     if clip.format.color_family == vs.GRAY:
@@ -346,7 +345,7 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
     )(pre)
 
     mask = core.std.Expr(
-        [depth(protect_mask, bits, range_out=Zimg.PixelRange.FULL, range_in=Zimg.PixelRange.FULL, dither_type=DitherType.NONE),
+        [depth(protect_mask, bits, range_out=ColorRange.FULL, range_in=ColorRange.FULL, dither_type=DitherType.NONE),
          denoise_mask],
         'y x -'
     )
