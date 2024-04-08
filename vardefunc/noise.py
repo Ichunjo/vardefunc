@@ -1,6 +1,8 @@
 """Noising/denoising functions"""
+from __future__ import annotations
 
 __all__ = [
+    'mvtools_args_defaults', 'nl_means_defaults', 'bm3d_profile_ffast', 'denoise',
     'Grainer', 'AddGrain', 'F3kdbGrain',
     'Graigasm', 'BilateralMethod', 'decsiz',
     'adaptative_regrain'
@@ -11,14 +13,62 @@ from enum import Enum
 from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, cast
 
-import vapoursynth as vs
-
-from vsmasktools import FDoGTCanny, range_mask, adg_mask
-from vstools import DitherType, depth, get_depth, get_plane_sizes, get_y, join, split, ColorRange
+from vsdenoise import (
+    BM3DCPU, BM3DCuda, BM3DCudaRTC, DeviceType, MotionMode, MVTools, PelType, Prefilter, Profile,
+    SADMode, SearchMode, WeightMode, nl_means
+)
+from vsdenoise.bm3d import ProfileBase
+from vsmasktools import FDoGTCanny, adg_mask, range_mask
+from vstools import ColorRange, DitherType, KwargsT, core, depth, get_depth, get_plane_sizes, get_y, join, split, vs
 
 from .util import pick_px_op
 
-core = vs.core
+
+def mvtools_args_defaults() -> KwargsT:
+    return KwargsT(        
+        sad_mode=SADMode.SPATIAL.same_recalc,
+        motion=MotionMode.HIGH_SAD,
+        prefilter=Prefilter.MINBLUR2,
+        pel_type=PelType.WIENER,
+        search=SearchMode.DIAMOND.defaults,
+        block_size=16,
+        overlap=8,
+        limit=255
+    )
+
+
+def nl_means_defaults() -> KwargsT:
+    return KwargsT(
+        sr=2,
+        simr=4,
+        wmode=WeightMode.BISQUARE_HR,  # wmode=3
+        device_type=DeviceType.CUDA,
+        num_streams=2
+    )
+
+
+def bm3d_profile_ffast() -> Profile.Config:
+    return ProfileBase.Config(Profile.FAST, KwargsT(), KwargsT(), KwargsT(), KwargsT(fast=True), KwargsT(), KwargsT())
+
+
+def denoise(
+    clip: vs.VideoNode,
+    thSAD: int | tuple[int, int | tuple[int, int]] | None = 115,
+    sigma_y: float = 0.7,
+    strength_uv: float = 0.2,
+    tr: int = 2,
+    mvtools_args: KwargsT | None = None,
+    bm3d_impl: type[BM3DCPU | BM3DCuda | BM3DCudaRTC] = BM3DCudaRTC,
+    bm3d_profile: Profile | Profile.Config = bm3d_profile_ffast(),
+    nl_args: KwargsT | None = None
+) -> vs.VideoNode:
+    """
+    MVTools + BM3D + NLMeans denoise.
+    """
+    ref = MVTools.denoise(clip, thSAD, tr, **mvtools_args_defaults() | (mvtools_args or KwargsT()))
+    denoised_luma = bm3d_impl.denoise(clip, sigma_y, tr, 1, bm3d_profile, ref, planes=0)
+    denoised_chroma = nl_means(denoised_luma, strength_uv, tr, ref=ref, planes=[1, 2], **nl_means_defaults() | (nl_args or KwargsT()))
+    return denoised_chroma
 
 
 class Grainer(ABC):
