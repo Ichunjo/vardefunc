@@ -12,16 +12,17 @@ import warnings
 from fractions import Fraction
 from functools import partial
 from string import ascii_lowercase
-from typing import Any, Callable, Iterable, List, Optional, Sequence, Set, Tuple
+from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, cast
 
 import numpy as np
 import vapoursynth as vs
+from vstools import FrameRangeN, FrameRangesN
 
 from pytimeconv import Convert
 
 from .types import AnyInt
 from .types import DuplicateFrame as DF
-from .types import NDArray, Range, RangeN, Trim
+from .types import NDArray, Range, Trim
 from .types import VNumpy as vnp
 
 core = vs.core
@@ -61,8 +62,11 @@ def max_expr(n: int) -> str:
     ) + ' max'
 
 
-def select_frames(clips: vs.VideoNode | Sequence[vs.VideoNode], indices: NDArray[AnyInt] | List[int] | List[Tuple[int, int]],
-                  *, mismatch: bool = False) -> vs.VideoNode:
+def select_frames(
+    clips: vs.VideoNode | Sequence[vs.VideoNode],
+    indices: NDArray[AnyInt] | List[int] | List[Tuple[int, int]],
+    *, mismatch: bool = False
+) -> vs.VideoNode:
     """
     Select frames from one or more clips at specified indices.
     Written by EoE. Modified by me.
@@ -87,10 +91,7 @@ def select_frames(clips: vs.VideoNode | Sequence[vs.VideoNode], indices: NDArray
     indices = vnp.array(indices) if isinstance(indices, list) else indices
 
     if indices.ndim == 1:
-        indices = vnp.zip_arrays(
-            np.zeros(len(indices), np.uint32),
-            indices
-        )
+        indices = vnp.zip_arrays(np.zeros(len(indices), np.uint32), indices)
     elif indices.ndim == 2:
         pass
     else:
@@ -113,8 +114,10 @@ def select_frames(clips: vs.VideoNode | Sequence[vs.VideoNode], indices: NDArray
     return core.std.FrameEval(plh, partial(_select_func, clips=clips, indices=indices))
 
 
-def normalise_ranges(clip: vs.VideoNode | vs.AudioNode, ranges: int | RangeN | list[int] | list[int | RangeN | None],
-                     *, norm_dups: bool = False, ref_fps: Optional[Fraction] = None) -> list[Range]:
+def normalise_ranges(
+    clip: vs.VideoNode | vs.AudioNode, ranges: FrameRangeN | FrameRangesN,
+    *, norm_dups: bool = False, ref_fps: Optional[Fraction] = None
+) -> list[Range]:
     """Modified version of lvsfunc.util.normalize_ranges following python slicing syntax"""
     if isinstance(clip, vs.VideoNode):
         num_frames = clip.num_frames
@@ -124,9 +127,25 @@ def normalise_ranges(clip: vs.VideoNode | vs.AudioNode, ranges: int | RangeN | l
         else:
             num_frames = clip.num_frames
 
-    ranges = ranges if isinstance(ranges, list) else [ranges]
+    if ranges is None:
+        return [(0, num_frames)]
 
-    nranges: Set[Tuple[int, int]] = set()
+    def _resolve_ranges_type(
+        rngs: int | tuple[int | None, int | None] | FrameRangesN
+    ) -> Sequence[int | tuple[int | None, int | None] | None]:
+        if isinstance(rngs, int):
+            return [rngs]
+        if isinstance(rngs, tuple) and len(rngs) == 2:
+            if isinstance(rngs[0], int) or rngs[0] is None and isinstance(rngs[1], int) or rngs[1] is None:
+                return [cast(tuple[int | None, int | None], rngs)]
+            else:
+                raise
+        rngs = cast(FrameRangesN, rngs)
+        return rngs
+
+    ranges = _resolve_ranges_type(ranges)
+
+    nranges = set[tuple[int, int]]()
     f2s = Convert.f2samples
     for r in ranges:
         if isinstance(r, tuple):
@@ -178,11 +197,7 @@ def normalise_ranges(clip: vs.VideoNode | vs.AudioNode, ranges: int | RangeN | l
     return out
 
 
-def replace_ranges(
-    clip_a: vs.VideoNode, clip_b: vs.VideoNode,
-    ranges: int | RangeN | list[int] | list[int | RangeN | None],
-    *, mismatch: bool = False
-) -> vs.VideoNode:
+def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: FrameRangeN | FrameRangesN, *, mismatch: bool = False) -> vs.VideoNode:
     """Modified version of lvsfunc.util.replace_ranges following python slicing syntax"""
     num_frames = clip_a.num_frames
     nranges = normalise_ranges(clip_a, ranges)
@@ -233,10 +248,7 @@ def adjust_audio_frames(audio: vs.AudioNode, trims_or_dfs: List[Trim | DF] | Tri
     return core.std.AudioSplice(audios)
 
 
-def remap_rfs(
-    clip_a: vs.VideoNode, clip_b: vs.VideoNode,
-    ranges: int | RangeN | list[int] | list[int | RangeN | None]
-) -> vs.VideoNode:
+def remap_rfs(clip_a: vs.VideoNode, clip_b: vs.VideoNode,ranges: FrameRangeN | FrameRangesN) -> vs.VideoNode:
     """Replace ranges function using remap plugin"""
     return core.remap.ReplaceFramesSimple(
         clip_a, clip_b,
