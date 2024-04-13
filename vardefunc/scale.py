@@ -543,7 +543,7 @@ class Rescale(BaseRescale):
             scale_value(80, 8, 32) if not lthr else lthr,
             scale_value(150, 8, 32) if not hthr else hthr
         )
-        self.line_mask = scaler.scale(mask, self.clipy.width, self.clipy.height, format=self.clipy.format)
+        self.line_mask = scaler.scale(mask, self.clipy.width, self.clipy.height, format=self.clipy.format)  # type: ignore
         return self.line_mask
 
     # CREDITMASK
