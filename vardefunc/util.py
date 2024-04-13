@@ -21,7 +21,7 @@ from pytimeconv import Convert
 
 from .types import AnyInt
 from .types import DuplicateFrame as DF
-from .types import NDArray, Range, Trim
+from .types import NDArray, Range, RangeN, Trim
 from .types import VNumpy as vnp
 
 core = vs.core
@@ -113,8 +113,8 @@ def select_frames(clips: vs.VideoNode | Sequence[vs.VideoNode], indices: NDArray
     return core.std.FrameEval(plh, partial(_select_func, clips=clips, indices=indices))
 
 
-def normalise_ranges(clip: vs.VideoNode | vs.AudioNode, ranges: Range | List[Range] | Trim | List[Trim],
-                     *, norm_dups: bool = False, ref_fps: Optional[Fraction] = None) -> List[Tuple[int, int]]:
+def normalise_ranges(clip: vs.VideoNode | vs.AudioNode, ranges: int | Range | RangeN | list[int] | list[int | Range | RangeN | None],
+                     *, norm_dups: bool = False, ref_fps: Optional[Fraction] = None) -> list[Range]:
     """Modified version of lvsfunc.util.normalize_ranges following python slicing syntax"""
     if isinstance(clip, vs.VideoNode):
         num_frames = clip.num_frames
@@ -135,9 +135,12 @@ def normalise_ranges(clip: vs.VideoNode | vs.AudioNode, ranges: Range | List[Ran
                 start = 0
             if end is None:
                 end = num_frames
-        else:
+        elif isinstance(r, int):
             start = r
             end = r + 1
+        else:
+            start = num_frames - 1 
+            end = num_frames
         if isinstance(clip, vs.AudioNode) and ref_fps is not None:
             start = start if start == 0 else f2s(start, ref_fps, clip.sample_rate)
             end = end if end == num_frames else f2s(end, ref_fps, clip.sample_rate)
@@ -175,8 +178,11 @@ def normalise_ranges(clip: vs.VideoNode | vs.AudioNode, ranges: Range | List[Ran
     return out
 
 
-def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Range | List[Range],
-                   *, mismatch: bool = False) -> vs.VideoNode:
+def replace_ranges(
+    clip_a: vs.VideoNode, clip_b: vs.VideoNode,
+    ranges: int | Range | RangeN | list[int] | list[int | Range | RangeN | None],
+    *, mismatch: bool = False
+) -> vs.VideoNode:
     """Modified version of lvsfunc.util.replace_ranges following python slicing syntax"""
     num_frames = clip_a.num_frames
     nranges = normalise_ranges(clip_a, ranges)
@@ -227,7 +233,7 @@ def adjust_audio_frames(audio: vs.AudioNode, trims_or_dfs: List[Trim | DF] | Tri
     return core.std.AudioSplice(audios)
 
 
-def remap_rfs(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: Range | List[Range]) -> vs.VideoNode:
+def remap_rfs(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: int | Range | RangeN | list[int] | list[int | Range | RangeN | None]) -> vs.VideoNode:
     """Replace ranges function using remap plugin"""
     return core.remap.ReplaceFramesSimple(
         clip_a, clip_b,

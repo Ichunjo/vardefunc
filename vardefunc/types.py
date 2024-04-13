@@ -4,7 +4,7 @@ __all__ = ['DuplicateFrame']
 
 from fractions import Fraction
 from os import PathLike
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar, Union, cast
+from typing import Any, Callable, Dict, List, Sequence, Tuple, TypeAlias, TypeVar, Union, cast
 
 from numpy import array as np_array
 from numpy import int8, int16, int32, uint8, uint16, uint32
@@ -13,8 +13,10 @@ from numpy.typing import NDArray
 from pytimeconv import Convert
 from vapoursynth import VideoNode
 
-Range = Union[int, Tuple[Optional[int], Optional[int]]]
-Trim = Tuple[Optional[int], Optional[int]]
+Range: TypeAlias = tuple[int, int]
+RangeN: TypeAlias = tuple[int | None, int | None]
+Trim: TypeAlias = RangeN
+
 # Some outputs
 Output = Union[
     VideoNode,
