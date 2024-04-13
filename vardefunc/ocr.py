@@ -196,7 +196,7 @@ class OCR:
             cmask = core.std.Lut2(cmask, cmask_alt, function=lambda x, y: max(x, y))
 
         return core.std.MaskedMerge(
-            core.std.Lut(self.clip, function=lambda x: round(x/2)),
+            core.std.Lut(self.clip, function=lambda x: round(x / 2)),
             self.clip, cmask
         )
 

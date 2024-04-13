@@ -379,7 +379,6 @@ def thresholding(*thrs: Thresholds, base: Optional[vs.VideoNode] = None, guidanc
     return pclip
 
 
-
 def fade_filter(clip: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode,
                 start_f: int, end_f: int) -> vs.VideoNode:
     """Applies a filter by fading clip_a to clip_b.
@@ -588,7 +587,6 @@ class RGBPlanes(Planes):
     @B.deleter
     def B(self) -> None:
         del self[2]
-
 
 
 def get_chroma_shift(src_h: int, dst_h: int, aspect_ratio: float = 16 / 9) -> float:

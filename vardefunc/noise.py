@@ -25,7 +25,7 @@ from .util import pick_px_op
 
 
 def mvtools_args_defaults() -> KwargsT:
-    return KwargsT(        
+    return KwargsT(
         sad_mode=SADMode.SPATIAL.same_recalc,
         motion=MotionMode.HIGH_SAD,
         prefilter=Prefilter.MINBLUR2,
@@ -155,7 +155,7 @@ class Graigasm():
             raise ValueError('Graigasm: "thrs", "strengths", "sizes" and "sharps" must have the same length!')
 
         if overflows is None:
-            overflows = [1/length]
+            overflows = [1 / length]
         if isinstance(overflows, (float, int)):
             overflows = [float(overflows)] * length
         else:
@@ -192,7 +192,6 @@ class Graigasm():
         if clip.format.color_family not in (vs.YUV, vs.GRAY):
             raise ValueError('graining: Only YUV and GRAY format are supported!')
 
-
         bits = get_depth(clip)
         is_float = clip.format.sample_type == vs.FLOAT
         peak = 1.0 if is_float else (1 << bits) - 1
@@ -205,8 +204,7 @@ class Graigasm():
 
         masks = [self._make_mask(pref, thr, ovf, peak, is_float=is_float) for thr, ovf in zip(self.thrs, self.overflows)]
         masks = [pref.std.BlankClip(color=0)] + masks
-        masks = [core.std.Expr([masks[i], masks[i-1]], 'x y -') for i in range(1, len(masks))]
-
+        masks = [core.std.Expr([masks[i], masks[i - 1]], 'x y -') for i in range(1, len(masks))]
 
         if num_planes == 3:
             if is_float:
@@ -221,18 +219,15 @@ class Graigasm():
                  for thr, mask in zip(self.thrs, masks)]
             )
 
-
         graineds = [self._make_grained(clip, strength, size, sharp, grainer, neutral, mod)
                     for strength, size, sharp, grainer in zip(self.strengths, self.sizes, self.sharps, self.grainers)]
 
         clips_adg = [core.std.Expr([grained, clip, mask], f'x z {peak} / * y 1 z {peak} / - * +')
                      for grained, mask in zip(graineds, masks)]
 
-
         out = clip
         for clip_adg in clips_adg:
             out = core.std.MergeDiff(clip_adg, core.std.MakeDiff(clip, out))  # type: ignore
-
 
         return out
 
@@ -371,7 +366,6 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
     else:
         planes = [0, 1, 2] if not planes else planes
 
-
     if not protect_mask:
         clip16 = depth(clip, 16)
         masks = split(
@@ -381,7 +375,6 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
         ]
         protect_mask = core.std.Expr(masks, 'x y max z max 3250 < 0 65535 ? a max 8192 < 0 65535 ?') \
             .std.BoxBlur(hradius=1, vradius=1, hpasses=2, vpasses=2)
-
 
     clip_y = get_y(clip)
     if prefilter:
@@ -395,8 +388,12 @@ def decsiz(clip: vs.VideoNode, sigmaS: float = 10.0, sigmaR: float = 0.009,
     )(pre)
 
     mask = core.std.Expr(
-        [depth(protect_mask, bits, range_out=ColorRange.FULL, range_in=ColorRange.FULL, dither_type=DitherType.NONE),
-         denoise_mask],
+        [depth(
+            protect_mask, bits,
+            range_out=ColorRange.FULL,
+            range_in=ColorRange.FULL, dither_type=DitherType.NONE
+        ),
+        denoise_mask],
         'y x -'
     )
 
