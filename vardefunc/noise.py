@@ -65,8 +65,14 @@ def denoise(
     """
     MVTools + BM3D + NLMeans denoise.
     """
-    ref = MVTools.denoise(clip, thSAD, tr, **mvtools_args_defaults() | (mvtools_args or KwargsT()))
-    denoised_luma = bm3d_impl.denoise(clip, sigma_y, tr, 1, bm3d_profile, ref, planes=0)
+    if thSAD:
+        ref = MVTools.denoise(clip, thSAD, tr, **mvtools_args_defaults() | (mvtools_args or KwargsT()))
+    else:
+        ref = clip
+    if sigma_y:
+        denoised_luma = bm3d_impl.denoise(clip, sigma_y, tr, 1, bm3d_profile, ref, planes=0)
+    else:
+        denoised_luma = clip
     denoised_chroma = nl_means(denoised_luma, strength_uv, tr, ref=ref, planes=[1, 2], **nl_means_defaults() | (nl_args or KwargsT()))
     return denoised_chroma
 
