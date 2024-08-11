@@ -16,7 +16,7 @@ def cambi_mask(
     clip: vs.VideoNode,
     scale: int = 1,
     merge_previous: bool = True,
-    blur_func: VSFunction = lambda clip: box_blur(clip, 2, 3, 0),
+    blur_func: VSFunction = lambda clip: box_blur(clip, 2, 3, planes=0),
     scaler: ScalerT = Bilinear,
     **cambi_args: Any
 ) -> vs.VideoNode:
