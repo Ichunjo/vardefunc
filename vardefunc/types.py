@@ -6,9 +6,8 @@ from fractions import Fraction
 from os import PathLike
 from typing import Any, Callable, Dict, List, Sequence, Tuple, TypeAlias, TypeVar, Union, cast
 
-from numpy import array as np_array
+from numpy import array as np_array, c_
 from numpy import int8, int16, int32, uint8, uint16, uint32
-from numpy.lib.index_tricks import CClass as NP_CClass
 from numpy.typing import NDArray
 from pytimeconv import Convert
 from vapoursynth import VideoNode
@@ -42,17 +41,13 @@ AnyPath = Union[PathLike[str], str]
 
 
 class VNumpy:
-    class _CClass(NP_CClass):
-        def __getitem__(self, key: Union[NDArray[AnyInt], Tuple[NDArray[AnyInt], ...], slice]) -> NDArray[AnyInt]:
-            return cast(NDArray[AnyInt], super().__getitem__(key))
-
     @staticmethod
     def array(obj: Union[NDArray[AnyInt], Sequence[Any]], **kwargs: Any) -> NDArray[AnyInt]:
         return np_array(obj, **kwargs)
 
     @classmethod
     def zip_arrays(cls, *arrays: NDArray[AnyInt]) -> NDArray[AnyInt]:
-        return cls._CClass()[arrays]
+        return c_[*arrays]  # type: ignore[no-any-return]
 
 
 class DuplicateFrame(int):
