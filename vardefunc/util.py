@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 __all__ = [
-    'select_frames', 'normalise_ranges', 'replace_ranges',
+    'select_frames', 'normalise_ranges', 'ranges_to_indices',
     'adjust_clip_frames', 'adjust_audio_frames',
     'remap_rfs'
 ]
@@ -197,13 +197,11 @@ def normalise_ranges(
     return out
 
 
-def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: FrameRangeN | FrameRangesN, *, mismatch: bool = False) -> vs.VideoNode:
-    """Modified version of lvsfunc.util.replace_ranges following python slicing syntax"""
-    num_frames = clip_a.num_frames
-    nranges = normalise_ranges(clip_a, ranges)
+def ranges_to_indices(ref: vs.VideoNode, ranges: FrameRangeN | FrameRangesN) -> NDArray[AnyInt]:
+    nranges = normalise_ranges(ref, ranges)
 
-    def _gen_indices(nranges: List[Tuple[int, int]]) -> Iterable[int]:
-        for f in range(num_frames):
+    def _gen_indices(nranges: list[tuple[int, int]]) -> Iterable[int]:
+        for f in range(ref.num_frames):
             i = 0
             for start, end in nranges:
                 if start <= f < end:
@@ -211,12 +209,10 @@ def replace_ranges(clip_a: vs.VideoNode, clip_b: vs.VideoNode, ranges: FrameRang
                     break
             yield i
 
-    indices = vnp.zip_arrays(
-        np.fromiter(_gen_indices(nranges), np.uint32, num_frames),
-        np.arange(num_frames, dtype=np.uint32)
+    return vnp.zip_arrays(
+        np.fromiter(_gen_indices(nranges), np.uint32, ref.num_frames),
+        np.arange(ref.num_frames, dtype=np.uint32)
     )
-
-    return select_frames([clip_a, clip_b], indices, mismatch=mismatch)
 
 
 def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: List[Trim | DF] | Trim) -> vs.VideoNode:
