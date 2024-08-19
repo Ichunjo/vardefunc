@@ -6,13 +6,13 @@ __all__ = [
     'BaseRescale', 'Rescale', 'RescaleFrac', 'RescaleInter', 'MixedRescale'
 ]
 
-from functools import cache, cached_property, partial, wraps
-from math import ceil, floor
-from typing import TYPE_CHECKING, Any, Callable, Literal, NamedTuple, Optional, cast
+from functools import cached_property, partial, wraps
+from math import floor
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional, cast
 
 from vsaa import Nnedi3
 from vsexprtools import norm_expr
-from vskernels import Bilinear, Hermite, Kernel, KernelT, Scaler, ScalerT
+from vskernels import Bilinear, BorderHandling, Kernel, KernelT, Hermite, Scaler, ScalerT
 from vskernels.types import LeftShift, TopShift
 from vsmasktools import FDoG, FDoGTCanny, KirschTCanny
 from vsmasktools import credit_mask as mtcredit_mask
@@ -20,9 +20,8 @@ from vsmasktools.utils import _get_region_expr
 from vsrgtools import box_blur
 from vsscale import PlaceboShader
 from vstools import (
-    ColorRange, DitherType, FieldBased, FieldBasedT, KwargsT, VSFunction, core, depth, get_depth,
-    get_lowest_value, get_peak_value, get_w, get_y, initialize_clip, join, padder, scale_value,
-    split, vs
+    ColorRange, DitherType, FieldBased, FieldBasedT, KwargsT, core, depth, get_depth,
+    get_peak_value, get_w, get_y, initialize_clip, join, scale_value, split, vs
 )
 
 from .sharp import z4usm
@@ -155,7 +154,6 @@ def fsrcnnx_upscale(clip: vs.VideoNode, width: Optional[int] = None, height: int
 
 RescaleFunc = Callable[["BaseRescale", vs.VideoNode], vs.VideoNode]
 
-
 class BaseRescale:
     """
     A rewritten DescaleTarget class
@@ -174,7 +172,7 @@ class BaseRescale:
     upscaler: Scaler
     downscaler: Scaler
 
-    border_handling: Literal[0, 1, 2]
+    border_handling: BorderHandling
 
     if TYPE_CHECKING:
         class VideoNodeWithChromaEmbed(vs.VideoNode):
@@ -232,7 +230,7 @@ class BaseRescale:
         downscaler: ScalerT = Hermite(linear=True),
         width: int | None = None,
         shift: tuple[TopShift, LeftShift] = (0, 0),
-        border_handling: Literal[0, 1, 2] = 0,
+        border_handling: BorderHandling = BorderHandling.MIRROR
     ) -> None:
         """
         Initialize the rescaling process.
@@ -328,33 +326,14 @@ class BaseRescale:
 
     @_add_props
     def _generate_rescale(self: BaseRescale, clip: vs.VideoNode) -> vs.VideoNode:
-        match self.border_handling:
-            case 1:
-                clip = clip.std.AddBorders(
-                    *((0, 0) if self.width == self.clip.width else (10, 10)),
-                    *((0, 0) if self.height == self.clip.height else (10, 10)),
-                    get_lowest_value(clip, False, ColorRange.from_video(clip)),
-                )
-            case 2:
-                clip = padder.REPEAT(
-                    clip,
-                    *((0, 0) if self.width == self.clip.width else (10, 10)),
-                    *((0, 0) if self.height == self.clip.height else (10, 10)),
-                )
-            case _:
-                pass
-
-        src_top = self.src_top + (self.height != self.clip.height and self.border_handling) * 10
-        src_left = self.src_left + (self.width != self.clip.width and self.border_handling) * 10
-
         return self.kernel.scale(
-            clip,
-            self.clip.width,
-            self.clip.height,
-            src_top=src_top,
-            src_left=src_left,
-            src_width=self.src_width - ((clip.width - self.width) if self.src_width.is_integer() else 0),
-            src_height=self.src_height - ((clip.height - self.height) if self.src_height.is_integer() else 0),
+                clip,
+                self.clip.width, self.clip.height,
+                src_left=self.src_left,
+                src_top=self.src_top,
+                src_width=self.src_width - ((clip.width - self.width) if self.src_width.is_integer() else 0),
+                src_height=self.src_height - ((clip.height - self.height) if self.src_height.is_integer() else 0),
+                border_handling=self.border_handling
         )
 
     @_add_props
@@ -383,28 +362,8 @@ class BaseRescale:
 
 
 class Rescale(BaseRescale):
-    if TYPE_CHECKING:
-        class VideoNodeWithBorderMask(vs.VideoNode):
-            def __init__(*args: Any, **kwargs: Any) -> None:
-                ...
-
-            def with_border_mask(self) -> vs.VideoNode:
-                ...
-    else:
-        class VideoNodeWithBorderMask:
-            def __init__(self, mask: vs.VideoNode, bm_func: VSFunction) -> None:
-                self.mask = mask
-                self.func = bm_func
-
-            def __getattr__(self, __name: str) -> Any:
-                return getattr(self.mask, __name)
-
-            def with_border_mask(self) -> vs.VideoNode:
-                return self.func(self.mask)
-
-    bord_rad: int
-    _line_mask: VideoNodeWithBorderMask | None
-    _credit_mask: VideoNodeWithBorderMask | None
+    _line_mask: vs.VideoNode | None
+    _credit_mask: vs.VideoNode | None
 
     def __init__(
         self,
@@ -416,8 +375,7 @@ class Rescale(BaseRescale):
         downscaler: ScalerT = Hermite(linear=True),
         width: int | None = None,
         shift: tuple[TopShift, LeftShift] = (0, 0),
-        border_handling: Literal[0, 1, 2] = 0,
-        border_radius: int | None = None
+        border_handling: BorderHandling = BorderHandling.MIRROR,
     ) -> None:
         """
         Initialize the rescaling process.
@@ -435,16 +393,8 @@ class Rescale(BaseRescale):
                                         1: Assume the image was resized with zero padding.
                                         2: Assume the image was resized with extend padding, where the outermost row was extended infinitely far.
                                     Defaults to 0
-        :param border_radius:       Radius for the border mask. Defaults to kernel radius if possible, else 2.
         """
         super().__init__(clip, height, kernel, upscaler, downscaler, width, shift, border_handling)
-
-        if border_radius is None:
-            try:
-                border_radius = self.kernel.kernel_radius
-            except (AttributeError, NotImplementedError):
-                border_radius = 2
-        self.bord_rad = border_radius
 
         self._line_mask = None
         self._credit_mask = None
@@ -453,33 +403,42 @@ class Rescale(BaseRescale):
     def _generate_upscale(self, clip: vs.VideoNode) -> vs.VideoNode:
         upscale = depth(super()._generate_upscale(clip), self.clip)
         if self._line_mask or self.border_handling:
-            upscale = core.std.MaskedMerge(self.clipy, upscale, self.line_mask.with_border_mask())
-        if self._credit_mask or self.border_handling:
-            upscale = core.std.MaskedMerge(upscale, self.clipy, self.credit_mask.with_border_mask())
+            upscale = core.std.MaskedMerge(self.clipy, upscale, self.line_mask).std.CopyFrameProps(upscale)
+        if self._credit_mask:
+            upscale = core.std.MaskedMerge(upscale, self.clipy, self.credit_mask)
         return upscale
 
     # LINEMASK
     @property
-    def line_mask(self) -> VideoNodeWithBorderMask:
+    def line_mask(self) -> vs.VideoNode:
         if self._line_mask:
-            return self._line_mask
-        self.line_mask = self.clipy.std.BlankClip().std.SetFrameProps(BlankClip=1)  # type: ignore
-        return self.line_mask
+            _line_mask  = self._line_mask
+        else:
+            _line_mask = self.clipy.std.BlankClip(color=get_peak_value(self.clipy)).std.SetFrameProps(BlankClip=1)
+
+        if self.border_handling:
+            px = (self.kernel.kernel_radius, ) * 4
+            _line_mask = norm_expr(
+                _line_mask,
+                _get_region_expr(_line_mask, *px, replace=str(get_peak_value(_line_mask)) + " x")
+            )
+
+        self._line_mask = _line_mask
+
+        return self._line_mask
 
     @line_mask.setter
-    def line_mask(self, mask: VideoNodeWithBorderMask | vs.VideoNode | None) -> None:
+    def line_mask(self, mask: vs.VideoNode | None) -> None:
         if not mask:
             self._line_mask = None
-        elif isinstance(mask, vs.VideoNode):
-            self._line_mask = self.VideoNodeWithBorderMask(
-                depth(mask, self.clipy), lambda clip: self._border_mask(clip, int(get_peak_value(clip)))
-            )
+        else:
+            self._line_mask = depth(mask, self.clipy, dither_type=DitherType.NONE)
 
     @line_mask.deleter
     def line_mask(self) -> None:
         self._line_mask = None
 
-    def default_line_mask(self, clip: vs.VideoNode | None = None, scaler: ScalerT = Bilinear) -> VideoNodeWithBorderMask:
+    def default_line_mask(self, clip: vs.VideoNode | None = None, scaler: ScalerT = Bilinear) -> vs.VideoNode:
         """
         Load a default Kirsch line mask in the class instance. Additionnaly, it is returned.
 
@@ -492,7 +451,7 @@ class Rescale(BaseRescale):
         self.line_mask = line_mask  # type: ignore
         return self.line_mask
 
-    def placebo_line_mask(self, clip: vs.VideoNode | None = None, scaler: ScalerT = Bilinear) -> VideoNodeWithBorderMask:
+    def placebo_line_mask(self, clip: vs.VideoNode | None = None, scaler: ScalerT = Bilinear) -> vs.VideoNode:
         """
         Load a combinaison of FDoG ridge and edge masks. Additionnaly, it is returned.
 
@@ -504,17 +463,13 @@ class Rescale(BaseRescale):
         clipy = get_y(clip) if clip else self.clipy
         scaler = Scaler.ensure_obj(scaler)
 
-        edgemask = FDoGTCanny.edgemask(clip, scale_value(0.2, 32, clip), multi=1.25).std.Maximum().std.Minimum()
-        assert edgemask.format
-        edgemask = norm_expr(
-            split(
-                scaler.scale(
-                    edgemask, edgemask.width, edgemask.height,
-                    format=edgemask.format.replace(subsampling_w=0, subsampling_h=0)
-                )
-            ),
+        edgemask = FDoGTCanny.edgemask(clip, 0.2, multi=1.25).std.Maximum().std.Minimum()
+        edgemask = ColorRange.FULL.apply(edgemask)
+        edgemask = core.akarin.Expr(
+            [scaler.scale(c, edgemask.width, edgemask.height, format=vs.GRAYS) for c in split(edgemask)],
             'x y z + +'
         )
+
         ridgemask = FDoG.ridgemask(depth(clipy, 32), 0.2, multi=0.15).std.Maximum().std.Minimum()
 
         mask = core.akarin.Expr([edgemask, ridgemask], 'x y 0 max + 0 1 clamp')
@@ -527,7 +482,7 @@ class Rescale(BaseRescale):
         self,
         clip: vs.VideoNode | None = None, scaler: ScalerT = Bilinear,
         lthr: float | None = None, hthr: float | None = None
-    ) -> VideoNodeWithBorderMask:
+    ) -> vs.VideoNode:
         """
         Load DescaleTarget default mask
 
@@ -548,20 +503,18 @@ class Rescale(BaseRescale):
 
     # CREDITMASK
     @property
-    def credit_mask(self) -> VideoNodeWithBorderMask:
+    def credit_mask(self) -> vs.VideoNode:
         if self._credit_mask:
             return self._credit_mask
         self.credit_mask = self.clipy.std.BlankClip().std.SetFrameProps(BlankClip=1)  # type: ignore
         return self.credit_mask
 
     @credit_mask.setter
-    def credit_mask(self, mask: vs.VideoNode | VideoNodeWithBorderMask | None) -> None:
+    def credit_mask(self, mask: vs.VideoNode | None) -> None:
         if not mask:
             self._credit_mask = None
-        elif isinstance(mask, vs.VideoNode):
-            self._credit_mask = self.VideoNodeWithBorderMask(
-                depth(mask, self.clipy), lambda clip: self._border_mask(clip, 0)
-            )
+        else:
+            self._credit_mask = depth(mask, self.clipy, dither_type=DitherType.NONE)
 
     @credit_mask.deleter
     def credit_mask(self) -> None:
@@ -570,7 +523,7 @@ class Rescale(BaseRescale):
     def default_credit_mask(
         self, rescale: vs.VideoNode | None = None, src: vs.VideoNode | None = None,
         thr: float = 0.01, blur: float | None = 0.5, prefilter: bool | int = 5, expand: int = 8
-    ) -> VideoNodeWithBorderMask:
+    ) -> vs.VideoNode:
         """
         Load a default credit mask from vsmasktools. Additionnaly, it is returned.
 
@@ -589,7 +542,7 @@ class Rescale(BaseRescale):
         self.credit_mask = mtcredit_mask(rescale, src, thr, blur, prefilter, expand)  # type: ignore
         return self.credit_mask
 
-    def vodes_credit_mask(self, rescale: vs.VideoNode | None = None, src: vs.VideoNode | None = None, thr: float = 0.04) -> VideoNodeWithBorderMask:
+    def vodes_credit_mask(self, rescale: vs.VideoNode | None = None, src: vs.VideoNode | None = None, thr: float = 0.04) -> vs.VideoNode:
         """
         Load DescaleTarget default mask
 
@@ -608,51 +561,6 @@ class Rescale(BaseRescale):
         self.credit_mask = credit_mask  # type: ignore
         return self.credit_mask
 
-    def _border_mask(self, mask: vs.VideoNode, color: int) -> vs.VideoNode:
-        if not self.bord_rad:
-            return mask
-        return norm_expr(mask, _get_region_expr(mask, **self._border_crop()._asdict(), replace=color), func=self._border_mask)
-
-    class _BorderCrop(NamedTuple):
-        left: int
-        right: int
-        top: int
-        bottom: int
-
-    @cache
-    def _border_crop(self) -> _BorderCrop:
-        if self.height == self.clip.height:
-            top, bottom = 0, 0
-        else:
-            top = max(ceil(
-                (-(self.height - 1) / 2 + self.bord_rad - self.src_top - 1)
-                * self.clip.height / self.height + (self.clip.height - 1) / 2
-            ), 0)
-
-            base_height: int = getattr(self, 'base_height', self.height)
-
-            bottom = max(ceil(
-                (-(self.height - 1) / 2 + self.bord_rad - (base_height - self.height - self.src_top) - 1)
-                * self.clip.height / self.height + (self.clip.height - 1) / 2
-            ), 0)
-
-        if self.width == self.clip.width:
-            left, right = 0, 0
-        else:
-            left = max(ceil(
-                (-(self.width - 1) / 2 + self.bord_rad - self.src_left - 1)
-                * self.clip.width / self.width + (self.clip.width - 1) / 2
-            ), 0)
-
-            base_width: int = getattr(self, 'base_width', self.width)
-
-            right = max(ceil(
-                (-(self.width - 1) / 2 + self.bord_rad - (base_width - self.width - self.src_left) - 1)
-                * self.clip.width / self.width + (self.clip.width - 1) / 2
-            ), 0)
-
-        return self._BorderCrop(left, right, top, bottom)
-
 
 class RescaleFrac(Rescale):
     base_width: int
@@ -670,8 +578,7 @@ class RescaleFrac(Rescale):
         width: float | None = None,
         base_width: int | None = None,
         shift: tuple[TopShift, LeftShift] = (0, 0),
-        border_handling: Literal[0, 1, 2] = 0,
-        border_radius: int | None = None
+        border_handling: BorderHandling = BorderHandling.MIRROR,
     ) -> None:
         """
         Initialize the rescaling process.
@@ -691,7 +598,6 @@ class RescaleFrac(Rescale):
                                         1: Assume the image was resized with zero padding.
                                         2: Assume the image was resized with extend padding, where the outermost row was extended infinitely far.
                                     Defaults to 0
-        :param border_radius:       Radius for the border mask. Defaults to kernel radius if possible, else 2.
         """
         self.base_height = base_height
         if not base_width:
@@ -710,8 +616,8 @@ class RescaleFrac(Rescale):
         self.src_left = (cropped_width - width) / 2 + shift[1]
 
         super().__init__(
-            clip, self.height, kernel, upscaler, downscaler, self.width, (self.src_top, self.src_left),
-            border_handling, border_radius
+            clip, self.height, kernel, upscaler, downscaler, self.width,
+            (self.src_top, self.src_left), border_handling
         )
 
         self.src_width = width
@@ -721,7 +627,7 @@ class RescaleFrac(Rescale):
         self, rescale: vs.VideoNode | None = None, src: vs.VideoNode | None = None,
         thr: float = 0.01, blur: float | None = 0.5, prefilter: bool | int = 5, expand: int = 8,
         use_base_height: bool = False
-    ) -> Rescale.VideoNodeWithBorderMask:
+    ) -> vs.VideoNode:
         """
         Load a default credit mask from vsmasktools. Additionnaly, it is returned.
 
@@ -760,11 +666,10 @@ class RescaleInter(Rescale):
         width: int | None = None,
         shift: tuple[TopShift, LeftShift] = (0, 0),
         field_based: FieldBasedT | None = None,
-        border_handling: Literal[0, 1, 2] = 0,
-        border_radius: int | None = None
+        border_handling: BorderHandling = BorderHandling.MIRROR,
     ) -> None:
         self.field_based = FieldBased.from_param(field_based) or FieldBased.from_video(clip)
-        super().__init__(clip, height, kernel, upscaler, downscaler, width, shift, border_handling, border_radius)
+        super().__init__(clip, height, kernel, upscaler, downscaler, width, shift, border_handling)
 
     @staticmethod
     def _apply_field_based(function: RescaleInterFunc) -> RescaleInterFunc:
