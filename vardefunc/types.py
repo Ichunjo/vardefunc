@@ -4,7 +4,7 @@ __all__ = ['DuplicateFrame']
 
 from fractions import Fraction
 from os import PathLike
-from typing import Any, Callable, Dict, List, Sequence, Tuple, TypeAlias, TypeVar, Union, cast
+from typing import Any, Callable, Dict, List, Sequence, Tuple, TypeAlias, TypeVar, Union
 
 from numpy import array as np_array, c_
 from numpy import int8, int16, int32, uint8, uint16, uint32
