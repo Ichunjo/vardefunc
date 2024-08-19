@@ -312,10 +312,11 @@ class BaseRescale:
     def _add_props(function: RescaleFunc) -> RescaleFunc:
         @wraps(function)
         def wrap(self: BaseRescale, clip: vs.VideoNode) -> vs.VideoNode:
+            w, h = (f"{int(d)}" if d.is_integer() else f"{d:.2f}" for d in [self.src_width, self.src_height])
             return core.std.SetFrameProp(
                 function(self, clip),
-                function.__name__.split('_')[-1].capitalize() + 'From',
-                data=f'{self.kernel.__class__.__name__} - {self.src_width:.2f} x {self.src_height:.2f}'
+                "VdfRescale" + function.__name__.split('_')[-1].capitalize() + 'From',
+                data=f'{self.kernel.__class__.__name__} - {w} x {h}'
             )
         return wrap
 
