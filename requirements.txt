@@ -1,5 +1,5 @@
 lvsfunc>=0.8.1
-numpy>=1.26.4
+numpy>=2.0.1
 pytimeconv>=0.0.2
 VapourSynth>=65
 vsscale>=2.0.1
