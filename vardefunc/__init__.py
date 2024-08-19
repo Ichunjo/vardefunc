@@ -9,3 +9,4 @@ from .ocr import *
 from .scale import *
 from .types import *
 from .util import *
+from .vsjet_proxy import *
