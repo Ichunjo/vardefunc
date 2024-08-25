@@ -449,7 +449,7 @@ class Rescale(BaseRescale):
         """
         line_mask = KirschTCanny.edgemask(clip if clip else self.clipy).std.Maximum().std.Minimum()
         line_mask = Scaler.ensure_obj(scaler).scale(line_mask, self.clipy.width, self.clipy.height, format=self.clipy.format)
-        self.line_mask = line_mask  # type: ignore
+        self.line_mask = line_mask
         return self.line_mask
 
     def placebo_line_mask(self, clip: vs.VideoNode | None = None, scaler: ScalerT = Bilinear) -> vs.VideoNode:
@@ -476,7 +476,7 @@ class Rescale(BaseRescale):
         mask = core.akarin.Expr([edgemask, ridgemask], 'x y 0 max + 0 1 clamp')
         mask = scaler.scale(mask, self.clipy.width, self.clipy.height, format=self.clipy.format)
 
-        self.line_mask = box_blur(mask)  # type: ignore
+        self.line_mask = box_blur(mask)
         return self.line_mask
 
     def vodes_line_mask(
@@ -494,12 +494,12 @@ class Rescale(BaseRescale):
         :return:        Generated mask.
         """
         scaler = Scaler.ensure_obj(scaler)
-        mask = KirschTCanny.edgemask(  # type: ignore
+        mask = KirschTCanny.edgemask(
             get_y(clip) if clip else self.clipy,
             scale_value(80, 8, 32) if not lthr else lthr,
             scale_value(150, 8, 32) if not hthr else hthr
         )
-        self.line_mask = scaler.scale(mask, self.clipy.width, self.clipy.height, format=self.clipy.format)  # type: ignore
+        self.line_mask = scaler.scale(mask, self.clipy.width, self.clipy.height, format=self.clipy.format)
         return self.line_mask
 
     # CREDITMASK
@@ -507,7 +507,7 @@ class Rescale(BaseRescale):
     def credit_mask(self) -> vs.VideoNode:
         if self._credit_mask:
             return self._credit_mask
-        self.credit_mask = self.clipy.std.BlankClip().std.SetFrameProps(BlankClip=1)  # type: ignore
+        self.credit_mask = self.clipy.std.BlankClip().std.SetFrameProps(BlankClip=1)
         return self.credit_mask
 
     @credit_mask.setter
@@ -540,7 +540,7 @@ class Rescale(BaseRescale):
             src = self.clip
         if not rescale:
             rescale = self.rescale
-        self.credit_mask = mtcredit_mask(rescale, src, thr, blur, prefilter, expand)  # type: ignore
+        self.credit_mask = mtcredit_mask(rescale, src, thr, blur, prefilter, expand)
         return self.credit_mask
 
     def vodes_credit_mask(self, rescale: vs.VideoNode | None = None, src: vs.VideoNode | None = None, thr: float = 0.04) -> vs.VideoNode:
@@ -559,7 +559,7 @@ class Rescale(BaseRescale):
         credit_mask = core.akarin.Expr([depth(src, 32), depth(rescale, 32)], f'x y - abs {thr} < 0 1 ?')
         credit_mask = depth(credit_mask, 16, range_in=ColorRange.FULL, range_out=ColorRange.FULL, dither_type=DitherType.NONE)
         credit_mask = credit_mask.rgvs.RemoveGrain(6).std.Maximum().std.Maximum().std.Inflate().std.Inflate()
-        self.credit_mask = credit_mask  # type: ignore
+        self.credit_mask = credit_mask
         return self.credit_mask
 
 
