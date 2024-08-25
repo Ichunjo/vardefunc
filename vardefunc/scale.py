@@ -20,8 +20,9 @@ from vsmasktools.utils import _get_region_expr
 from vsrgtools import box_blur
 from vsscale import PlaceboShader
 from vstools import (
-    ColorRange, DitherType, FieldBased, FieldBasedT, KwargsT, core, depth, get_depth,
-    get_peak_value, get_w, get_y, initialize_clip, join, scale_value, split, vs
+    ColorRange, ConstantFormatVideoNode, DitherType, FieldBased, FieldBasedT, KwargsT,
+    check_variable, core, depth, get_depth, get_peak_value, get_w, get_y, initialize_clip, join,
+    scale_value, split, vs
 )
 
 from .sharp import z4usm
@@ -158,8 +159,8 @@ class BaseRescale:
     """
     A rewritten DescaleTarget class
     """
-    clip: vs.VideoNode
-    clipy: vs.VideoNode
+    clip: ConstantFormatVideoNode
+    clipy: ConstantFormatVideoNode
 
     width: int
     height: int
@@ -249,8 +250,9 @@ class BaseRescale:
                                         2: Assume the image was resized with extend padding, where the outermost row was extended infinitely far.
                                     Defaults to 0
         """
+        assert check_variable(clip, self.__class__)
         self.clip = clip
-        self.clipy = get_y(clip)
+        self.clipy = get_y(clip)  #type: ignore[assignment]
 
         self.height = height
         if not width:
