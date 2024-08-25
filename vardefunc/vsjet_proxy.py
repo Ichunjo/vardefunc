@@ -27,12 +27,61 @@ TimecodesT = AnyPath | dict[RangeN, float | Range | Fraction] | list[Fraction] |
 ScenesT = Keyframes | list[Range] | list[Keyframes | list[Range]] | None
 
 
+# VideoNode signature
 @overload
 def set_output(
     node: vs.VideoNode,
-    index: int = ..., name: str | bool | None = ..., alpha: vs.VideoNode | None = ...,
+    index: int = ...,
+    /,
+    *,
+    alpha: vs.VideoNode | None = ...,
+    timecodes: TimecodesT = None, denominator: int = 1001, scenes: ScenesT = None,
+    **kwargs: Any
+) -> None:
+    ...
+
+
+@overload
+def set_output(
+    node: vs.VideoNode,
+    name: str | bool | None = ...,
+    /,
+    *,
+    alpha: vs.VideoNode | None = ...,
+    timecodes: TimecodesT = None, denominator: int = 1001, scenes: ScenesT = None,
+    **kwargs: Any
+) -> None:
+    ...
+
+
+@overload
+def set_output(
+    node: vs.VideoNode,
+    index: int = ..., name: str | bool | None = ...,
+    /,
+    alpha: vs.VideoNode | None = ...,
     *,
     timecodes: TimecodesT = None, denominator: int = 1001, scenes: ScenesT = None,
+    **kwargs: Any
+) -> None:
+    ...
+
+
+# AudioNode signature
+@overload
+def set_output(
+    node: vs.AudioNode,
+    index: int = ...,
+    /,
+    **kwargs: Any
+) -> None:
+    ...
+
+@overload
+def set_output(
+    node: vs.AudioNode,
+    name: str | bool | None = ...,
+    /,
     **kwargs: Any
 ) -> None:
     ...
@@ -41,29 +90,78 @@ def set_output(
 def set_output(
     node: vs.AudioNode,
     index: int = ..., name: str | bool | None = ...,
+    /,
     **kwargs: Any
 ) -> None:
     ...
+
+
+# Iterable of VideoNode signature
+@overload
+def set_output(
+    node: Iterable[vs.VideoNode | Iterable[vs.VideoNode | Iterable[vs.VideoNode]]],
+    index: int | Sequence[int] = ...,
+    /,
+    **kwargs: Any
+) -> None:
+    ...
+
 
 @overload
 def set_output(
     node: Iterable[vs.VideoNode | Iterable[vs.VideoNode | Iterable[vs.VideoNode]]],
-    index: int = ..., name: str | bool | None = ...,
+    name: str | bool | None = ...,
+    /,
     **kwargs: Any
 ) -> None:
     ...
+
+
+@overload
+def set_output(
+    node: Iterable[vs.VideoNode | Iterable[vs.VideoNode | Iterable[vs.VideoNode]]],
+    index: int | Sequence[int] = ..., name: str | bool | None = ...,
+    /,
+    **kwargs: Any
+) -> None:
+    ...
+
+# Iterable of AudioNode signature
+@overload
+def set_output(
+    node: Iterable[vs.AudioNode | Iterable[vs.AudioNode | Iterable[vs.AudioNode]]],
+    index: int | Sequence[int] = ...,
+    /,
+    **kwargs: Any
+) -> None:
+    ...
+
 
 @overload
 def set_output(
     node: Iterable[vs.AudioNode | Iterable[vs.AudioNode | Iterable[vs.AudioNode]]],
-    index: int = ..., name: str | bool | None = ...,
+    name: str | bool | None = ...,
+    /,
     **kwargs: Any
 ) -> None:
     ...
 
+
+@overload
+def set_output(
+    node: Iterable[vs.AudioNode | Iterable[vs.AudioNode | Iterable[vs.AudioNode]]],
+    index: int | Sequence[int] = ..., name: str | bool | None = ...,
+    /,
+    **kwargs: Any
+) -> None:
+    ...
+
+
 def set_output(
     node: vs.RawNode | Iterable[vs.RawNode | Iterable[vs.RawNode | Iterable[vs.RawNode]]],
-    index: int | None = None, name: str | bool | None = None, alpha: vs.VideoNode | None = None,
+    index_or_name: int | Sequence[int] | str | bool | None = None, name: str | bool | None = None,
+    /,
+    alpha: vs.VideoNode | None = None,
     *,
     timecodes: TimecodesT = None, denominator: int = 1001, scenes: ScenesT = None,
     **kwargs: Any
@@ -77,10 +175,24 @@ def set_output(
 
     if not is_preview:
         return None
-    
-    index = index if index is not None else len(vs.get_outputs())
 
-    for i, n in enumerate(flatten(node), index):
+    if isinstance(index_or_name, (str, bool)):
+        index = None
+        name = index_or_name
+    else:
+        index = index_or_name
+
+    ouputs = vs.get_outputs()
+    nodes = list(flatten(node))
+
+    index = to_arr(index) if index is not None else [max(ouputs, default=-1) + 1]
+
+    while len(index) < len(nodes):
+        index.append(index[-1] + 1)
+
+    for i, n in zip(index[:len(nodes)], nodes):
+        if i in ouputs:
+            logging.warn(f"Index n° {i} has been already used!")
         if isinstance(n, vs.VideoNode):
             n.set_output(i, alpha)
             title = 'Clip'
@@ -102,16 +214,20 @@ def set_output(
                     name = vname
                     break
 
-        vspreview.api.update_node_info(type(n), i, **KwargsT(name=name, cache=True, disable_comp=False) | kwargs)
+            del current_frame
 
-        if timecodes:
-            assert type(n) is vs.VideoNode
-            timecodes = str(timecodes) if not isinstance(timecodes, (dict, list)) else timecodes
-            vspreview.api.set_timecodes(i, timecodes, n, denominator)
+        vspreview.api.update_node_info(
+            type(n), i,
+            **KwargsT(cache=True, disable_comp=False) | (KwargsT(name=name) if name else {}) | kwargs
+        )
 
-        if scenes:
-            assert type(n) is vs.VideoNode
-            vspreview.api.set_scening(scenes, n, name or f'Clip {n}')
+        if isinstance(n, vs.VideoNode):
+            if timecodes:
+                timecodes = str(timecodes) if not isinstance(timecodes, (dict, list)) else timecodes
+                vspreview.api.set_timecodes(i, timecodes, n, denominator)
+
+            if scenes:
+                vspreview.api.set_scening(scenes, n, name or f'Clip {i}')
 
 
 _VideoFrameT_contra = TypeVar("_VideoFrameT_contra", vs.VideoFrame, list[vs.VideoFrame], contravariant=True)
@@ -158,7 +274,7 @@ def replace_ranges(
 def replace_ranges(
     clip_a: vs.VideoNode, clip_b: vs.VideoNode,
     ranges: RangesCallBackF[vs.VideoFrame] | RangesCallBackNF[vs.VideoFrame],
-    *, 
+    *,
     mismatch: bool = False,
     prop_src: vs.VideoNode
 ) -> vs.VideoNode:
@@ -168,7 +284,7 @@ def replace_ranges(
 def replace_ranges(
     clip_a: vs.VideoNode, clip_b: vs.VideoNode,
     ranges: RangesCallBackF[list[vs.VideoFrame]] | RangesCallBackNF[list[vs.VideoFrame]],
-    *, 
+    *,
     mismatch: bool = False,
     prop_src: list[vs.VideoNode]
 ) -> vs.VideoNode:
@@ -177,7 +293,7 @@ def replace_ranges(
 def replace_ranges(
     clip_a: vs.VideoNode, clip_b: vs.VideoNode,
     ranges: FrameRangeN | FrameRangesN | RangesCallBackT | None,
-    *, 
+    *,
     exclusive: bool = True, mismatch: bool = False,
     prop_src: vs.VideoNode | list[vs.VideoNode] | None = None
 ) -> vs.VideoNode:
