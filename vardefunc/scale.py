@@ -11,8 +11,8 @@ from math import floor
 from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional, cast
 
 from vsaa import Nnedi3
-from vsexprtools import norm_expr
-from vskernels import Bilinear, BorderHandling, Kernel, KernelT, Hermite, Scaler, ScalerT
+from vsexprtools import ExprOp, norm_expr
+from vskernels import Bilinear, BorderHandling, Hermite, Kernel, KernelT, Scaler, ScalerT
 from vskernels.types import LeftShift, TopShift
 from vsmasktools import FDoG, FDoGTCanny, KirschTCanny
 from vsmasktools import credit_mask as mtcredit_mask
@@ -466,9 +466,8 @@ class Rescale(BaseRescale):
 
         edgemask = FDoGTCanny.edgemask(clip, 0.2, multi=1.25).std.Maximum().std.Minimum()
         edgemask = ColorRange.FULL.apply(edgemask)
-        edgemask = core.akarin.Expr(
-            [scaler.scale(c, edgemask.width, edgemask.height, format=vs.GRAYS) for c in split(edgemask)],
-            'x y z + +'
+        edgemask = ExprOp.ADD.combine(
+            scaler.scale(c, edgemask.width, edgemask.height, format=vs.GRAYS) for c in split(edgemask)
         )
 
         ridgemask = FDoG.ridgemask(depth(clipy, 32), 0.2, multi=0.15).std.Maximum().std.Minimum()
