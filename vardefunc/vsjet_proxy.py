@@ -1,16 +1,25 @@
 import inspect
+import logging
 from fractions import Fraction
-from typing import Any, Iterable, Protocol, TypeVar, Union, overload
+from typing import Any, Iterable, Protocol, Sequence, TypeVar, Union, overload
 
-from stgpytools import KwargsT
-from vstools import FrameRangeN, FrameRangesN, Keyframes, flatten, vs
+from vstools import (
+    FrameRangeN,
+    FrameRangesN,
+    Keyframes,
+    KwargsT,
+    core,
+    flatten,
+    to_arr,
+    vs,
+)
 from vstools import replace_ranges as vstools_replace_ranges
 
 from .types import AnyPath, Range, RangeN
 from .util import normalise_ranges
 
 __all__ = [
-    "set_output", "replace_ranges"
+    "set_output", "replace_ranges", "BestestSource"
 ]
 
 
@@ -210,3 +219,31 @@ def replace_ranges(
     if exclusive and not callable(ranges):
         return vstools_replace_ranges(clip_a, clip_b, normalise_ranges(clip_b, ranges), exclusive, mismatch, prop_src=prop_src)
     return vstools_replace_ranges(clip_a, clip_b, ranges, exclusive, mismatch, prop_src=prop_src)
+
+try:
+    from vssource import BestSource
+except ImportError:
+    pass
+else:
+    class BestestSource(BestSource):
+        def __init__(self, *, force: bool = True, **kwargs: Any) -> None:
+            super().__init__(force=force, **kwargs)
+            try:
+                from vspreview.api import is_preview
+            except ImportError:
+                def is_preview() -> bool:
+                    return False
+
+            def handler_func(m_type: vs.MessageType, msg: str) -> None:
+                if all([
+                    m_type == vs.MESSAGE_TYPE_INFORMATION,
+                    msg.startswith("VideoSource "),
+                    logging.getLogger().level <= logging.WARNING,
+                    is_preview()
+                ]):
+                    print(msg, end="\r")
+
+            self.log_handle = core.add_log_handler(handler_func)
+
+        def __del__(self) -> None:
+            core.remove_log_handler(self.log_handle)
