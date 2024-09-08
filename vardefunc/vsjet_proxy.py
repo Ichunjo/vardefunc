@@ -1,6 +1,7 @@
 import inspect
 import logging
 from fractions import Fraction
+from functools import lru_cache
 from typing import Any, Iterable, Protocol, Sequence, TypeVar, Union, overload
 
 from vstools import (
@@ -19,8 +20,19 @@ from .types import AnyPath, Range, RangeN
 from .util import normalise_ranges
 
 __all__ = [
-    "set_output", "replace_ranges", "BestestSource"
+    "is_preview", "set_output", "replace_ranges", "BestestSource"
 ]
+
+
+@lru_cache
+def is_preview() -> bool:
+    try:
+        import vspreview.api
+    except ImportError:
+        is_preview = False
+    else:
+        is_preview = vspreview.api.is_preview()
+    return is_preview
 
 
 TimecodesT = AnyPath | dict[RangeN, float | Range | Fraction] | list[Fraction] | None
@@ -166,15 +178,10 @@ def set_output(
     timecodes: TimecodesT = None, denominator: int = 1001, scenes: ScenesT = None,
     **kwargs: Any
 ) -> None:
-    try:
-        import vspreview.api
-    except ImportError:
-        is_preview = False
-    else:
-        is_preview = vspreview.api.is_preview()
-
-    if not is_preview:
+    if not is_preview():
         return None
+
+    from vspreview.api import set_scening, set_timecodes, update_node_info
 
     if isinstance(index_or_name, (str, bool)):
         index = None
@@ -216,7 +223,7 @@ def set_output(
 
             del current_frame
 
-        vspreview.api.update_node_info(
+        update_node_info(
             type(n), i,
             **KwargsT(cache=True, disable_comp=False) | (KwargsT(name=name) if name else {}) | kwargs
         )
@@ -224,10 +231,10 @@ def set_output(
         if isinstance(n, vs.VideoNode):
             if timecodes:
                 timecodes = str(timecodes) if not isinstance(timecodes, (dict, list)) else timecodes
-                vspreview.api.set_timecodes(i, timecodes, n, denominator)
+                set_timecodes(i, timecodes, n, denominator)
 
             if scenes:
-                vspreview.api.set_scening(scenes, n, name or f'Clip {i}')
+                set_scening(scenes, n, name or f'Clip {i}')
 
 
 _VideoFrameT_contra = TypeVar("_VideoFrameT_contra", vs.VideoFrame, list[vs.VideoFrame], contravariant=True)
@@ -344,11 +351,6 @@ else:
     class BestestSource(BestSource):
         def __init__(self, *, force: bool = True, **kwargs: Any) -> None:
             super().__init__(force=force, **kwargs)
-            try:
-                from vspreview.api import is_preview
-            except ImportError:
-                def is_preview() -> bool:
-                    return False
 
             def handler_func(m_type: vs.MessageType, msg: str) -> None:
                 if all([
@@ -359,7 +361,7 @@ else:
                 ]):
                     print(msg, end="\r")
 
-            self.log_handle = core.add_log_handler(handler_func)
+            self._log_handle = core.add_log_handler(handler_func)
 
         def __del__(self) -> None:
-            core.remove_log_handler(self.log_handle)
+            core.remove_log_handler(self._log_handle)
