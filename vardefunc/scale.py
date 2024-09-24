@@ -707,6 +707,139 @@ class RescaleFrac(Rescale):
         return super().default_credit_mask(rescale, src, thr, blur, prefilter, postfilter, ampl_expr, expand)
 
 
+LeftCrop: TypeAlias = int
+RightCrop: TypeAlias = int
+TopCrop: TypeAlias = int
+BottomCrop: TypeAlias = int
+WidthCrop: TypeAlias = int
+HeightCrop: TypeAlias = int
+
+
+class RescaleCropBase(RescaleFrac):
+    pre: vs.VideoNode
+    crop: tuple[int, ...]
+
+    crop_function: ClassVar[GenericVSFunction]
+
+    def __init__(
+        self,
+        clip: vs.VideoNode,
+        /,
+        height: float,
+        kernel: KernelT,
+        crop: tuple[int, ...],
+        upscaler: ScalerT = Nnedi3,
+        downscaler: ScalerT = Hermite(linear=True),
+        width: float | None = None,
+        shift: tuple[TopShift, LeftShift] = (0, 0),
+        border_handling: BorderHandling = BorderHandling.MIRROR,
+    ) -> None:
+        self.pre = clip
+        self.crop = crop
+
+        clip_cropped = self.crop_function(clip, *crop)
+
+        if not width:
+            if height.is_integer():
+                width = get_w(height, get_y(clip))
+            else:
+                width = height * clip.width / clip.height
+
+        height = clip_cropped.height / (self.pre.height / height)
+        width = clip_cropped.width / (self.pre.width / width)
+
+        super().__init__(clip_cropped, height, kernel, ceil(height), upscaler, downscaler, width, ceil(width), shift, border_handling)
+
+    def _generate_upscale(self, clip: vs.VideoNode) -> vs.VideoNode:
+        white = get_y(self.pre).std.BlankClip(color=get_peak_value(self.pre))
+
+        upscale = super()._generate_upscale(clip)
+
+        return core.std.MaskedMerge(
+            upscale.std.AddBorders(*self._abs_to_rel()),
+            get_y(self.pre),
+            self.region_function(white, *self.crop).std.Invert()
+        )
+
+    @cached_property
+    def upscale(self) -> BaseRescale.VideoNodeWithChromaEmbed:
+        """Returns the upscaled clip"""
+        return self.VideoNodeWithChromaEmbed(self._generate_upscale(self.doubled), self.pre)
+
+    @abstractmethod
+    def _abs_to_rel(self) -> tuple[int, ...]:
+        ...
+
+    @abstractmethod
+    def region_function(self, *args: Any, **kwargs: Any) -> vs.VideoNode:
+        ...
+
+
+class RescaleCropRel(RescaleCropBase):
+    crop: tuple[LeftCrop, RightCrop, TopCrop, BottomCrop]
+
+    crop_function = core.lazy.std.CropRel
+
+    def __init__(
+        self,
+        clip: vs.VideoNode,
+        /,
+        height: float,
+        kernel: KernelT,
+        crop: tuple[LeftCrop, RightCrop, TopCrop, BottomCrop],
+        upscaler: ScalerT = Nnedi3,
+        downscaler: ScalerT = Hermite(linear=True),
+        width: float | None = None,
+        shift: tuple[TopShift, LeftShift] = (0, 0),
+        border_handling: BorderHandling = BorderHandling.MIRROR,
+    ) -> None:
+        super().__init__(clip, height, kernel, crop, upscaler, downscaler, width, shift, border_handling)
+
+    def _abs_to_rel(self) -> tuple[int, ...]:
+        return self.crop
+
+    def region_function(self, *args: Any, **kwargs: Any) -> vs.VideoNode:
+        return region_rel_mask(*args, **kwargs)
+
+
+class RescaleCropAbs(RescaleCropBase):
+    crop: tuple[WidthCrop, HeightCrop, LeftCrop, TopCrop]
+
+    crop_function = core.lazy.std.CropAbs
+
+    def __init__(
+        self,
+        clip: vs.VideoNode,
+        /,
+        height: float,
+        kernel: KernelT,
+        crop: Union[
+            tuple[WidthCrop, HeightCrop],
+            tuple[WidthCrop, HeightCrop, LeftCrop, TopCrop],
+        ],
+        upscaler: ScalerT = Nnedi3,
+        downscaler: ScalerT = Hermite(linear=True),
+        width: float | None = None,
+        shift: tuple[TopShift, LeftShift] = (0, 0),
+        border_handling: BorderHandling = BorderHandling.MIRROR,
+    ) -> None:
+
+        ncrop = crop + (0, ) * (4 - len(crop))
+
+        super().__init__(clip, height, kernel, ncrop, upscaler, downscaler, width, shift, border_handling)
+
+    def _abs_to_rel(self) -> tuple[int, ...]:
+        return (
+            self.crop[2],
+            self.pre.width - self.crop[0] - self.crop[2],
+            self.crop[3],
+            self.pre.height - self.crop[1] - self.crop[3]
+        )
+
+    def region_function(self, *args: Any, **kwargs: Any) -> vs.VideoNode:
+        return region_abs_mask(*args, **kwargs)
+
+
 RescaleInterFunc = Callable[["RescaleInter", vs.VideoNode], vs.VideoNode]
 
 
