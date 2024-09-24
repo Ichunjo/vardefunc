@@ -6,23 +6,23 @@ __all__ = [
     'BaseRescale', 'Rescale', 'RescaleFrac', 'RescaleInter', 'MixedRescale'
 ]
 
+from abc import abstractmethod
 from functools import cached_property, partial, wraps
-from math import floor
-from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional, cast
+from math import ceil, floor
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, NamedTuple, Optional, TypeAlias, Union, cast
 
 from vsaa import Nnedi3
 from vsexprtools import ExprOp, norm_expr
 from vskernels import Bilinear, BorderHandling, Hermite, Kernel, KernelT, Scaler, ScalerT
 from vskernels.types import LeftShift, TopShift
-from vsmasktools import FDoG, FDoGTCanny, KirschTCanny
-from vsmasktools import credit_mask as mtcredit_mask
+from vsmasktools import FDoG, FDoGTCanny, KirschTCanny, Morpho, XxpandMode, region_abs_mask, region_rel_mask
 from vsmasktools.utils import _get_region_expr
-from vsrgtools import box_blur
+from vsrgtools import RemoveGrainMode, bilateral, box_blur, gauss_blur, removegrain
 from vsscale import PlaceboShader
 from vstools import (
-    ColorRange, ConstantFormatVideoNode, DitherType, FieldBased, FieldBasedT, KwargsT,
-    check_variable, core, depth, get_depth, get_peak_value, get_w, get_y, initialize_clip, join,
-    scale_value, split, vs
+    ColorRange, ConstantFormatVideoNode, DitherType, FieldBased, FieldBasedT, GenericVSFunction,
+    KwargsT, VSFunction, check_variable, core, depth, expect_bits, get_depth, get_peak_value, get_w,
+    get_y, initialize_clip, iterate, join, scale_value, split, vs
 )
 
 from .sharp import z4usm
@@ -524,24 +524,71 @@ class Rescale(BaseRescale):
 
     def default_credit_mask(
         self, rescale: vs.VideoNode | None = None, src: vs.VideoNode | None = None,
-        thr: float = 0.01, blur: float | None = 0.5, prefilter: bool | int = 5, expand: int = 8
+        thr: float = 0.216, blur: float | KwargsT | None = None,
+        prefilter: int | KwargsT | bool | VSFunction = False,
+        postfilter: int | tuple[int, RemoveGrainMode] | VSFunction = 2,
+        ampl_expr: str | None = None,
+        expand: int = 2
     ) -> vs.VideoNode:
         """
-        Load a default credit mask from vsmasktools. Additionnaly, it is returned.
+        Load a credit mask based on vsmasktools.credit_mask and vsmasktools.diff_rescale
 
         :param rescale:     Rescaled clip, defaults to rescaled instance clip
         :param src:         Source clip, defaults to source instance clip
-        :param thr:         Threshold of the ExLaplacian4 mask, defaults to 0.01
-        :param blur:        Sigma of the gaussian blur applied, defaults to 1.65
-        :param prefilter:   Equivalent of number taps used in the bilateral call applied to clips, defaults to 5
-        :param expand:      Additional expand radius applied to the mask, defaults to 8
+        :param thr:         Threshold of the amplification expr, defaults to 0.216
+        :param blur:        Sigma of the gaussian blur applied before prefilter, defaults to None
+        :param prefilter:   Filter applied before extracting the difference between rescale and src
+                            int -> equivalent of number taps used in the bilateral call applied to clips
+                            True -> 5 taps
+                            KwargsT -> Arguments passed to the bilateral function
+        :param postfilter:  Filter applied to the difference clip. Default is RemoveGrainMode.MINMAX_AROUND2 applied twice.
+        :param ampl_expr:   Amplification expression.
+        :param expand:      Additional expand radius applied to the mask, defaults to 2
         :return:            Generated mask
         """
         if not src:
             src = self.clip
         if not rescale:
             rescale = self.rescale
-        self.credit_mask = mtcredit_mask(rescale, src, thr, blur, prefilter, expand)
+
+        src, rescale = get_y(src), get_y(rescale)
+
+        if blur:
+            if isinstance(blur, dict):
+                src, rescale = gauss_blur(src, **blur), gauss_blur(rescale, **blur)
+            else:
+                src, rescale = gauss_blur(src, blur), gauss_blur(rescale, blur)
+
+        if prefilter:
+            if callable(prefilter):
+                src, rescale = prefilter(src), prefilter(rescale)
+            else:
+                if isinstance(prefilter, int):
+                    sigma = 5 if prefilter is True else prefilter
+                    kwargs = KwargsT(sigmaS=((sigma ** 2 - 1) / 12) ** 0.5, sigmaR=sigma / 10)
+                else:
+                    kwargs = prefilter
+
+                src, rescale = bilateral(src, **kwargs), bilateral(rescale, **kwargs)
+
+        pre, bits = expect_bits(src, 32)
+        rescale = depth(rescale, 32)
+
+        diff = ExprOp.mae(src)(pre, rescale)
+
+        if postfilter:
+            if isinstance(postfilter, int):
+                mask = iterate(diff, removegrain, postfilter, RemoveGrainMode.MINMAX_AROUND2)
+            elif isinstance(postfilter, tuple):
+                mask = iterate(diff, removegrain, postfilter[0], postfilter[1])
+            else:
+                mask = postfilter(diff)
+
+        mask = mask.std.Expr(ampl_expr or f'x 2 4 pow * {thr} < 0 1 ?')
+
+        mask = Morpho.expand(mask, 2 + expand, mode=XxpandMode.ELLIPSE).std.Deflate()
+
+        self.credit_mask = depth(mask, bits, dither_type=DitherType.NONE)
         return self.credit_mask
 
     def vodes_credit_mask(self, rescale: vs.VideoNode | None = None, src: vs.VideoNode | None = None, thr: float = 0.04) -> vs.VideoNode:
@@ -627,18 +674,27 @@ class RescaleFrac(Rescale):
 
     def default_credit_mask(
         self, rescale: vs.VideoNode | None = None, src: vs.VideoNode | None = None,
-        thr: float = 0.01, blur: float | None = 0.5, prefilter: bool | int = 5, expand: int = 8,
+        thr: float = 0.216, blur: float | KwargsT | None = None,
+        prefilter: int | KwargsT | bool | VSFunction = False,
+        postfilter: int | tuple[int, RemoveGrainMode] | VSFunction = 2,
+        ampl_expr: str | None = None,
+        expand: int = 2,
         use_base_height: bool = False
     ) -> vs.VideoNode:
         """
-        Load a default credit mask from vsmasktools. Additionnaly, it is returned.
+        Load a credit mask based on vsmasktools.credit_mask and vsmasktools.diff_rescale
 
         :param rescale:         Rescaled clip, defaults to rescaled instance clip
         :param src:             Source clip, defaults to source instance clip
-        :param thr:             Threshold of the ExLaplacian4 mask, defaults to 0.01
-        :param blur:            Sigma of the gaussian blur applied, defaults to 1.65
-        :param prefilter:       Equivalent of number taps used in the bilateral call applied to clips, defaults to 5
-        :param expand:          Additional expand radius applied to the mask, defaults to 8
+        :param thr:             Threshold of the amplification expr, defaults to 0.216
+        :param blur:            Sigma of the gaussian blur applied before prefilter, defaults to None
+        :param prefilter:       Filter applied before extracting the difference between rescale and src
+                                int -> equivalent of number taps used in the bilateral call applied to clips
+                                True -> 5 taps
+                                KwargsT -> Arguments passed to the bilateral function
+        :param postfilter:      Filter applied to the difference clip. Default is RemoveGrainMode.MINMAX_AROUND2 applied twice.
+        :param ampl_expr:       Amplification expression.
+        :param expand:          Additional expand radius applied to the mask, defaults to 2
         :param use_base_height: Will use a rescaled clip based on base_height instead of height
         :return:                Generated mask
         """
@@ -648,7 +704,7 @@ class RescaleFrac(Rescale):
                 width=self.base_width, border_handling=self.border_handling
             ).rescale
 
-        return super().default_credit_mask(rescale, src, thr, blur, prefilter, expand)
+        return super().default_credit_mask(rescale, src, thr, blur, prefilter, postfilter, ampl_expr, expand)
 
 
 RescaleInterFunc = Callable[["RescaleInter", vs.VideoNode], vs.VideoNode]
