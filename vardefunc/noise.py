@@ -15,7 +15,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, 
 
 from vsdenoise import (
     BM3DCPU, BM3DCuda, BM3DCudaRTC, DeviceType, MotionMode, MVTools, PelType, Prefilter, Profile,
-    SADMode, SearchMode, WeightMode, nl_means
+    SADMode, SearchMode, NLMWeightMode, nl_means
 )
 from vsdenoise.bm3d import ProfileBase
 from vsmasktools import FDoGTCanny, adg_mask, range_mask
@@ -41,7 +41,7 @@ def nl_means_defaults() -> KwargsT:
     return KwargsT(
         sr=2,
         simr=4,
-        wmode=WeightMode.BISQUARE_HR,  # wmode=3
+        wmode=NLMWeightMode.BISQUARE_HR,  # wmode=3
         device_type=DeviceType.CUDA,
         num_streams=2
     )
