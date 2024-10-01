@@ -3,13 +3,15 @@ from __future__ import annotations
 
 __all__ = [
     'fsrcnnx_upscale',
-    'BaseRescale', 'Rescale', 'RescaleFrac', 'RescaleInter', 'MixedRescale'
+    'BaseRescale', 'Rescale', 'RescaleFrac',
+    'RescaleCropBase', 'RescaleCropRel', 'RescaleCropAbs',
+    'RescaleInter', 'MixedRescale'
 ]
 
 from abc import abstractmethod
 from functools import cached_property, partial, wraps
-from math import ceil, floor
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, NamedTuple, Optional, TypeAlias, Union, cast
+from math import floor
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional, TypeAlias, Union, cast
 
 from vsaa import Nnedi3
 from vsexprtools import ExprOp, norm_expr
@@ -22,7 +24,7 @@ from vsscale import PlaceboShader
 from vstools import (
     ColorRange, ConstantFormatVideoNode, DitherType, FieldBased, FieldBasedT, GenericVSFunction,
     KwargsT, VSFunction, check_variable, core, depth, expect_bits, get_depth, get_peak_value, get_w,
-    get_y, initialize_clip, iterate, join, scale_value, split, vs
+    get_y, initialize_clip, iterate, join, mod2, scale_value, split, vs
 )
 
 from .sharp import z4usm
@@ -724,7 +726,7 @@ class RescaleCropBase(RescaleFrac):
     pre: vs.VideoNode
     crop: tuple[int, ...]
 
-    crop_function: ClassVar[GenericVSFunction]
+    crop_function: GenericVSFunction
 
     def __init__(
         self,
@@ -732,7 +734,7 @@ class RescaleCropBase(RescaleFrac):
         /,
         height: float,
         kernel: KernelT,
-        crop: tuple[int, ...],
+        crop: tuple[int, ...] | None = None,
         upscaler: ScalerT = Nnedi3,
         downscaler: ScalerT = Hermite(linear=True),
         width: float | None = None,
@@ -740,12 +742,12 @@ class RescaleCropBase(RescaleFrac):
         border_handling: BorderHandling = BorderHandling.MIRROR,
     ) -> None:
         self.pre = clip
-        self.crop = crop
+        self.crop = crop if crop else (0, 0, 0, 0)
 
-        clip_cropped = self.crop_function(clip, *crop)
+        clip_cropped = self.crop_function(clip, *self.crop)
 
         if not width:
-            if height.is_integer():
+            if isinstance(height, int):
                 width = get_w(height, get_y(clip))
             else:
                 width = height * clip.width / clip.height
@@ -753,7 +755,10 @@ class RescaleCropBase(RescaleFrac):
         height = clip_cropped.height / (self.pre.height / height)
         width = clip_cropped.width / (self.pre.width / width)
 
-        super().__init__(clip_cropped, height, kernel, ceil(height), upscaler, downscaler, width, ceil(width), shift, border_handling)
+        base_height = mod2(height)
+        base_width = mod2(width)
+
+        super().__init__(clip_cropped, height, kernel, base_height, upscaler, downscaler, width, base_width, shift, border_handling)
 
     def _generate_upscale(self, clip: vs.VideoNode) -> vs.VideoNode:
         white = get_y(self.pre).std.BlankClip(color=get_peak_value(self.pre))
