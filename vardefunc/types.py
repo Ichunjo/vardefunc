@@ -16,6 +16,9 @@ Range: TypeAlias = tuple[int, int]
 RangeN: TypeAlias = tuple[int | None, int | None]
 Trim: TypeAlias = RangeN
 
+Count: TypeAlias = int
+
+
 # Some outputs
 Output = Union[
     VideoNode,
