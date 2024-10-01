@@ -26,6 +26,7 @@ from vstools import (
 )
 
 from .sharp import z4usm
+from .types import Count
 
 
 def fsrcnnx_upscale(clip: vs.VideoNode, width: Optional[int] = None, height: int = 1080, shader_file: Optional[str] = None,
@@ -526,7 +527,7 @@ class Rescale(BaseRescale):
         self, rescale: vs.VideoNode | None = None, src: vs.VideoNode | None = None,
         thr: float = 0.216, blur: float | KwargsT | None = None,
         prefilter: int | KwargsT | bool | VSFunction = False,
-        postfilter: int | tuple[int, RemoveGrainMode] | VSFunction = 2,
+        postfilter: int | tuple[Count, RemoveGrainMode] | list[tuple[Count, RemoveGrainMode]] | VSFunction = 2,
         ampl_expr: str | None = None,
         expand: int = 2
     ) -> vs.VideoNode:
@@ -538,7 +539,7 @@ class Rescale(BaseRescale):
         :param thr:         Threshold of the amplification expr, defaults to 0.216
         :param blur:        Sigma of the gaussian blur applied before prefilter, defaults to None
         :param prefilter:   Filter applied before extracting the difference between rescale and src
-                            int -> equivalent of number taps used in the bilateral call applied to clips
+                            int -> equivalent of number of taps used in the bilateral call applied to clips
                             True -> 5 taps
                             KwargsT -> Arguments passed to the bilateral function
         :param postfilter:  Filter applied to the difference clip. Default is RemoveGrainMode.MINMAX_AROUND2 applied twice.
@@ -581,6 +582,10 @@ class Rescale(BaseRescale):
                 mask = iterate(diff, removegrain, postfilter, RemoveGrainMode.MINMAX_AROUND2)
             elif isinstance(postfilter, tuple):
                 mask = iterate(diff, removegrain, postfilter[0], postfilter[1])
+            elif isinstance(postfilter, list):
+                mask = diff
+                for count, rgmode in postfilter:
+                    mask = iterate(mask, removegrain, count, rgmode)
             else:
                 mask = postfilter(diff)
 
@@ -676,7 +681,7 @@ class RescaleFrac(Rescale):
         self, rescale: vs.VideoNode | None = None, src: vs.VideoNode | None = None,
         thr: float = 0.216, blur: float | KwargsT | None = None,
         prefilter: int | KwargsT | bool | VSFunction = False,
-        postfilter: int | tuple[int, RemoveGrainMode] | VSFunction = 2,
+        postfilter: int | tuple[Count, RemoveGrainMode] | list[tuple[Count, RemoveGrainMode]] | VSFunction = 2,
         ampl_expr: str | None = None,
         expand: int = 2,
         use_base_height: bool = False
