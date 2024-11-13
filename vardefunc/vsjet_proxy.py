@@ -1,9 +1,7 @@
-import inspect
 import logging
 
-from fractions import Fraction
 from functools import lru_cache
-from typing import Any, Iterable, Protocol, Sequence, TypeVar, Union, overload
+from typing import Any, Protocol, TypeVar, Union, overload
 
 from vsexprtools import ExprOp, ExprToken, norm_expr
 from vskernels import Point
@@ -17,11 +15,12 @@ from vsmasktools import HardsubSign as vsmasktools_HardsubSign
 from vsmasktools import HardsubSignFades as vsmasktools_HardsubSignFades
 from vsmasktools import Morpho, SobelStd, XxpandMode, normalize_mask
 from vsrgtools.util import mean_matrix
-from vstools import ColorRange, FrameRangeN, FrameRangesN, Keyframes, KwargsT, core, flatten
+from vstools import ColorRange, FrameRangeN, FrameRangesN, copy_signature, core
 from vstools import replace_ranges as vstools_replace_ranges
-from vstools import scale_value, to_arr, vs
+from vstools import scale_value
+from vstools import set_output as vstools_set_output
+from vstools import vs
 
-from .types import AnyPath, Range, RangeN
 from .util import normalise_ranges
 
 __all__ = [
@@ -42,209 +41,13 @@ def is_preview() -> bool:
     return is_preview
 
 
-TimecodesT = AnyPath | dict[RangeN, float | Range | Fraction] | list[Fraction] | None
-ScenesT = Keyframes | list[Range] | list[Keyframes | list[Range]] | None
-
-
-# VideoNode signature
-@overload
-def set_output(
-    node: vs.VideoNode,
-    index: int = ...,
-    /,
-    *,
-    alpha: vs.VideoNode | None = ...,
-    timecodes: TimecodesT = None, denominator: int = 1001, scenes: ScenesT = None,
-    **kwargs: Any
-) -> None:
-    ...
-
-
-@overload
-def set_output(
-    node: vs.VideoNode,
-    name: str | bool | None = ...,
-    /,
-    *,
-    alpha: vs.VideoNode | None = ...,
-    timecodes: TimecodesT = None, denominator: int = 1001, scenes: ScenesT = None,
-    **kwargs: Any
-) -> None:
-    ...
-
-
-@overload
-def set_output(
-    node: vs.VideoNode,
-    index: int = ..., name: str | bool | None = ...,
-    /,
-    alpha: vs.VideoNode | None = ...,
-    *,
-    timecodes: TimecodesT = None, denominator: int = 1001, scenes: ScenesT = None,
-    **kwargs: Any
-) -> None:
-    ...
-
-
-# AudioNode signature
-@overload
-def set_output(
-    node: vs.AudioNode,
-    index: int = ...,
-    /,
-    **kwargs: Any
-) -> None:
-    ...
-
-@overload
-def set_output(
-    node: vs.AudioNode,
-    name: str | bool | None = ...,
-    /,
-    **kwargs: Any
-) -> None:
-    ...
-
-@overload
-def set_output(
-    node: vs.AudioNode,
-    index: int = ..., name: str | bool | None = ...,
-    /,
-    **kwargs: Any
-) -> None:
-    ...
-
-
-# Iterable of VideoNode signature
-@overload
-def set_output(
-    node: Iterable[vs.VideoNode | Iterable[vs.VideoNode | Iterable[vs.VideoNode]]],
-    index: int | Sequence[int] = ...,
-    /,
-    **kwargs: Any
-) -> None:
-    ...
-
-
-@overload
-def set_output(
-    node: Iterable[vs.VideoNode | Iterable[vs.VideoNode | Iterable[vs.VideoNode]]],
-    name: str | bool | None = ...,
-    /,
-    **kwargs: Any
-) -> None:
-    ...
-
-
-@overload
-def set_output(
-    node: Iterable[vs.VideoNode | Iterable[vs.VideoNode | Iterable[vs.VideoNode]]],
-    index: int | Sequence[int] = ..., name: str | bool | None = ...,
-    /,
-    **kwargs: Any
-) -> None:
-    ...
-
-# Iterable of AudioNode signature
-@overload
-def set_output(
-    node: Iterable[vs.AudioNode | Iterable[vs.AudioNode | Iterable[vs.AudioNode]]],
-    index: int | Sequence[int] = ...,
-    /,
-    **kwargs: Any
-) -> None:
-    ...
-
-
-@overload
-def set_output(
-    node: Iterable[vs.AudioNode | Iterable[vs.AudioNode | Iterable[vs.AudioNode]]],
-    name: str | bool | None = ...,
-    /,
-    **kwargs: Any
-) -> None:
-    ...
-
-
-@overload
-def set_output(
-    node: Iterable[vs.AudioNode | Iterable[vs.AudioNode | Iterable[vs.AudioNode]]],
-    index: int | Sequence[int] = ..., name: str | bool | None = ...,
-    /,
-    **kwargs: Any
-) -> None:
-    ...
-
-
-def set_output(
-    node: vs.RawNode | Iterable[vs.RawNode | Iterable[vs.RawNode | Iterable[vs.RawNode]]],
-    index_or_name: int | Sequence[int] | str | bool | None = None, name: str | bool | None = None,
-    /,
-    alpha: vs.VideoNode | None = None,
-    *,
-    timecodes: TimecodesT = None, denominator: int = 1001, scenes: ScenesT = None,
-    **kwargs: Any
-) -> None:
-    if not is_preview():
-        return None
-
-    from vspreview.api import set_scening, set_timecodes, update_node_info
-
-    if isinstance(index_or_name, (str, bool)):
-        index = None
-        name = index_or_name
-    else:
-        index = index_or_name
-
-    ouputs = vs.get_outputs()
-    nodes = list(flatten(node))
-
-    index = to_arr(index) if index is not None else [max(ouputs, default=-1) + 1]
-
-    while len(index) < len(nodes):
-        index.append(index[-1] + 1)
-
-    for i, n in zip(index[:len(nodes)], nodes):
-        if i in ouputs:
-            logging.warn(f"Index n° {i} has been already used!")
-        if isinstance(n, vs.VideoNode):
-            n.set_output(i, alpha)
-            title = 'Clip'
-        else:
-            n.set_output(i)
-            title = 'Audio' if isinstance(n, vs.AudioNode) else 'Node'
-
-        if (not name and name is not False) or name is True:
-            name = f"{title} {i}"
-
-            current_frame = inspect.currentframe()
-
-            assert current_frame
-            assert current_frame.f_back
-
-            ref_id = str(id(n))
-            for vname, val in reversed(current_frame.f_back.f_locals.items()):
-                if (str(id(val)) == ref_id):
-                    name = vname
-                    break
-
-            del current_frame
-
-        update_node_info(
-            type(n), i,
-            **KwargsT(cache=True, disable_comp=False) | (KwargsT(name=name) if name else {}) | kwargs
-        )
-
-        if isinstance(n, vs.VideoNode):
-            if timecodes:
-                timecodes = str(timecodes) if not isinstance(timecodes, (dict, list)) else timecodes
-                set_timecodes(i, timecodes, n, denominator)
-
-            if scenes:
-                set_scening(scenes, n, name or f'Clip {i}')
+@copy_signature(vstools_set_output)
+def set_output(*args: Any, **kwargs: Any) -> Any:
+    return vstools_set_output(*args, **kwargs)
 
 
 _VideoFrameT_contra = TypeVar("_VideoFrameT_contra", vs.VideoFrame, list[vs.VideoFrame], contravariant=True)
+
 
 class RangesCallBack(Protocol):
     def __call__(self, n: int) -> bool:
