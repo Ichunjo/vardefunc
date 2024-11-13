@@ -347,7 +347,9 @@ def replace_ranges(
     :return:            Clip with ranges from clip_a replaced with clip_b.
     """
     if exclusive and not callable(ranges):
-        return vstools_replace_ranges(clip_a, clip_b, normalise_ranges(clip_b, ranges), exclusive, mismatch, prop_src=prop_src)
+        return vstools_replace_ranges(
+            clip_a, clip_b, normalise_ranges(clip_b, ranges, norm_dups=True), exclusive, mismatch, prop_src=prop_src
+        )
     return vstools_replace_ranges(clip_a, clip_b, ranges, exclusive, mismatch, prop_src=prop_src)
 
 try:
