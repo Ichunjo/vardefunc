@@ -362,7 +362,7 @@ else:
             def handler_func(m_type: vs.MessageType, msg: str) -> None:
                 if all([
                     m_type == vs.MESSAGE_TYPE_INFORMATION,
-                    msg.startswith("VideoSource "),
+                    msg.startswith(("VideoSource ", "AudioSource ")),
                     logging.getLogger().level <= logging.WARNING,
                     is_preview()
                 ]):
