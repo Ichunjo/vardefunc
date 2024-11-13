@@ -7,12 +7,13 @@ __all__ = [
     'remap_rfs'
 ]
 
+import math
 import warnings
 
 from fractions import Fraction
 from functools import partial
 from string import ascii_lowercase
-from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, cast
+from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, cast, overload
 
 import numpy as np
 import vapoursynth as vs
@@ -114,18 +115,40 @@ def select_frames(
     return core.std.FrameEval(plh, partial(_select_func, clips=clips, indices=indices))
 
 
+@overload
 def normalise_ranges(
-    clip: vs.VideoNode | vs.AudioNode, ranges: FrameRangeN | FrameRangesN,
-    *, norm_dups: bool = False, ref_fps: Optional[Fraction] = None
+    clip: vs.VideoNode, ranges: FrameRangeN | FrameRangesN, *, norm_dups: bool = False
 ) -> list[Range]:
+    ...
+
+
+@overload
+def normalise_ranges(
+    clip: vs.AudioNode, ranges: FrameRangeN | FrameRangesN, *, norm_dups: bool = False, ref_fps: Fraction | None = None
+) -> list[Range]:
+    ...
+
+
+@overload
+def normalise_ranges(
+    clip: None, ranges: FrameRangeN | FrameRangesN, *, norm_dups: bool = False,
+) -> list[tuple[int, int | None]]:
+    ...
+
+def normalise_ranges(
+    clip: vs.VideoNode | vs.AudioNode | None, ranges: FrameRangeN | FrameRangesN,
+    *, norm_dups: bool = False, ref_fps: Fraction | None = None
+) -> list[Range] | list[tuple[int, int | None]]:
     """Modified version of lvsfunc.util.normalize_ranges following python slicing syntax"""
     if isinstance(clip, vs.VideoNode):
         num_frames = clip.num_frames
-    else:
+    elif isinstance(clip, vs.AudioNode):
         if ref_fps is not None:
             num_frames = clip.num_samples
         else:
             num_frames = clip.num_frames
+    else:
+        num_frames = None
 
     if ranges is None:
         return [(0, num_frames)]
@@ -145,38 +168,48 @@ def normalise_ranges(
 
     ranges = _resolve_ranges_type(ranges)
 
-    nranges = set[tuple[int, int]]()
+    nranges = set[tuple[int, int | None]]()
     f2s = Convert.f2samples
+
     for r in ranges:
+
+        if r is None:
+            r = (None, None)
+
         if isinstance(r, tuple):
             start, end = r
             if start is None:
                 start = 0
             if end is None:
                 end = num_frames
-        elif isinstance(r, int):
+        else:
             start = r
             end = r + 1
-        else:
-            start = num_frames - 1
-            end = num_frames
+
         if isinstance(clip, vs.AudioNode) and ref_fps is not None:
-            start = start if start == 0 else f2s(start, ref_fps, clip.sample_rate)
-            end = end if end == num_frames else f2s(end, ref_fps, clip.sample_rate)
-        if start < 0:
+            if start != 0:
+                start = f2s(start, ref_fps, clip.sample_rate)
+            if end != num_frames and end:
+                end = f2s(end, ref_fps, clip.sample_rate)
+    
+        if start < 0 and num_frames is not None:
             start += num_frames
-        if end <= 0:
+        if end is not None and end <= 0 and num_frames is not None:
             end += num_frames
 
-        if start >= num_frames or end > num_frames:
-            core.log_message(vs.MESSAGE_TYPE_WARNING, f'normalise_ranges: "{r}" out of range')
-            warnings.warn(f'normalise_ranges: {r} out of range')
+        if end is not None:
+            if start > end:
+                warnings.warn(f'normalise_ranges: start frame "{start}" is higher than end frame "{end}"')
+    
+            if num_frames is not None:
+                if start >= num_frames or end > num_frames:
+                    warnings.warn(f'normalise_ranges: {r} out of range')
 
-        if start > end:
-            core.log_message(vs.MESSAGE_TYPE_WARNING, f'normalise_ranges: start frame "{start}" is higher than end frame "{end}"')
-            warnings.warn(f'normalise_ranges: start frame "{start}" is higher than end frame "{end}"')
+        if num_frames is not None:
+            start = min(start, num_frames - 1)
+            if end is not None:
+                end = min(end, num_frames)
 
-        start, end = min(start, num_frames - 1), min(end, num_frames)
         nranges.add((start, end))
 
     out = sorted(nranges)
@@ -186,9 +219,13 @@ def normalise_ranges(
         nranges_rev = sorted(nranges_d.items(), reverse=True)
 
         for (start1, end1), (start2, end2) in zip(nranges_rev, nranges_rev[1:]):
+            if end1 is None or end2 is None:
+                continue
+
             if start2 < start1 <= end2 < end1:
-                nranges_d[start2] = max(end1, nranges_d[start1])
+                nranges_d[start2] = max(end1, nranges_d[start1], key=lambda x: x if x is not None else math.inf)
                 del nranges_d[start1]
+
             if start2 < start1 and end1 <= end2:
                 del nranges_d[start1]
 
