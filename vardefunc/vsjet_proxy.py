@@ -1,26 +1,33 @@
 import inspect
 import logging
+
 from fractions import Fraction
 from functools import lru_cache
 from typing import Any, Iterable, Protocol, Sequence, TypeVar, Union, overload
 
-from vstools import (
-    FrameRangeN,
-    FrameRangesN,
-    Keyframes,
-    KwargsT,
-    core,
-    flatten,
-    to_arr,
-    vs,
-)
+from vsexprtools import ExprOp, ExprToken, norm_expr
+from vskernels import Point
+from vsmasktools import DeferredMask as vsmasktools_DeferredMask
+from vsmasktools import GenericMaskT
+from vsmasktools import HardsubASS as vsmasktools_HardsubASS
+from vsmasktools import HardsubLine as vsmasktools_HardsubLine
+from vsmasktools import HardsubLineFade as vsmasktools_HardsubLineFade
+from vsmasktools import HardsubMask as vsmasktools_HardsubMask
+from vsmasktools import HardsubSign as vsmasktools_HardsubSign
+from vsmasktools import HardsubSignFades as vsmasktools_HardsubSignFades
+from vsmasktools import Morpho, SobelStd, XxpandMode, normalize_mask
+from vsrgtools.util import mean_matrix
+from vstools import ColorRange, FrameRangeN, FrameRangesN, Keyframes, KwargsT, core, flatten
 from vstools import replace_ranges as vstools_replace_ranges
+from vstools import scale_value, to_arr, vs
 
 from .types import AnyPath, Range, RangeN
 from .util import normalise_ranges
 
 __all__ = [
-    "is_preview", "set_output", "replace_ranges", "BestestSource"
+    "is_preview", "set_output", "replace_ranges", "BestestSource",
+    "DeferredMask", "HardsubASS", "HardsubLine", "HardsubLineFade", "HardsubMask",
+    "HardsubSign", "HardsubSignFades"
 ]
 
 
@@ -365,3 +372,32 @@ else:
 
         def __del__(self) -> None:
             core.remove_log_handler(self._log_handle)
+
+
+class DeferredMask(vsmasktools_DeferredMask):
+    _incl_excl_ranges: FrameRangesN
+
+    @property
+    def ranges(self) -> FrameRangesN:
+        return [
+            (s, (e - 1) if e is not None else e)
+            for (s, e) in normalise_ranges(None, self._incl_excl_ranges, norm_dups=True)
+        ]
+
+    @ranges.setter
+    def ranges(self, value: FrameRangesN) -> None:
+        self._incl_excl_ranges = value
+
+
+class HardsubMask(vsmasktools_HardsubMask, DeferredMask): ...
+
+
+
+
+class HardsubLine(vsmasktools_HardsubLine, HardsubMask): ...
+
+
+class HardsubLineFade(vsmasktools_HardsubLineFade, HardsubMask): ...
+
+
+class HardsubASS(vsmasktools_HardsubASS, HardsubMask): ...
