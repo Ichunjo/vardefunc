@@ -392,6 +392,53 @@ class DeferredMask(vsmasktools_DeferredMask):
 class HardsubMask(vsmasktools_HardsubMask, DeferredMask): ...
 
 
+# Waiting for https://github.com/Jaded-Encoding-Thaumaturgy/vs-masktools/pull/29
+class HardsubSignFades(vsmasktools_HardsubSignFades, HardsubMask):
+    def __init__(
+        self, *args: Any, highpass: float = 0.0763, expand: int = 8, edgemask: GenericMaskT = SobelStd,
+        expand_mode: XxpandMode = XxpandMode.RECTANGLE,
+        **kwargs: Any
+    ) -> None:
+        super().__init__(*args, highpass=highpass, expand=expand, edgemask=edgemask, **kwargs)
+        self.expand_mode = expand_mode
+
+    def _mask(self, clip: vs.VideoNode, ref: vs.VideoNode, **kwargs: Any) -> vs.VideoNode:
+        clipedge, refedge = (
+            normalize_mask(self.edgemask, x, **kwargs).std.Convolution(mean_matrix)
+            for x in (clip, ref)
+        )
+
+        highpass = scale_value(self.highpass, 32, clip, ColorRange.FULL)
+
+        mask = norm_expr(
+            [clipedge, refedge], f'x y - {highpass} < 0 {ExprToken.RangeMax} ?'
+        ).std.Median()
+
+        return Morpho.inflate(Morpho.expand(mask, self.expand, mode=self.expand_mode), iterations=4)
+
+
+# Waiting for https://github.com/Jaded-Encoding-Thaumaturgy/vs-masktools/pull/29
+class HardsubSign(vsmasktools_HardsubSign, HardsubMask):
+    def __init__(
+        self, *args: Any, thr: float = 0.06, minimum: int = 1, expand: int = 8, inflate: int = 7,
+        expand_mode: XxpandMode = XxpandMode.RECTANGLE,
+        **kwargs: Any
+    ) -> None:
+        super().__init__(*args, thr=thr, minimum=minimum, expand=expand, inflate=inflate, **kwargs)
+        self.expand_mode = expand_mode
+
+    def _mask(self, clip: vs.VideoNode, ref: vs.VideoNode, **kwargs: Any) -> vs.VideoNode:
+        hsmf = norm_expr([clip, ref], 'x y - abs')
+        hsmf = Point.resample(hsmf, clip.format.replace(subsampling_w=0, subsampling_h=0))  # type: ignore
+
+        hsmf = ExprOp.MAX(hsmf, split_planes=True)
+
+        hsmf = Morpho.binarize(hsmf, self.thr)
+        hsmf = Morpho.minimum(hsmf, iterations=self.minimum)
+        hsmf = Morpho.expand(hsmf, self.expand, mode=self.expand_mode)
+        hsmf = Morpho.inflate(hsmf, iterations=self.inflate)
+
+        return hsmf.std.Limiter()
 
 
 class HardsubLine(vsmasktools_HardsubLine, HardsubMask): ...
