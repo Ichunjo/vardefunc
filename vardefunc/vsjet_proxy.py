@@ -14,6 +14,7 @@ from vsmasktools import HardsubMask as vsmasktools_HardsubMask
 from vsmasktools import HardsubSign as vsmasktools_HardsubSign
 from vsmasktools import HardsubSignFades as vsmasktools_HardsubSignFades
 from vsmasktools import Morpho, SobelStd, XxpandMode, normalize_mask
+from vsmasktools import replace_squaremask as vsmasktools_replace_squaremask
 from vsrgtools.util import mean_matrix
 from vstools import ColorRange, FrameRangeN, FrameRangesN, copy_signature, core
 from vstools import replace_ranges as vstools_replace_ranges
@@ -24,7 +25,8 @@ from .util import normalise_ranges
 __all__ = [
     "is_preview", "set_output", "replace_ranges", "BestestSource",
     "DeferredMask", "HardsubASS", "HardsubLine", "HardsubLineFade", "HardsubMask",
-    "HardsubSign", "HardsubSignFades"
+    "HardsubSign", "HardsubSignFades",
+    "replace_squaremask",
 ]
 
 
@@ -247,3 +249,14 @@ class HardsubLineFade(vsmasktools_HardsubLineFade, HardsubMask): ...
 
 
 class HardsubASS(vsmasktools_HardsubASS, HardsubMask): ...
+
+
+@copy_signature(vsmasktools_replace_squaremask)
+def replace_squaremask(*args: Any, **kwargs: Any) -> Any:
+    kwargs.update(
+        ranges=[(s, e - 1) for (s, e) in normalise_ranges(
+            kwargs.pop("clipa"), kwargs.pop("ranges"), norm_dups=True
+        )]
+    )
+
+    return vsmasktools_replace_squaremask(*args, **kwargs)
