@@ -17,9 +17,7 @@ from vsmasktools import Morpho, SobelStd, XxpandMode, normalize_mask
 from vsrgtools.util import mean_matrix
 from vstools import ColorRange, FrameRangeN, FrameRangesN, copy_signature, core
 from vstools import replace_ranges as vstools_replace_ranges
-from vstools import scale_value
-from vstools import set_output as vstools_set_output
-from vstools import vs
+from vstools import scale_value, set_output, vs
 
 from .util import normalise_ranges
 
@@ -39,11 +37,6 @@ def is_preview() -> bool:
     else:
         is_preview = vspreview.api.is_preview()
     return is_preview
-
-
-@copy_signature(vstools_set_output)
-def set_output(*args: Any, **kwargs: Any) -> Any:
-    return vstools_set_output(*args, **kwargs)
 
 
 _VideoFrameT_contra = TypeVar("_VideoFrameT_contra", vs.VideoFrame, list[vs.VideoFrame], contravariant=True)
