@@ -5,23 +5,18 @@ import logging
 from functools import lru_cache
 from typing import Any, Literal, Protocol, Sequence, SupportsFloat, TypeVar, Union, overload
 
-from vsdenoise.deblock import _dpir as vsdenoise__dpir
+import vsdenoise
+import vsmasktools
+import vstools
+
 from vsexprtools import ExprOp, ExprToken, norm_expr
 from vskernels import Catrom, KernelT, Point
-from vsmasktools import DeferredMask as vsmasktools_DeferredMask
-from vsmasktools import GenericMaskT
-from vsmasktools import HardsubASS as vsmasktools_HardsubASS
-from vsmasktools import HardsubLine as vsmasktools_HardsubLine
-from vsmasktools import HardsubLineFade as vsmasktools_HardsubLineFade
-from vsmasktools import HardsubMask as vsmasktools_HardsubMask
-from vsmasktools import HardsubSign as vsmasktools_HardsubSign
-from vsmasktools import HardsubSignFades as vsmasktools_HardsubSignFades
-from vsmasktools import Morpho, SobelStd, XxpandMode, normalize_mask
-from vsmasktools import replace_squaremask as vsmasktools_replace_squaremask
+from vsmasktools import GenericMaskT, Morpho, SobelStd, XxpandMode, normalize_mask
 from vsrgtools.util import mean_matrix
-from vstools import ColorRange, CustomStrEnum, FrameRangeN, FrameRangesN, MatrixT, copy_signature, core
-from vstools import replace_ranges as vstools_replace_ranges
-from vstools import scale_value, set_output, vs
+from vstools import (
+    ColorRange, CustomStrEnum, FrameRangeN, FrameRangesN, MatrixT, copy_signature, core,
+    scale_value, set_output, vs
+)
 
 from .util import normalise_ranges, to_incl_incl
 
@@ -149,10 +144,10 @@ def replace_ranges(
     :return:            Clip with ranges from clip_a replaced with clip_b.
     """
     if exclusive and not callable(ranges):
-        return vstools_replace_ranges(
+        return vstools.replace_ranges(
             clip_a, clip_b, normalise_ranges(clip_b, ranges, norm_dups=True), exclusive, mismatch, prop_src=prop_src
         )
-    return vstools_replace_ranges(clip_a, clip_b, ranges, exclusive, mismatch, prop_src=prop_src)
+    return vstools.replace_ranges(clip_a, clip_b, ranges, exclusive, mismatch, prop_src=prop_src)
 
 try:
     from vssource import BestSource
@@ -180,7 +175,7 @@ else:
             core.remove_log_handler(self._log_handle)
 
 
-class DeferredMask(vsmasktools_DeferredMask):
+class DeferredMask(vsmasktools.DeferredMask):
     _incl_excl_ranges: FrameRangesN
 
     @property
@@ -195,11 +190,11 @@ class DeferredMask(vsmasktools_DeferredMask):
         self._incl_excl_ranges = value
 
 
-class HardsubMask(vsmasktools_HardsubMask, DeferredMask): ...
+class HardsubMask(vsmasktools.HardsubMask, DeferredMask): ...
 
 
 # Waiting for https://github.com/Jaded-Encoding-Thaumaturgy/vs-masktools/pull/29
-class HardsubSignFades(vsmasktools_HardsubSignFades, HardsubMask):
+class HardsubSignFades(vsmasktools.HardsubSignFades, HardsubMask):
     def __init__(
         self, *args: Any, highpass: float = 0.0763, expand: int = 8, edgemask: GenericMaskT = SobelStd,
         expand_mode: XxpandMode = XxpandMode.RECTANGLE,
@@ -224,7 +219,7 @@ class HardsubSignFades(vsmasktools_HardsubSignFades, HardsubMask):
 
 
 # Waiting for https://github.com/Jaded-Encoding-Thaumaturgy/vs-masktools/pull/29
-class HardsubSign(vsmasktools_HardsubSign, HardsubMask):
+class HardsubSign(vsmasktools.HardsubSign, HardsubMask):
     def __init__(
         self, *args: Any, thr: float = 0.06, minimum: int = 1, expand: int = 8, inflate: int = 7,
         expand_mode: XxpandMode = XxpandMode.RECTANGLE,
@@ -247,16 +242,16 @@ class HardsubSign(vsmasktools_HardsubSign, HardsubMask):
         return hsmf.std.Limiter()
 
 
-class HardsubLine(vsmasktools_HardsubLine, HardsubMask): ...
+class HardsubLine(vsmasktools.HardsubLine, HardsubMask): ...
 
 
-class HardsubLineFade(vsmasktools_HardsubLineFade, HardsubMask): ...
+class HardsubLineFade(vsmasktools.HardsubLineFade, HardsubMask): ...
 
 
-class HardsubASS(vsmasktools_HardsubASS, HardsubMask): ...
+class HardsubASS(vsmasktools.HardsubASS, HardsubMask): ...
 
 
-@copy_signature(vsmasktools_replace_squaremask)
+@copy_signature(vsmasktools.replace_squaremask)
 def replace_squaremask(*args: Any, **kwargs: Any) -> Any:
     kwargs.update(
         ranges=to_incl_incl(
@@ -264,7 +259,7 @@ def replace_squaremask(*args: Any, **kwargs: Any) -> Any:
         )
     )
 
-    return vsmasktools_replace_squaremask(*args, **kwargs)
+    return vsmasktools.replace_squaremask(*args, **kwargs)
 
 
 StrengthT = SupportsFloat | vs.VideoNode | None | tuple[SupportsFloat | vs.VideoNode | None, SupportsFloat | vs.VideoNode | None]
@@ -285,7 +280,7 @@ class _dpir(CustomStrEnum):
         if zones:
             zones = [(to_incl_incl(normalise_ranges(clip, r, norm_dups=True)), stre) for r, stre in zones]
 
-        return vsdenoise__dpir(self.value)(
+        return vsdenoise.deblock._dpir(self.value)(
             clip, strength, matrix, cuda, i444, tiles, overlap,
             zones, fp16, num_streams, device_id, kernel, **kwargs  # type: ignore
         )
