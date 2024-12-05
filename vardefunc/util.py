@@ -4,7 +4,9 @@ from __future__ import annotations
 __all__ = [
     'select_frames', 'normalise_ranges', 'ranges_to_indices',
     'adjust_clip_frames', 'adjust_audio_frames',
-    'remap_rfs'
+    'remap_rfs',
+    'to_incl_incl',
+    'to_incl_excl'
 ]
 
 import math
@@ -232,6 +234,14 @@ def normalise_ranges(
         out = list(nranges_d.items())
 
     return out
+
+
+def to_incl_incl(ranges: list[Range]) -> list[Range]:
+    return [(s, e - 1) for (s, e) in ranges]
+
+
+def to_incl_excl(ranges: list[Range]) -> list[Range]:
+    return [(s, e + 1) for (s, e) in ranges]
 
 
 def ranges_to_indices(ref: vs.VideoNode, ranges: FrameRangeN | FrameRangesN) -> NDArray[AnyInt]:
