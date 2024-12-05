@@ -158,6 +158,7 @@ else:
     class BestestSource(BestSource):
         def __init__(self, *, force: bool = True, **kwargs: Any) -> None:
             kwargs.setdefault("showprogress", True)
+            kwargs.setdefault("cachemode", 3)
             super().__init__(force=force, **kwargs)
 
             def handler_func(m_type: vs.MessageType, msg: str) -> None:
