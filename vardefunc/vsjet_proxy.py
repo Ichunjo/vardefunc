@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import logging
 
 from functools import lru_cache
-from typing import Any, Protocol, TypeVar, Union, overload
+from typing import Any, Literal, Protocol, Sequence, SupportsFloat, TypeVar, Union, overload
 
+from vsdenoise.deblock import _dpir as vsdenoise__dpir
 from vsexprtools import ExprOp, ExprToken, norm_expr
-from vskernels import Point
+from vskernels import Catrom, KernelT, Point
 from vsmasktools import DeferredMask as vsmasktools_DeferredMask
 from vsmasktools import GenericMaskT
 from vsmasktools import HardsubASS as vsmasktools_HardsubASS
@@ -16,7 +19,7 @@ from vsmasktools import HardsubSignFades as vsmasktools_HardsubSignFades
 from vsmasktools import Morpho, SobelStd, XxpandMode, normalize_mask
 from vsmasktools import replace_squaremask as vsmasktools_replace_squaremask
 from vsrgtools.util import mean_matrix
-from vstools import ColorRange, FrameRangeN, FrameRangesN, copy_signature, core
+from vstools import ColorRange, CustomStrEnum, FrameRangeN, FrameRangesN, MatrixT, copy_signature, core
 from vstools import replace_ranges as vstools_replace_ranges
 from vstools import scale_value, set_output, vs
 
@@ -27,6 +30,7 @@ __all__ = [
     "DeferredMask", "HardsubASS", "HardsubLine", "HardsubLineFade", "HardsubMask",
     "HardsubSign", "HardsubSignFades",
     "replace_squaremask",
+    "dpir"
 ]
 
 
@@ -261,3 +265,30 @@ def replace_squaremask(*args: Any, **kwargs: Any) -> Any:
     )
 
     return vsmasktools_replace_squaremask(*args, **kwargs)
+
+
+StrengthT = SupportsFloat | vs.VideoNode | None | tuple[SupportsFloat | vs.VideoNode | None, SupportsFloat | vs.VideoNode | None]
+
+
+class _dpir(CustomStrEnum):
+    DEBLOCK: _dpir = 'deblock'  # type: ignore
+    DENOISE: _dpir = 'denoise'  # type: ignore
+
+    def __call__(
+        self, clip: vs.VideoNode, strength: StrengthT = 10,
+        matrix: MatrixT | None = None, cuda: bool | Literal['trt'] | None = None, i444: bool = False,
+        tiles: int | tuple[int, int] | None = None, overlap: int | tuple[int, int] | None = 8,
+        zones: Sequence[tuple[FrameRangeN | FrameRangesN | None, SupportsFloat | vs.VideoNode | None]] | None = None,
+        fp16: bool | None = None, num_streams: int | None = None, device_id: int = 0, kernel: KernelT = Catrom,
+        **kwargs: Any
+    ) -> vs.VideoNode:
+        if zones:
+            zones = [(to_incl_incl(normalise_ranges(clip, r, norm_dups=True)), stre) for r, stre in zones]
+
+        return vsdenoise__dpir(self.value)(
+            clip, strength, matrix, cuda, i444, tiles, overlap,
+            zones, fp16, num_streams, device_id, kernel, **kwargs  # type: ignore
+        )
+
+
+dpir = _dpir.DEBLOCK
