@@ -457,7 +457,13 @@ class Rescale(BaseRescale):
         self.line_mask = line_mask
         return self.line_mask
 
-    def placebo_line_mask(self, clip: vs.VideoNode | None = None, scaler: ScalerT = Bilinear) -> vs.VideoNode:
+    def placebo_line_mask(
+        self, clip: vs.VideoNode | None = None,
+        lthrs: tuple[float, float] = (0.2, 0.2),
+        multis: tuple[float, float] = (1.2, 0.3),
+        scaler: ScalerT = Bilinear,
+        **kwargs: Any
+    ) -> vs.VideoNode:
         """
         Load a combinaison of FDoG ridge and edge masks. Additionnaly, it is returned.
 
@@ -468,14 +474,18 @@ class Rescale(BaseRescale):
         clip = clip if clip else self.clip
         clipy = get_y(clip) if clip else self.clipy
         scaler = Scaler.ensure_obj(scaler)
+        
+        hthrs = kwargs.setdefault("hthrs", (None, None))
+        clamps = kwargs.setdefault("clamps", (False, False))
+        planes = kwargs.setdefault("planes", (None, None))
 
-        edgemask = FDoGTCanny.edgemask(clip, 0.2, multi=1.25).std.Maximum().std.Minimum()
+        edgemask = FDoGTCanny.edgemask(clip, lthrs[0], hthrs[0], multis[0], clamps[0], planes[0]).std.Maximum().std.Minimum()
         edgemask = ColorRange.FULL.apply(edgemask)
         edgemask = ExprOp.ADD.combine(
             scaler.scale(c, edgemask.width, edgemask.height, format=vs.GRAYS) for c in split(edgemask)
         )
 
-        ridgemask = FDoG.ridgemask(depth(clipy, 32), 0.2, multi=0.15).std.Maximum().std.Minimum()
+        ridgemask = FDoG.ridgemask(depth(clipy, 32), lthrs[1], hthrs[1], multis[1], clamps[1], planes[1]).std.Maximum().std.Minimum()
 
         mask = core.akarin.Expr([edgemask, ridgemask], 'x y 0 max + 0 1 clamp')
         mask = scaler.scale(mask, self.clipy.width, self.clipy.height, format=self.clipy.format)
