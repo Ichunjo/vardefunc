@@ -3,12 +3,14 @@ from __future__ import annotations
 import logging
 
 from functools import lru_cache
-from typing import Any, Literal, Protocol, Sequence, SupportsFloat, TypeVar, Union, overload
+from typing import Any, Iterator, Literal, Sequence, SupportsFloat, cast, overload
 
+import numpy as np
 import vsdenoise
 import vsmasktools
 import vstools
 
+from more_itertools import unzip
 from vsexprtools import ExprOp, ExprToken, norm_expr
 from vskernels import Catrom, KernelT, Point
 from vsmasktools import GenericMaskT, Morpho, SobelStd, XxpandMode, normalize_mask
@@ -18,7 +20,9 @@ from vstools import (
     scale_value, set_output, vs
 )
 
-from .util import normalise_ranges, to_incl_incl
+from .types import AnyInt, NDArray, RangesCallBack, RangesCallBackF, RangesCallBackNF, RangesCallBackT
+from .types import VNumpy as vnp
+from .util import normalise_ranges, ranges_to_indices, to_incl_incl, select_frames
 
 __all__ = [
     "is_preview", "set_output", "replace_ranges", "BestestSource",
@@ -40,34 +44,11 @@ def is_preview() -> bool:
     return is_preview
 
 
-_VideoFrameT_contra = TypeVar("_VideoFrameT_contra", vs.VideoFrame, list[vs.VideoFrame], contravariant=True)
-
-
-class RangesCallBack(Protocol):
-    def __call__(self, n: int) -> bool:
-        ...
-
-class RangesCallBackF(Protocol[_VideoFrameT_contra]):
-    def __call__(self, f: _VideoFrameT_contra) -> bool:
-        ...
-
-class RangesCallBackNF(Protocol[_VideoFrameT_contra]):
-    def __call__(self, n: int, f: _VideoFrameT_contra) -> bool:
-        ...
-
-RangesCallBackT = Union[
-    RangesCallBack,
-    RangesCallBackF[vs.VideoFrame],
-    RangesCallBackNF[vs.VideoFrame],
-    RangesCallBackF[list[vs.VideoFrame]],
-    RangesCallBackNF[list[vs.VideoFrame]],
-]
-
 @overload
 def replace_ranges(
     clip_a: vs.VideoNode, clip_b: vs.VideoNode,
     ranges: FrameRangeN | FrameRangesN,
-    *,
+    /, *,
     exclusive: bool = True, mismatch: bool = False,
 ) -> vs.VideoNode:
     ...
@@ -76,7 +57,7 @@ def replace_ranges(
 def replace_ranges(
     clip_a: vs.VideoNode, clip_b: vs.VideoNode,
     ranges: RangesCallBack,
-    *,
+    /, *,
     mismatch: bool = False,
 ) -> vs.VideoNode:
     ...
@@ -85,7 +66,7 @@ def replace_ranges(
 def replace_ranges(
     clip_a: vs.VideoNode, clip_b: vs.VideoNode,
     ranges: RangesCallBackF[vs.VideoFrame] | RangesCallBackNF[vs.VideoFrame],
-    *,
+    /, *,
     mismatch: bool = False,
     prop_src: vs.VideoNode
 ) -> vs.VideoNode:
@@ -95,16 +76,21 @@ def replace_ranges(
 def replace_ranges(
     clip_a: vs.VideoNode, clip_b: vs.VideoNode,
     ranges: RangesCallBackF[list[vs.VideoFrame]] | RangesCallBackNF[list[vs.VideoFrame]],
-    *,
+    /, *,
     mismatch: bool = False,
     prop_src: list[vs.VideoNode]
 ) -> vs.VideoNode:
     ...
 
+@overload
 def replace_ranges(
-    clip_a: vs.VideoNode, clip_b: vs.VideoNode,
-    ranges: FrameRangeN | FrameRangesN | RangesCallBackT | None,
-    *,
+    clip_a: vs.VideoNode, *clip_b: tuple[vs.VideoNode, FrameRangeN | FrameRangesN | RangesCallBack],
+    mismatch: bool = False,
+) -> vs.VideoNode:
+    ...
+
+def replace_ranges(
+    clip_a: vs.VideoNode, *args: Any,
     exclusive: bool = True, mismatch: bool = False,
     prop_src: vs.VideoNode | list[vs.VideoNode] | None = None
 ) -> vs.VideoNode:
@@ -143,11 +129,53 @@ def replace_ranges(
 
     :return:            Clip with ranges from clip_a replaced with clip_b.
     """
-    if exclusive and not callable(ranges):
-        return vstools.replace_ranges(
-            clip_a, clip_b, normalise_ranges(clip_b, ranges, norm_dups=True), exclusive, mismatch, prop_src=prop_src
-        )
-    return vstools.replace_ranges(clip_a, clip_b, ranges, exclusive, mismatch, prop_src=prop_src)
+    if isinstance(clip_b := args[0], vs.VideoNode):
+        ranges: FrameRangeN | FrameRangesN | RangesCallBackT | None = args[1]
+
+        if exclusive and not callable(ranges):
+            ranges = normalise_ranges(clip_b, ranges, norm_dups=True)
+
+        return vstools.replace_ranges(clip_a, clip_b, ranges, exclusive, mismatch, prop_src=prop_src)
+
+    rclips: tuple[tuple[vs.VideoNode, FrameRangeN | FrameRangesN | RangesCallBack], ...] = clip_b
+
+    if not exclusive:
+        raise NotImplementedError
+
+    if len(rclips) == 0:
+        return clip_a
+
+    if len(rclips) == 1:
+        (c, r), = rclips
+        return replace_ranges(clip_a, c, r, mismatch=mismatch)
+
+    ref_indices = np.zeros(clip_a.num_frames, np.uint32)
+
+    rrclips = [
+        (c, np.fromiter(ranges_to_indices.gen_indices(c, r, (0, i)), np.uint32, c.num_frames))
+        for (i, (c, r)) in enumerate(rclips, 1)
+    ]
+
+    clips, indices_iter = cast(tuple[Iterator[vs.VideoNode], Iterator[NDArray[AnyInt]]], unzip(rrclips))
+
+    indices = list[NDArray[AnyInt]]()
+
+    for i in indices_iter:
+        if (isize := i.size) < (rsize := ref_indices.size):
+            i = np.pad(i, (0, rsize - isize))
+        elif isize > rsize:
+            i = i[:rsize]
+
+        indices.append(i)
+
+    nindices = np.max([ref_indices, *indices], axis=0, out=ref_indices)
+
+    return select_frames(
+        [clip_a, *clips],
+        vnp.zip_arrays(nindices, np.arange(clip_a.num_frames, dtype=np.uint32)),
+        mismatch=mismatch
+    )
+
 
 try:
     from vssource import BestSource

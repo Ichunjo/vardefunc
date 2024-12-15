@@ -4,13 +4,14 @@ __all__ = ['DuplicateFrame']
 
 from fractions import Fraction
 from os import PathLike
-from typing import Any, Callable, Dict, List, Sequence, Tuple, TypeAlias, TypeVar, Union
+from typing import Any, Callable, Dict, List, Protocol, Sequence, Tuple, TypeAlias, TypeVar, Union
 
-from numpy import array as np_array, c_
-from numpy import int8, int16, int32, uint8, uint16, uint32
+from numpy import array as np_array
+from numpy import c_, int8, int16, int32, uint8, uint16, uint32
 from numpy.typing import NDArray
 from pytimeconv import Convert
 from vapoursynth import VideoNode
+from vstools import vs
 
 Range: TypeAlias = tuple[int, int]
 RangeN: TypeAlias = tuple[int | None, int | None]
@@ -82,3 +83,27 @@ class DuplicateFrame(int):
 
     def __floordiv__(self, x: int) -> DuplicateFrame:
         return DuplicateFrame(self, dup=self.dup // x)
+
+
+_VideoFrameT_contra = TypeVar("_VideoFrameT_contra", vs.VideoFrame, list[vs.VideoFrame], contravariant=True)
+
+
+class RangesCallBack(Protocol):
+    def __call__(self, n: int) -> bool:
+        ...
+
+class RangesCallBackF(Protocol[_VideoFrameT_contra]):
+    def __call__(self, f: _VideoFrameT_contra) -> bool:
+        ...
+
+class RangesCallBackNF(Protocol[_VideoFrameT_contra]):
+    def __call__(self, n: int, f: _VideoFrameT_contra) -> bool:
+        ...
+
+RangesCallBackT = Union[
+    RangesCallBack,
+    RangesCallBackF[vs.VideoFrame],
+    RangesCallBackNF[vs.VideoFrame],
+    RangesCallBackF[list[vs.VideoFrame]],
+    RangesCallBackNF[list[vs.VideoFrame]],
+]

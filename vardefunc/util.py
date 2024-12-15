@@ -14,18 +14,19 @@ import warnings
 
 from fractions import Fraction
 from functools import partial
+from itertools import groupby
 from string import ascii_lowercase
 from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, cast, overload
 
 import numpy as np
 import vapoursynth as vs
-from vstools import FrameRangeN, FrameRangesN
 
 from pytimeconv import Convert
+from vstools import FrameRangeN, FrameRangesN
 
 from .types import AnyInt
 from .types import DuplicateFrame as DF
-from .types import NDArray, Range, Trim
+from .types import NDArray, Range, RangesCallBack, Trim
 from .types import VNumpy as vnp
 
 core = vs.core
@@ -119,27 +120,27 @@ def select_frames(
 
 @overload
 def normalise_ranges(
-    clip: vs.VideoNode, ranges: FrameRangeN | FrameRangesN, *, norm_dups: bool = False
+    clip: vs.VideoNode, ranges: FrameRangeN | FrameRangesN | RangesCallBack, *, norm_dups: bool = True
 ) -> list[Range]:
     ...
 
 
 @overload
 def normalise_ranges(
-    clip: vs.AudioNode, ranges: FrameRangeN | FrameRangesN, *, norm_dups: bool = False, ref_fps: Fraction | None = None
+    clip: vs.AudioNode, ranges: FrameRangeN | FrameRangesN | RangesCallBack, *, norm_dups: bool = True, ref_fps: Fraction | None = None
 ) -> list[Range]:
     ...
 
 
 @overload
 def normalise_ranges(
-    clip: None, ranges: FrameRangeN | FrameRangesN, *, norm_dups: bool = False,
+    clip: None, ranges: FrameRangeN | FrameRangesN, *, norm_dups: bool = True,
 ) -> list[tuple[int, int | None]]:
     ...
 
 def normalise_ranges(
-    clip: vs.VideoNode | vs.AudioNode | None, ranges: FrameRangeN | FrameRangesN,
-    *, norm_dups: bool = False, ref_fps: Fraction | None = None
+    clip: vs.VideoNode | vs.AudioNode | None, ranges: FrameRangeN | FrameRangesN | RangesCallBack,
+    *, norm_dups: bool = True, ref_fps: Fraction | None = None
 ) -> list[Range] | list[tuple[int, int | None]]:
     """Modified version of lvsfunc.util.normalize_ranges following python slicing syntax"""
     if isinstance(clip, vs.VideoNode):
@@ -156,7 +157,7 @@ def normalise_ranges(
         return [(0, num_frames)]
 
     def _resolve_ranges_type(
-        rngs: int | tuple[int | None, int | None] | FrameRangesN
+        rngs: int | tuple[int | None, int | None] | FrameRangesN | RangesCallBack
     ) -> Sequence[int | tuple[int | None, int | None] | None]:
         if isinstance(rngs, int):
             return [rngs]
@@ -165,7 +166,22 @@ def normalise_ranges(
                 return [cast(tuple[int | None, int | None], rngs)]
             else:
                 raise
+        if callable(rngs):
+            if not num_frames:
+                raise
+            cb_rngs = list[tuple[int, int]]()
+            r = 0
+
+            for i, j in groupby(rngs(n) for n in range(num_frames)):
+                step = len(list(j))
+                if i:
+                    cb_rngs.append((r, r + step))
+                r += step
+
+            return cb_rngs
+
         rngs = cast(FrameRangesN, rngs)
+
         return rngs
 
     ranges = _resolve_ranges_type(ranges)
@@ -193,7 +209,7 @@ def normalise_ranges(
                 start = f2s(start, ref_fps, clip.sample_rate)
             if end != num_frames and end:
                 end = f2s(end, ref_fps, clip.sample_rate)
-    
+
         if start < 0 and num_frames is not None:
             start += num_frames
         if end is not None and end <= 0 and num_frames is not None:
@@ -202,7 +218,7 @@ def normalise_ranges(
         if end is not None:
             if start > end:
                 warnings.warn(f'normalise_ranges: start frame "{start}" is higher than end frame "{end}"')
-    
+
             if num_frames is not None:
                 if start >= num_frames or end > num_frames:
                     warnings.warn(f'normalise_ranges: {r} out of range')
@@ -244,22 +260,32 @@ def to_incl_excl(ranges: list[Range]) -> list[Range]:
     return [(s, e + 1) for (s, e) in ranges]
 
 
-def ranges_to_indices(ref: vs.VideoNode, ranges: FrameRangeN | FrameRangesN) -> NDArray[AnyInt]:
-    nranges = normalise_ranges(ref, ranges)
+class _ranges_to_indices:
+    def __call__(
+        self, ref: vs.VideoNode, ranges: FrameRangeN | FrameRangesN | RangesCallBack,
+        ref_indices: tuple[int, int] = (0, 1)
+    ) -> NDArray[AnyInt]:
+        return vnp.zip_arrays(
+            np.fromiter(self.gen_indices(ref, ranges, ref_indices), np.uint32, ref.num_frames),
+            np.arange(ref.num_frames, dtype=np.uint32)
+        )
 
-    def _gen_indices(nranges: list[tuple[int, int]]) -> Iterable[int]:
+    def gen_indices(
+        self, ref: vs.VideoNode, ranges: FrameRangeN | FrameRangesN | RangesCallBack,
+        ref_indices: tuple[int, int]
+    ) -> Iterable[int]:
+        nranges = normalise_ranges(ref, ranges)
+
         for f in range(ref.num_frames):
-            i = 0
+            i = ref_indices[0]
             for start, end in nranges:
                 if start <= f < end:
-                    i = 1
+                    i = ref_indices[1]
                     break
             yield i
 
-    return vnp.zip_arrays(
-        np.fromiter(_gen_indices(nranges), np.uint32, ref.num_frames),
-        np.arange(ref.num_frames, dtype=np.uint32)
-    )
+
+ranges_to_indices = _ranges_to_indices()
 
 
 def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: List[Trim | DF] | Trim) -> vs.VideoNode:
