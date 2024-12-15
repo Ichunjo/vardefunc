@@ -10,7 +10,6 @@ import vsdenoise
 import vsmasktools
 import vstools
 
-from more_itertools import unzip
 from vsexprtools import ExprOp, ExprToken, norm_expr
 from vskernels import Catrom, KernelT, Point
 from vsmasktools import GenericMaskT, Morpho, SobelStd, XxpandMode, normalize_mask
@@ -137,7 +136,7 @@ def replace_ranges(
 
         return vstools.replace_ranges(clip_a, clip_b, ranges, exclusive, mismatch, prop_src=prop_src)
 
-    rclips: tuple[tuple[vs.VideoNode, FrameRangeN | FrameRangesN | RangesCallBack], ...] = clip_b
+    rclips: tuple[tuple[vs.VideoNode, FrameRangeN | FrameRangesN | RangesCallBack], ...] = args
 
     if not exclusive:
         raise NotImplementedError
@@ -156,7 +155,7 @@ def replace_ranges(
         for (i, (c, r)) in enumerate(rclips, 1)
     ]
 
-    clips, indices_iter = cast(tuple[Iterator[vs.VideoNode], Iterator[NDArray[AnyInt]]], unzip(rrclips))
+    clips, indices_iter = cast(tuple[Iterator[vs.VideoNode], Iterator[NDArray[AnyInt]]], zip(*rrclips))
 
     indices = list[NDArray[AnyInt]]()
 
