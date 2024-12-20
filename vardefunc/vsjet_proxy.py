@@ -280,13 +280,12 @@ class HardsubASS(vsmasktools.HardsubASS, HardsubMask): ...
 
 @copy_signature(vsmasktools.replace_squaremask)
 def replace_squaremask(*args: Any, **kwargs: Any) -> Any:
-    kwargs.update(
-        ranges=to_incl_incl(
-            normalise_ranges(kwargs.pop("clipa"), kwargs.pop("ranges"), norm_dups=True)
-        )
-    )
+    argsl = list(args)
+    argsl[3] = to_incl_incl(normalise_ranges(
+        kwargs.get("clipa", argsl[0]), kwargs.pop("ranges", argsl[3]), norm_dups=True
+    ))
 
-    return vsmasktools.replace_squaremask(*args, **kwargs)
+    return vsmasktools.replace_squaremask(*argsl, **kwargs)
 
 
 StrengthT = SupportsFloat | vs.VideoNode | None | tuple[SupportsFloat | vs.VideoNode | None, SupportsFloat | vs.VideoNode | None]
