@@ -32,67 +32,30 @@ from .types import VNumpy as vnp
 core = vs.core
 
 
-def load_operators_expr() -> list[str]:
-    """Returns clip loads operators for std.Expr as a list of string."""
-    abcd = list(ascii_lowercase)
-    return abcd[-3:] + abcd[:-3]
-
-
-def mae_expr(gray_only: bool = True) -> str:
-    """Mean Absolute Error string to be integrated in std.Expr.
-
-    Args:
-        gray_only (bool, optional):
-            If both actual observation and prediction are one plane each.
-            Defaults to True.
-
-    Returns:
-        str: Expression.
-    """
-    return 'x y - abs' if gray_only else 'x a - abs y b - abs max z c - abs max'
-
-
-def max_expr(n: int) -> str:
-    """Dynamic variable max string to be integrated in std.Expr.
-
-    Args:
-        n (int): Number of elements.
-
-    Returns:
-        str: Expression.
-    """
-    return 'x y max ' + ' max '.join(
-        load_operators_expr()[i] for i in range(2, n)
-    ) + ' max'
-
-
 def select_frames(
     clips: vs.VideoNode | Sequence[vs.VideoNode],
-    indices: NDArray[AnyInt] | list[int] | list[tuple[int, int]],
-    *, mismatch: bool = False
+    indices: NDArray[AnyInt] | Sequence[int] | Sequence[tuple[int, int]],
+    *,
+    mismatch: bool = False
 ) -> vs.VideoNode:
     """
     Select frames from one or more clips at specified indices.
-    Written by EoE. Modified by me.
 
-    Args:
-        clips (Union[vs.VideoNode, Sequence[vs.VideoNode]]):
-            A clip or a list of clips to select the frames from
+    Passing one clip will perform as frame remap just like vstools.remap_frames.
+    Passing two or more clips will perform as a mix of remap and replace_ranges function.
 
-        indices (Union[NDArray[AnyInt], list[int], list[tuple[int, int]]]):
-            Indices of frames to select. Provide a list of indices for a single clip,
-            or for multiple clips, a list of tuples in the form ``(clip_index, frame_index)``
+    Original idea from EoE.
 
-        mismatch (bool, optional):
-            Splicing clips with different formats or dimensions is considered an error
-            unless mismatch is true. Defaults to False.
-
-    Returns:
-        vs.VideoNode: The selected frames in a single clip
+    :param clips:       A clip or a sequence of clips to select the frames from
+    :param indices:     Indices of frames to select.
+                        Provide a sequence of indices for a single clip, or for multiple clips,
+                        a sequence of tuples in the form ``(clip_index, frame_index)``
+    :param mismatch:    Splicing clips with different formats or dimensions is considered an error
+                        unless mismatch is true. Defaults to False.
+    :return:            The selected frames in a single clip.
     """
-
-    clips = (clips, ) if isinstance(clips, vs.VideoNode) else clips
-    indices = vnp.array(indices) if isinstance(indices, list) else indices
+    clips = clips if isinstance(clips, Sequence) else [clips]
+    indices = vnp.array(indices) if isinstance(indices, Sequence) else indices
 
     if indices.ndim == 1:
         indices = vnp.zip_arrays(np.zeros(len(indices), np.uint32), indices)
@@ -101,10 +64,11 @@ def select_frames(
     else:
         raise ValueError('select_frames: only 1D and 2D array is allowed!')
 
-    plh = clips[0].std.BlankClip(length=len(indices))
-
-    if mismatch:
-        plh = plh.std.BlankClip(varsize=True, varformat=True)
+    base = (
+        clips[0].std.BlankClip(length=len(indices))
+        if not mismatch else
+        clips[0].std.BlankClip(length=len(indices), varsize=True, varformat=True)
+    )
 
     def _select_func(n: int, clips: Sequence[vs.VideoNode], indices: NDArray[AnyInt]) -> vs.VideoNode:
         # index: NDArray[AnyInt] = indices[n]  # Get the index / num_frame pair
@@ -115,7 +79,7 @@ def select_frames(
         # return tclip
         return clips[int(indices[n][0])][int(indices[n][1])]
 
-    return core.std.FrameEval(plh, partial(_select_func, clips=clips, indices=indices))
+    return core.std.FrameEval(base, partial(_select_func, clips=clips, indices=indices))
 
 
 @overload
