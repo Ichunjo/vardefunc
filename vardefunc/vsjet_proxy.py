@@ -288,7 +288,7 @@ def replace_squaremask(*args: Any, **kwargs: Any) -> Any:
     return vsmasktools.replace_squaremask(*argsl, **kwargs)
 
 
-StrengthT = SupportsFloat | vs.VideoNode | None | tuple[SupportsFloat | vs.VideoNode | None, SupportsFloat | vs.VideoNode | None]
+StrengthT = SupportsFloat | vs.VideoNode | None
 
 
 class _dpir(CustomStrEnum):
@@ -296,10 +296,10 @@ class _dpir(CustomStrEnum):
     DENOISE: _dpir = 'denoise'  # type: ignore
 
     def __call__(
-        self, clip: vs.VideoNode, strength: StrengthT = 10,
+        self, clip: vs.VideoNode, strength: StrengthT | tuple[StrengthT, StrengthT] = 10,
         matrix: MatrixT | None = None, cuda: bool | Literal['trt'] | None = None, i444: bool = False,
         tiles: int | tuple[int, int] | None = None, overlap: int | tuple[int, int] | None = 8,
-        zones: Sequence[tuple[FrameRangeN | FrameRangesN | None, SupportsFloat | vs.VideoNode | None]] | None = None,
+        zones: Sequence[tuple[FrameRangeN | FrameRangesN | None, StrengthT]] | None = None,
         fp16: bool | None = None, num_streams: int | None = None, device_id: int = 0, kernel: KernelT = Catrom,
         **kwargs: Any
     ) -> vs.VideoNode:
