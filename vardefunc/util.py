@@ -16,7 +16,7 @@ from fractions import Fraction
 from functools import partial
 from itertools import groupby
 from string import ascii_lowercase
-from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, cast, overload
+from typing import Any, Callable, Iterable, Optional, Sequence, cast, overload
 
 import numpy as np
 import vapoursynth as vs
@@ -32,7 +32,7 @@ from .types import VNumpy as vnp
 core = vs.core
 
 
-def load_operators_expr() -> List[str]:
+def load_operators_expr() -> list[str]:
     """Returns clip loads operators for std.Expr as a list of string."""
     abcd = list(ascii_lowercase)
     return abcd[-3:] + abcd[:-3]
@@ -68,7 +68,7 @@ def max_expr(n: int) -> str:
 
 def select_frames(
     clips: vs.VideoNode | Sequence[vs.VideoNode],
-    indices: NDArray[AnyInt] | List[int] | List[Tuple[int, int]],
+    indices: NDArray[AnyInt] | list[int] | list[tuple[int, int]],
     *, mismatch: bool = False
 ) -> vs.VideoNode:
     """
@@ -79,7 +79,7 @@ def select_frames(
         clips (Union[vs.VideoNode, Sequence[vs.VideoNode]]):
             A clip or a list of clips to select the frames from
 
-        indices (Union[NDArray[AnyInt], List[int], List[Tuple[int, int]]]):
+        indices (Union[NDArray[AnyInt], list[int], list[tuple[int, int]]]):
             Indices of frames to select. Provide a list of indices for a single clip,
             or for multiple clips, a list of tuples in the form ``(clip_index, frame_index)``
 
@@ -288,10 +288,10 @@ class _ranges_to_indices:
 ranges_to_indices = _ranges_to_indices()
 
 
-def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: List[Trim | DF] | Trim) -> vs.VideoNode:
+def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: list[Trim | DF] | Trim) -> vs.VideoNode:
     """Trims and/or duplicates frames"""
     trims_or_dfs = [trims_or_dfs] if isinstance(trims_or_dfs, tuple) else trims_or_dfs
-    indices: List[int] = []
+    indices: list[int] = []
     for trim_or_df in trims_or_dfs:
         if isinstance(trim_or_df, tuple):
             ntrim = normalise_ranges(clip, trim_or_df).pop()
@@ -302,8 +302,8 @@ def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: List[Trim | DF] | Trim)
     return select_frames(clip, indices)
 
 
-def adjust_audio_frames(audio: vs.AudioNode, trims_or_dfs: List[Trim | DF] | Trim, *, ref_fps: Optional[Fraction] = None) -> vs.AudioNode:
-    audios: List[vs.AudioNode] = []
+def adjust_audio_frames(audio: vs.AudioNode, trims_or_dfs: list[Trim | DF] | Trim, *, ref_fps: Optional[Fraction] = None) -> vs.AudioNode:
+    audios: list[vs.AudioNode] = []
     trims_or_dfs = [trims_or_dfs] if isinstance(trims_or_dfs, tuple) else trims_or_dfs
     for trim_or_df in trims_or_dfs:
         if isinstance(trim_or_df, tuple):
@@ -327,7 +327,7 @@ def remap_rfs(clip_a: vs.VideoNode, clip_b: vs.VideoNode,ranges: FrameRangeN | F
 
 def pick_px_op(
     use_expr: bool,
-    operations: Tuple[str, Sequence[int] | Sequence[float] | int | float | Callable[..., Any]]
+    operations: tuple[str, Sequence[int] | Sequence[float] | int | float | Callable[..., Any]]
 ) -> Callable[..., vs.VideoNode]:
     """Pick either std.Lut or std.Expr"""
     expr, lut = operations
