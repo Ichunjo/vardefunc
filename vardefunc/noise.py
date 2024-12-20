@@ -54,9 +54,9 @@ def bm3d_profile_ffast() -> Profile.Config:
 def denoise(
     clip: vs.VideoNode,
     thSAD: int | tuple[int, int | tuple[int, int]] | None = 115,
-    sigma_y: float = 0.7,
-    strength_uv: float = 0.2,
-    tr: int = 2,
+    sigma_y: float | None = 0.7,
+    strength_uv: float | None = 0.2,
+    tr: int = 1,
     mvtools_args: KwargsT | None = None,
     bm3d_impl: type[BM3DCPU | BM3DCuda | BM3DCudaRTC] = BM3DCudaRTC,
     bm3d_profile: Profile | Profile.Config = bm3d_profile_ffast(),
@@ -65,16 +65,12 @@ def denoise(
     """
     MVTools + BM3D + NLMeans denoise.
     """
-    if thSAD:
-        ref = MVTools.denoise(clip, thSAD, tr, **mvtools_args_defaults() | (mvtools_args or KwargsT()))
-    else:
-        ref = clip
-    if sigma_y:
-        denoised_luma = bm3d_impl.denoise(clip, sigma_y, tr, 1, bm3d_profile, ref, planes=0)
-    else:
-        denoised_luma = clip
-    denoised_chroma = nl_means(denoised_luma, strength_uv, tr, ref=ref, planes=[1, 2], **nl_means_defaults() | (nl_args or KwargsT()))
-    return denoised_chroma
+    ref = MVTools.denoise(clip, thSAD, tr, **mvtools_args_defaults() | (mvtools_args or KwargsT())) if thSAD else clip
+    den_luma = bm3d_impl.denoise(clip, sigma_y, tr, 1, bm3d_profile, ref, planes=0) if sigma_y else clip
+    return (
+        nl_means(den_luma, strength_uv, tr, ref=ref, planes=[1, 2], **nl_means_defaults() | (nl_args or KwargsT()))
+        if strength_uv else den_luma
+    )
 
 
 class Grainer(ABC):
