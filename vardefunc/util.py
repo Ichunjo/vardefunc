@@ -112,7 +112,15 @@ def normalise_ranges(
     *,
     norm_dups: bool = True, ref_fps: Fraction | None = None
 ) -> list[Range] | list[tuple[int, int | None]]:
-    """Modified version of lvsfunc.util.normalize_ranges following python slicing syntax"""
+    """
+    Normalise ranges to a list of positive ranges following python slicing syntax `(inclusive, exclusive)`
+
+    :param clip:        Input clip.
+    :param ranges:      Frame range list of frame ranges, or range callbacks.
+    :param norm_dups:   Normalise duplicated, defaults to True
+    :param ref_fps:     FPS reference when passing an AudioNode, defaults to None
+    :return:            Normalised ranges
+    """
     if isinstance(clip, vs.VideoNode):
         num_frames = clip.num_frames
     elif isinstance(clip, vs.AudioNode):
