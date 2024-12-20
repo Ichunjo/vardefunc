@@ -84,27 +84,35 @@ def select_frames(
 
 @overload
 def normalise_ranges(
-    clip: vs.VideoNode, ranges: FrameRangeN | FrameRangesN | RangesCallBack, *, norm_dups: bool = True
+    clip: vs.VideoNode, ranges: FrameRangeN | FrameRangesN | RangesCallBack,
+    *,
+    norm_dups: bool = True
 ) -> list[Range]:
     ...
 
 
 @overload
 def normalise_ranges(
-    clip: vs.AudioNode, ranges: FrameRangeN | FrameRangesN | RangesCallBack, *, norm_dups: bool = True, ref_fps: Fraction | None = None
+    clip: vs.AudioNode, ranges: FrameRangeN | FrameRangesN | RangesCallBack,
+    *,
+    norm_dups: bool = True, ref_fps: Fraction | None = None
 ) -> list[Range]:
     ...
 
 
 @overload
 def normalise_ranges(
-    clip: None, ranges: FrameRangeN | FrameRangesN, *, norm_dups: bool = True,
+    clip: None, ranges: FrameRangeN | FrameRangesN,
+    *,
+    norm_dups: bool = True,
 ) -> list[tuple[int, int | None]]:
     ...
 
+
 def normalise_ranges(
     clip: vs.VideoNode | vs.AudioNode | None, ranges: FrameRangeN | FrameRangesN | RangesCallBack,
-    *, norm_dups: bool = True, ref_fps: Fraction | None = None
+    *,
+    norm_dups: bool = True, ref_fps: Fraction | None = None
 ) -> list[Range] | list[tuple[int, int | None]]:
     """Modified version of lvsfunc.util.normalize_ranges following python slicing syntax"""
     if isinstance(clip, vs.VideoNode):
@@ -125,14 +133,17 @@ def normalise_ranges(
     ) -> Sequence[int | tuple[int | None, int | None] | None]:
         if isinstance(rngs, int):
             return [rngs]
+
         if isinstance(rngs, tuple) and len(rngs) == 2:
             if isinstance(rngs[0], int) or rngs[0] is None and isinstance(rngs[1], int) or rngs[1] is None:
                 return [cast(tuple[int | None, int | None], rngs)]
             else:
-                raise
+                raise ValueError
+
         if callable(rngs):
             if not num_frames:
-                raise
+                raise ValueError
+
             cb_rngs = list[tuple[int, int]]()
             r = 0
 
@@ -141,7 +152,6 @@ def normalise_ranges(
                 if i:
                     cb_rngs.append((r, r + step))
                 r += step
-
             return cb_rngs
 
         rngs = cast(FrameRangesN, rngs)
