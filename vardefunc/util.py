@@ -4,7 +4,6 @@ from __future__ import annotations
 __all__ = [
     'select_frames', 'normalise_ranges', 'ranges_to_indices',
     'adjust_clip_frames', 'adjust_audio_frames',
-    'remap_rfs',
     'to_incl_incl',
     'to_incl_excl'
 ]
@@ -15,7 +14,6 @@ import warnings
 from fractions import Fraction
 from functools import partial
 from itertools import groupby
-from string import ascii_lowercase
 from typing import Any, Callable, Iterable, Optional, Sequence, cast, overload
 
 import numpy as np
@@ -291,14 +289,6 @@ def adjust_audio_frames(audio: vs.AudioNode, trims_or_dfs: list[Trim | DF] | Tri
     return core.std.AudioSplice(audios)
 
 
-def remap_rfs(clip_a: vs.VideoNode, clip_b: vs.VideoNode,ranges: FrameRangeN | FrameRangesN) -> vs.VideoNode:
-    """Replace ranges function using remap plugin"""
-    return core.remap.ReplaceFramesSimple(
-        clip_a, clip_b,
-        mappings=' '.join(f'[{s} {e-1}]' for s, e in normalise_ranges(clip_a, ranges, norm_dups=True))
-    )
-
-
 def pick_px_op(
     use_expr: bool,
     operations: tuple[str, Sequence[int] | Sequence[float] | int | float | Callable[..., Any]]
@@ -324,17 +314,3 @@ def pick_px_op(
         else:
             raise ValueError('pick_px_operation: operations[1] is not a valid type!')
     return func
-
-
-def rmse_expr(gray_only: bool = True) -> str:
-    """Root Mean Squared Error string to be integrated in std.Expr.
-
-    Args:
-        gray_only (bool, optional):
-            If both actual observation and prediction are one plane each.
-            Defaults to True.
-
-    Returns:
-        str: Expression.
-    """
-    return 'x y - dup * sqrt' if gray_only else 'x a - dup * sqrt y b - dup * sqrt max z c - dup * sqrt max'

@@ -9,11 +9,10 @@ from typing import Dict, List, Optional, Sequence, Set, Tuple, Union
 import vapoursynth as vs
 
 from pytimeconv import Convert
-from vsmasktools import region_rel_mask
-from vstools import clip_async_render, split
+from vsmasktools import max_planes, region_rel_mask
+from vstools import clip_async_render
 
 from .types import AnyPath
-from .util import max_expr
 
 core = vs.core
 
@@ -179,8 +178,7 @@ class OCR:
         bright_not = core.misc.Hysteresis(bright_out, bright_raw).std.InvertMask()
         white_txt = core.std.MaskedMerge(clip.std.BlankClip(), white_raw, bright_not)
 
-        if (n_p := white_txt.format.num_planes) > 1:  # type: ignore
-            white_txt = core.std.Expr(split(white_txt), max_expr(n_p))
+        white_txt = max_planes(white_txt)
 
         try:
             return white_txt.rgvs.RemoveGrain(3).rgvs.RemoveGrain(3)
