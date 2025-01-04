@@ -20,6 +20,7 @@ from .util import normalise_ranges, ranges_to_indices, select_frames, to_incl_in
 
 __all__ = [
     "is_preview", "set_output", "replace_ranges", "BestestSource",
+    "BoundingBox",
     "DeferredMask", "HardsubASS", "HardsubLine", "HardsubLineFade", "HardsubMask",
     "HardsubSign", "HardsubSignFades",
     "replace_squaremask",
@@ -196,6 +197,27 @@ else:
 
         def __del__(self) -> None:
             core.remove_log_handler(self._log_handle)
+
+
+class BoundingBox(vsmasktools.BoundingBox):
+    """Same as vsmasktools.BoundingBox but follow CropAbs order"""
+
+    @overload
+    def __init__(self, width: int, height: int, offset_x: int, offset_y: int, /, *, invert: bool = False) -> None:
+        ...
+
+    @overload
+    def __init__(self, pos: tuple[int, int] | vstools.Position, size: tuple[int, int] | vstools.Size, /, *, invert: bool = False) -> None:
+        ...
+
+    def __init__(self, *args: Any, invert: bool = False) -> None:
+        if len(args) == 4:
+            pos, size = (args[2], args[3]), (args[0], args[1])
+        elif len(args) == 2:
+            pos, size = args[0], args[1]
+        else:
+            raise NotImplementedError
+        super().__init__(pos, size, invert)
 
 
 class DeferredMask(vsmasktools.DeferredMask):
