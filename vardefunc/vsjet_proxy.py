@@ -125,6 +125,9 @@ def replace_ranges(
 
     :return:            Clip with ranges from clip_a replaced with clip_b.
     """
+    if len(args) == 0:
+        return clip_a
+
     if isinstance(clip_b := args[0], vs.VideoNode):
         ranges: FrameRangeN | FrameRangesN | RangesCallBackT | None = args[1]
 
@@ -133,17 +136,15 @@ def replace_ranges(
 
         return vstools.replace_ranges(clip_a, clip_b, ranges, exclusive, mismatch, prop_src=prop_src)
 
-    rclips: tuple[tuple[vs.VideoNode, FrameRangeN | FrameRangesN | RangesCallBack], ...] = args
-
     if not exclusive:
         raise NotImplementedError
 
-    if len(rclips) == 0:
-        return clip_a
+    rclips: tuple[tuple[vs.VideoNode, FrameRangeN | FrameRangesN | RangesCallBack], ...] = args
 
-    if len(rclips) == 1:
-        (c, r), = rclips
-        return replace_ranges(clip_a, c, r, mismatch=mismatch)
+    if len(rclips) <= 10:
+        for c, r in rclips:
+            clip_a = replace_ranges(clip_a, c, r, mismatch=mismatch)
+        return clip_a
 
     ref_indices = np.zeros(clip_a.num_frames, np.uint32)
 
