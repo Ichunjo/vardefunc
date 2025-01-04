@@ -481,6 +481,8 @@ class Rescale(BaseRescale):
 
         mask = Morpho.expand(mask, 2 + expand, mode=XxpandMode.ELLIPSE).std.Deflate()
 
+        mask = ColorRange.FULL.apply(mask)
+
         self.credit_mask = depth(mask, bits, dither_type=DitherType.NONE)
         return self.credit_mask
 
