@@ -10,18 +10,12 @@ import vsdenoise
 import vsmasktools
 import vstools
 
-from vsexprtools import ExprOp, ExprToken, norm_expr
-from vskernels import Catrom, KernelT, Point
-from vsmasktools import GenericMaskT, Morpho, SobelStd, XxpandMode, normalize_mask
-from vsrgtools.util import mean_matrix
-from vstools import (
-    ColorRange, CustomStrEnum, FrameRangeN, FrameRangesN, MatrixT, copy_signature, core,
-    scale_value, set_output, vs
-)
+from vskernels import Catrom, KernelT
+from vstools import CustomStrEnum, FrameRangeN, FrameRangesN, MatrixT, copy_signature, core, set_output, vs
 
 from .types import AnyInt, NDArray, RangesCallBack, RangesCallBackF, RangesCallBackNF, RangesCallBackT
 from .types import VNumpy as vnp
-from .util import normalise_ranges, ranges_to_indices, to_incl_incl, select_frames
+from .util import normalise_ranges, ranges_to_indices, select_frames, to_incl_incl
 
 __all__ = [
     "is_preview", "set_output", "replace_ranges", "BestestSource",
@@ -220,53 +214,10 @@ class DeferredMask(vsmasktools.DeferredMask):
 class HardsubMask(vsmasktools.HardsubMask, DeferredMask): ...
 
 
-# Waiting for https://github.com/Jaded-Encoding-Thaumaturgy/vs-masktools/pull/29
-class HardsubSignFades(vsmasktools.HardsubSignFades, HardsubMask):
-    def __init__(
-        self, *args: Any, highpass: float = 0.0763, expand: int = 8, edgemask: GenericMaskT = SobelStd,
-        expand_mode: XxpandMode = XxpandMode.RECTANGLE,
-        **kwargs: Any
-    ) -> None:
-        super().__init__(*args, highpass=highpass, expand=expand, edgemask=edgemask, **kwargs)
-        self.expand_mode = expand_mode
-
-    def _mask(self, clip: vs.VideoNode, ref: vs.VideoNode, **kwargs: Any) -> vs.VideoNode:
-        clipedge, refedge = (
-            normalize_mask(self.edgemask, x, **kwargs).std.Convolution(mean_matrix)
-            for x in (clip, ref)
-        )
-
-        highpass = scale_value(self.highpass, 32, clip, ColorRange.FULL)
-
-        mask = norm_expr(
-            [clipedge, refedge], f'x y - {highpass} < 0 {ExprToken.RangeMax} ?'
-        ).std.Median()
-
-        return Morpho.inflate(Morpho.expand(mask, self.expand, mode=self.expand_mode), iterations=4)
+class HardsubSignFades(vsmasktools.HardsubSignFades, HardsubMask): ...
 
 
-# Waiting for https://github.com/Jaded-Encoding-Thaumaturgy/vs-masktools/pull/29
-class HardsubSign(vsmasktools.HardsubSign, HardsubMask):
-    def __init__(
-        self, *args: Any, thr: float = 0.06, minimum: int = 1, expand: int = 8, inflate: int = 7,
-        expand_mode: XxpandMode = XxpandMode.RECTANGLE,
-        **kwargs: Any
-    ) -> None:
-        super().__init__(*args, thr=thr, minimum=minimum, expand=expand, inflate=inflate, **kwargs)
-        self.expand_mode = expand_mode
-
-    def _mask(self, clip: vs.VideoNode, ref: vs.VideoNode, **kwargs: Any) -> vs.VideoNode:
-        hsmf = norm_expr([clip, ref], 'x y - abs')
-        hsmf = Point.resample(hsmf, clip.format.replace(subsampling_w=0, subsampling_h=0))  # type: ignore
-
-        hsmf = ExprOp.MAX(hsmf, split_planes=True)
-
-        hsmf = Morpho.binarize(hsmf, self.thr)
-        hsmf = Morpho.minimum(hsmf, iterations=self.minimum)
-        hsmf = Morpho.expand(hsmf, self.expand, mode=self.expand_mode)
-        hsmf = Morpho.inflate(hsmf, iterations=self.inflate)
-
-        return hsmf.std.Limiter()
+class HardsubSign(vsmasktools.HardsubSign, HardsubMask): ...
 
 
 class HardsubLine(vsmasktools.HardsubLine, HardsubMask): ...
