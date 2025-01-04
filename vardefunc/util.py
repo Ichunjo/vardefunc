@@ -5,22 +5,24 @@ __all__ = [
     'select_frames', 'normalise_ranges', 'ranges_to_indices',
     'adjust_clip_frames', 'adjust_audio_frames',
     'to_incl_incl',
-    'to_incl_excl'
+    'to_incl_excl',
+    'MutableVideoNode'
 ]
 
 import math
 import warnings
 
 from fractions import Fraction
-from functools import partial
+from functools import cached_property, partial
 from itertools import groupby
-from typing import Any, Callable, Iterable, Optional, Sequence, cast, overload
+from types import NoneType
+from typing import Any, Callable, Iterable, MutableSequence, Optional, Self, Sequence, TypeGuard, cast, overload
 
 import numpy as np
 import vapoursynth as vs
 
 from pytimeconv import Convert
-from vstools import FrameRangeN, FrameRangesN
+from vstools import ClipsCache, FrameRangeN, FrameRangesN
 
 from .types import AnyInt
 from .types import DuplicateFrame as DF
@@ -322,3 +324,117 @@ def pick_px_op(
         else:
             raise ValueError('pick_px_operation: operations[1] is not a valid type!')
     return func
+
+
+class MutableVideoNode(MutableSequence[vs.VideoNode]):
+    def __init__(self, node: vs.VideoNode | Sequence[tuple[int, vs.VideoNode]]) -> None:
+        if isinstance(node, vs.VideoNode):
+            self._mutable_node: list[vs.VideoNode | tuple[int, None | vs.VideoNode]] = [(x, node) for x in range(node.num_frames)]
+        else:
+            self._mutable_node = list(node)
+
+    @overload
+    def __getitem__(self, index: int) -> vs.VideoNode:
+        ...
+
+    @overload
+    def __getitem__(self, index: slice) -> Self:
+        ...
+
+    def __getitem__(self, index: int | slice) -> vs.VideoNode | Self:
+        self._normalize_inner_list()
+
+        if isinstance(index, int):
+            value = cast(tuple[int, vs.VideoNode], self._mutable_node[index])
+
+            return value[1][value[0]]
+
+        values = cast(list[tuple[int, vs.VideoNode]], self._mutable_node[index])
+
+        return self.__class__(values)
+
+    @overload
+    def __setitem__(self, index: int, value: vs.VideoNode | tuple[int, None | vs.VideoNode]) -> None:
+        ...
+
+    @overload
+    def __setitem__(
+        self, index: slice,
+        value: vs.VideoNode | tuple[int, None | vs.VideoNode] | Iterable[vs.VideoNode] | Iterable[tuple[int, None | vs.VideoNode]]
+    ) -> None:
+        ...
+
+    def __setitem__(
+        self, index: int | slice,
+        value: vs.VideoNode | tuple[int, None | vs.VideoNode] | Iterable[vs.VideoNode] | Iterable[tuple[int, None | vs.VideoNode]]
+    ) -> None:
+        self._normalize_inner_list()
+
+        def _no_iterable(value: Any) -> TypeGuard[vs.VideoNode | tuple[int, None | vs.VideoNode]]:
+            return (
+                isinstance(value, tuple) and isinstance(value[0], int) and isinstance(value[1], (NoneType, vs.VideoNode))
+            ) or isinstance(value, vs.VideoNode)
+
+        if isinstance(index, int):
+            self._mutable_node[index] = cast(vs.VideoNode | tuple[int, None | vs.VideoNode], value)
+        elif isinstance(index, slice):
+            if _no_iterable(value):
+                self._mutable_node[index] = [value]
+            else:
+                self._mutable_node[index] = cast(Iterable[Any], value)
+
+    def __delitem__(self, index: int | slice) -> None:
+        self._normalize_inner_list()
+        del self._mutable_node[index]
+
+    def __len__(self) -> int:
+        self._normalize_inner_list()
+        return len(self.indices)
+
+    def insert(self, index: int, value: vs.VideoNode | tuple[int, vs.VideoNode | None]) -> None:
+        self._normalize_inner_list()
+        self._mutable_node.insert(index, value)
+
+    def _normalize_inner_list(self) -> None:
+        try:
+            del self.all_nodes
+        except AttributeError:
+            pass
+        try:
+            del self.indices
+        except AttributeError:
+            pass
+        self._mutable_node = [
+            (f_i, self.all_nodes[c_i]) for c_i, f_i in self.indices
+        ]
+
+    @cached_property
+    def all_nodes(self) -> list[vs.VideoNode]:
+        all_nodes = ClipsCache()
+
+        for n in self._mutable_node:
+            if isinstance(n, vs.VideoNode):
+                all_nodes[n] = n
+            else:
+                if isinstance(nn := n[1], vs.VideoNode):
+                    all_nodes[nn] = nn
+        try:
+            return list(all_nodes.keys())
+        finally:
+            del all_nodes
+
+    @cached_property
+    def indices(self) -> list[tuple[int, int]]:
+        indices = list[tuple[int, int]]()
+
+        for n in self._mutable_node:
+            if isinstance(n, vs.VideoNode):
+                indices.extend((self.all_nodes.index(n), i) for i in range(n.num_frames))
+            else:
+                indices.append((0 if n[1] is None else self.all_nodes.index(n[1]), n[0]))
+
+        return indices
+
+    def to_node(self) -> vs.VideoNode:
+        self._normalize_inner_list()
+        return select_frames(self.all_nodes, self.indices)
