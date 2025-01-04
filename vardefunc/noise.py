@@ -60,17 +60,25 @@ def denoise(
     mvtools_args: KwargsT | None = None,
     bm3d_impl: type[BM3DCPU | BM3DCuda | BM3DCudaRTC] = BM3DCudaRTC,
     bm3d_profile: Profile | Profile.Config = bm3d_profile_ffast(),
-    nl_args: KwargsT | None = None
+    nl_args: KwargsT | None = None,
+    store_mv_as_prop: bool = False
 ) -> vs.VideoNode:
     """
     MVTools + BM3D + NLMeans denoise.
     """
-    ref = MVTools.denoise(clip, thSAD, tr, **mvtools_args_defaults() | (mvtools_args or KwargsT())) if thSAD else clip
+    ref = (
+        MVTools.denoise(clip, thSAD, tr, **mvtools_args_defaults() | (mvtools_args or KwargsT()))
+        if thSAD else clip
+    )
     den_luma = bm3d_impl.denoise(clip, sigma_y, tr, 1, bm3d_profile, ref, planes=0) if sigma_y else clip
-    return (
+    den_chroma = (
         nl_means(den_luma, strength_uv, tr, ref=ref, planes=[1, 2], **nl_means_defaults() | (nl_args or KwargsT()))
         if strength_uv else den_luma
     )
+    if store_mv_as_prop:
+        den_chroma = den_chroma.std.ClipToProp(ref, "DenoiseMotionVectorsRef")
+
+    return den_chroma
 
 
 class Grainer(ABC):
