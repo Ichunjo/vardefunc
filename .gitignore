@@ -11,4 +11,5 @@ vardefunc.egg-info/
 test_files/
 upload_to_pip
 
-
+.vsjet/
+test.*
