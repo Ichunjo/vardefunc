@@ -8,6 +8,7 @@ from typing import Any, Iterator, Literal, Sequence, SupportsFloat, cast, overlo
 import numpy as np
 import vsdenoise
 import vsmasktools
+import vsrgtools
 import vstools
 
 from vskernels import Catrom, KernelT
@@ -22,7 +23,8 @@ __all__ = [
     "DeferredMask", "HardsubASS", "HardsubLine", "HardsubLineFade", "HardsubMask",
     "HardsubSign", "HardsubSignFades",
     "replace_squaremask",
-    "dpir"
+    "dpir",
+    "box_blur"
 ]
 
 
@@ -264,3 +266,15 @@ class _dpir(CustomStrEnum):
 
 
 dpir = _dpir.DEBLOCK
+
+
+@copy_signature(vsrgtools.box_blur)
+def box_blur(*args: Any, **kwargs: Any) -> Any:
+    blurred = vsrgtools.box_blur(*args, **kwargs)
+    
+    assert blurred.format
+
+    if hasattr(core, 'vszip') and blurred.format.bits_per_sample == 16:
+        blurred = core.std.Expr([args[0], blurred], "x 32769 = 32769 x 32770 >= y 2 + y ? ?")
+
+    return blurred
