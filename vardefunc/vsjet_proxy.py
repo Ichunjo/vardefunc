@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 from functools import lru_cache
-from typing import Any, Iterator, Literal, Sequence, SupportsFloat, cast, overload
+from typing import Any, Callable, Concatenate, Iterator, Literal, Sequence, SupportsFloat, cast, overload
 
 import numpy as np
 import vsdenoise
@@ -23,7 +23,7 @@ __all__ = [
     "BoundingBox",
     "DeferredMask", "HardsubASS", "HardsubLine", "HardsubLineFade", "HardsubMask",
     "HardsubSign", "HardsubSignFades",
-    "replace_squaremask",
+    "replace_squaremask", "rekt_partial",
     "dpir",
     "box_blur"
 ]
@@ -261,6 +261,15 @@ def replace_squaremask(*args: Any, **kwargs: Any) -> Any:
     ))
 
     return vsmasktools.replace_squaremask(*argsl, **kwargs)
+
+
+def rekt_partial(
+    clip: vs.VideoNode, left: int = 0, right: int = 0, top: int = 0, bottom: int = 0,
+    func: Callable[Concatenate[vs.VideoNode, vstools.P], vs.VideoNode] = lambda clip, *args, **kwargs: clip,
+    *args: vstools.P.args, **kwargs: vstools.P.kwargs
+) -> vs.VideoNode:
+    """Same as vsmasktools.rekt_partial but follow CropRel order"""
+    return vsmasktools.rekt_partial(clip, left, top, right, bottom, func, *args, **kwargs)
 
 
 StrengthT = SupportsFloat | vs.VideoNode | None
