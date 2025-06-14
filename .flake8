@@ -1,9 +1,0 @@
-[flake8]
-count = True
-ignore = W503
-max-line-length = 140
-max-doc-length = 200
-max-complexity = 10
-exclude = stubs/*
-show-source = True
-statistics = True
