@@ -10,7 +10,7 @@ from jetpytools import SPathLike
 from vsaa import NNEDI3
 from vsexprtools import ExprOp, norm_expr
 from vskernels import (
-    Bilinear, BorderHandling, Catrom, EwaLanczos, Hermite, Kernel, KernelLike, KernelT, Placebo, Scaler, ScalerLike
+    Bilinear, BorderHandling, Catrom, EwaLanczos, Hermite, Kernel, KernelLike, Placebo, Scaler, ScalerLike
 )
 from vskernels.types import LeftShift, TopShift
 from vsmasktools import FDoG, FDoGTCanny, KirschTCanny, Morpho, XxpandMode, region_abs_mask, region_rel_mask
@@ -116,7 +116,7 @@ class BaseRescale:
         clip: vs.VideoNode,
         /,
         height: int,
-        kernel: KernelT,
+        kernel: KernelLike,
         upscaler: ScalerLike = NNEDI3,
         downscaler: ScalerLike = Hermite(linear=True),
         width: int | None = None,
@@ -263,7 +263,7 @@ class Rescale(BaseRescale):
         clip: vs.VideoNode,
         /,
         height: int,
-        kernel: KernelT,
+        kernel: KernelLike,
         upscaler: ScalerLike = NNEDI3,
         downscaler: ScalerLike = Hermite(linear=True),
         width: int | None = None,
@@ -526,7 +526,7 @@ class RescaleFrac(Rescale):
         clip: vs.VideoNode,
         /,
         height: float,
-        kernel: KernelT,
+        kernel: KernelLike,
         base_height: int,
         upscaler: ScalerLike = NNEDI3,
         downscaler: ScalerLike = Hermite(linear=True),
@@ -632,7 +632,7 @@ class RescaleCropBase(RescaleFrac):
         clip: vs.VideoNode,
         /,
         height: float,
-        kernel: KernelT,
+        kernel: KernelLike,
         crop: tuple[int, ...] | None = None,
         upscaler: ScalerLike = NNEDI3,
         downscaler: ScalerLike = Hermite(linear=True),
@@ -694,7 +694,7 @@ class RescaleCropRel(RescaleCropBase):
         clip: vs.VideoNode,
         /,
         height: float,
-        kernel: KernelT,
+        kernel: KernelLike,
         crop: tuple[LeftCrop, RightCrop, TopCrop, BottomCrop],
         upscaler: ScalerLike = NNEDI3,
         downscaler: ScalerLike = Hermite(linear=True),
@@ -721,7 +721,7 @@ class RescaleCropAbs(RescaleCropBase):
         clip: vs.VideoNode,
         /,
         height: float,
-        kernel: KernelT,
+        kernel: KernelLike,
         crop: Union[
             tuple[WidthCrop, HeightCrop],
             tuple[WidthCrop, HeightCrop, LeftCrop, TopCrop],
@@ -760,7 +760,7 @@ class RescaleInter(Rescale):
         clip: vs.VideoNode,
         /,
         height: int,
-        kernel: KernelT,
+        kernel: KernelLike,
         upscaler: ScalerLike = NNEDI3,
         downscaler: ScalerLike = Hermite(linear=True),
         width: int | None = None,
