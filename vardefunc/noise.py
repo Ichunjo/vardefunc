@@ -101,14 +101,14 @@ class BasedDenoise(vs_object):
 
     def chroma_wnnn(self) -> Self:
         try:
-            del self.nl_means
+            del self.wnnn
         except AttributeError:
             pass
 
         self._process = self.out
         self.wnnn_args.update(planes=[1, 2])
         
-        self.out = self.nl_means
+        self.out = self.wnnn
 
         self.wnnn_args.pop("planes")
 
