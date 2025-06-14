@@ -1,84 +1,126 @@
 """Noising/denoising functions"""
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
+from enum import Enum
+from functools import cached_property, partial
+from typing import Any, Callable, Dict, List, Optional, Self, Sequence, Tuple, Union, cast
+
+from jetpytools import fallback
+from vsdenoise import DFTTest, bm3d, mc_degrain, nl_means, prefilter_to_full_range, wnnm
+from vsmasktools import FDoGTCanny, adg_mask, range_mask
+from vstools import ColorRange, DitherType, core, depth, get_depth, get_plane_sizes, get_y, join, split, vs, vs_object
+
+from .util import pick_px_op
+
 __all__ = [
-    'mvtools_args_defaults', 'nl_means_defaults', 'bm3d_profile_ffast', 'denoise',
+    'BasedDenoise',
     'Grainer', 'AddGrain', 'F3kdbGrain',
     'Graigasm', 'BilateralMethod', 'decsiz',
     'adaptative_regrain'
 ]
 
-from abc import ABC, abstractmethod
-from enum import Enum
-from functools import partial
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, cast
+class BasedDenoise(vs_object):
+    out: vs.VideoNode
 
-from vsdenoise import (
-    BM3DCPU, BM3DCuda, BM3DCudaRTC, DeviceType, MotionMode, MVTools, PelType, Prefilter, Profile,
-    SADMode, SearchMode, NLMWeightMode, nl_means
-)
-from vsdenoise.bm3d import ProfileBase
-from vsmasktools import FDoGTCanny, adg_mask, range_mask
-from vstools import ColorRange, DitherType, KwargsT, core, depth, get_depth, get_plane_sizes, get_y, join, split, vs
+    def __init__(
+        self,
+        clip: vs.VideoNode,
+        tr: int = 1,
+        full_range_args: dict[str, Any] | None = None,
+        dfttest_args: dict[str, Any] | None = dict(sloc=[(0.0, 12.0), (0.35, 8.0), (1.0, 4.0)]),
+        mc_degrain_args: dict[str, Any] | None = dict(thsad=80),
+        bm3d_args: dict[str, Any] | None = dict(sigma=0.75),
+        nlmeans_args: dict[str, Any] | None = dict(h=0.25, num_streams=2),
+        wnnn_args: dict[str, Any] | None = dict(sigma=0.5),
+    ) -> None:
+        self.clip = clip
+        self.tr = tr
+        self.full_range_args = fallback(full_range_args, {})
+        self.dfttest_args = fallback(dfttest_args, {})
+        self.mc_degrain_args = fallback(mc_degrain_args, {})
+        self.bm3d_args = fallback(bm3d_args, {})
+        self.nl_means_args = fallback(nlmeans_args, {})
+        self.wnnn_args = fallback(wnnn_args, {})
+        self.out = clip
+        self._process = clip
 
-from .util import pick_px_op
+    @cached_property
+    def full_range(self) -> vs.VideoNode:
+        return prefilter_to_full_range(self.clip, **self.full_range_args)
 
+    @cached_property
+    def dfttest(self) -> vs.VideoNode:
+        return DFTTest(**self.dfttest_args).denoise(self.full_range, tr=self.tr)
 
-def mvtools_args_defaults() -> KwargsT:
-    return KwargsT(
-        sad_mode=SADMode.SPATIAL.same_recalc,
-        motion=MotionMode.HIGH_SAD,
-        prefilter=Prefilter.MINBLUR2,
-        pel_type=PelType.WIENER,
-        search=SearchMode.DIAMOND.defaults,
-        block_size=16,
-        overlap=8,
-        limit=255
-    )
+    @cached_property
+    def mc_degrain(self) -> vs.VideoNode:
+        return mc_degrain(self.clip, **dict[str, Any](prefilter=self.dfttest, tr=self.tr) | self.mc_degrain_args)
 
+    @cached_property
+    def bm3d(self) -> vs.VideoNode:
+        return bm3d(self._process, **dict[str, Any](tr=self.tr, ref=self.mc_degrain) | self.bm3d_args)
 
-def nl_means_defaults() -> KwargsT:
-    return KwargsT(
-        sr=2,
-        simr=4,
-        wmode=NLMWeightMode.BISQUARE_HR,  # wmode=3
-        device_type=DeviceType.CUDA,
-        num_streams=2
-    )
+    @cached_property
+    def nl_means(self) -> vs.VideoNode:
+        return nl_means(self._process, **dict[str, Any](tr=self.tr, ref=self.mc_degrain) | self.nl_means_args)
 
+    @cached_property
+    def wnnn(self) -> vs.VideoNode:
+        return wnnm(self._process, **dict[str, Any](tr=self.tr, ref=self.mc_degrain) | self.wnnn_args)
 
-def bm3d_profile_ffast() -> Profile.Config:
-    return ProfileBase.Config(Profile.FAST, KwargsT(), KwargsT(), KwargsT(), KwargsT(fast=True), KwargsT(), KwargsT())
+    def luma(self) -> Self:
+        try:
+            del self.bm3d
+        except AttributeError:
+            pass
 
+        self._process = get_y(self.out)
+        self.out = join(self.bm3d, self.out)
 
-def denoise(
-    clip: vs.VideoNode,
-    thSAD: int | tuple[int, int | tuple[int, int]] | None = 115,
-    sigma_y: float | None = 0.7,
-    strength_uv: float | None = 0.2,
-    tr: int = 1,
-    mvtools_args: KwargsT | None = None,
-    bm3d_impl: type[BM3DCPU | BM3DCuda | BM3DCudaRTC] = BM3DCudaRTC,
-    bm3d_profile: Profile | Profile.Config = bm3d_profile_ffast(),
-    nl_args: KwargsT | None = None,
-    store_mv_as_prop: bool = False
-) -> vs.VideoNode:
-    """
-    MVTools + BM3D + NLMeans denoise.
-    """
-    ref = (
-        MVTools.denoise(clip, thSAD, tr, **mvtools_args_defaults() | (mvtools_args or KwargsT()))
-        if thSAD else clip
-    )
-    den_luma = bm3d_impl.denoise(clip, sigma_y, tr, 1, bm3d_profile, ref, planes=0) if sigma_y else clip
-    den_chroma = (
-        nl_means(den_luma, strength_uv, tr, ref=ref, planes=[1, 2], **nl_means_defaults() | (nl_args or KwargsT()))
-        if strength_uv else den_luma
-    )
-    if store_mv_as_prop:
-        den_chroma = den_chroma.std.ClipToProp(ref, "DenoiseMotionVectorsRef")
+        return self
 
-    return den_chroma
+    def chroma_nl_means(self) -> Self:
+        try:
+            del self.nl_means
+        except AttributeError:
+            pass
+
+        self._process = self.out
+        self.nl_means_args.update(planes=[1, 2])
+
+        self.out = self.nl_means
+
+        self.nl_means_args.pop("planes")
+
+        return self
+
+    def chroma_wnnn(self) -> Self:
+        try:
+            del self.nl_means
+        except AttributeError:
+            pass
+
+        self._process = self.out
+        self.wnnn_args.update(planes=[1, 2])
+        
+        self.out = self.nl_means
+
+        self.wnnn_args.pop("planes")
+
+        return self
+
+    def __vs_del__(self, core_id: int) -> None:
+        try:
+            del self.clip
+            del self.full_range
+            del self.dfttest
+            del self.mc_degrain
+            del self.bm3d
+            del self.out
+            del self._process
+        except BaseException:
+            pass
 
 
 class Grainer(ABC):
