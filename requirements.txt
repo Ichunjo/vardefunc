@@ -1,11 +1,4 @@
-lvsfunc>=0.8.1
-numpy>=2.0.1
+numpy>=2.2.2
 pytimeconv>=0.0.2
 VapourSynth>=65
-vsscale>=2.0.1
-vsaa>=1.9.1
-vskernels>=3.1.0
-vsrgtools>=1.6.2
-vsmasktools>=1.2.1
-vsexprtools>=1.5.1
-vstools>=3.1.0
+vsjetpack>=0.4.0

@@ -25,7 +25,6 @@ from typing import (
 
 import vapoursynth as vs
 
-from lvsfunc.comparison import Stack
 from vstools import Direction, depth, get_depth, get_w, insert_clip, join, plane
 
 from .types import F_OpInput, OpInput, Output
@@ -267,6 +266,8 @@ class DebugOutput(DebugOutputMMap):
                 format=vs.GRAY8, color=128
             ).text.Text('Problematic output: \noutput list out of range', 5, 2)
         else:
+            from lvsfunc.comparison import Stack
+
             if len({c.width for c in planes}) == len({c.height for c in planes}) == 1:
                 out = Stack(planes).clip
             else:

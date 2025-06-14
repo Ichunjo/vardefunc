@@ -55,7 +55,11 @@ class BasedDenoise(vs_object):
 
     @cached_property
     def mc_degrain(self) -> vs.VideoNode:
-        return mc_degrain(self.clip, **dict[str, Any](prefilter=self.dfttest, tr=self.tr) | self.mc_degrain_args)
+        return mc_degrain(  # type: ignore
+            self.clip,
+            **dict[str, Any](prefilter=self.dfttest, tr=self.tr) | self.mc_degrain_args,
+            export_globals=False
+        )
 
     @cached_property
     def bm3d(self) -> vs.VideoNode:

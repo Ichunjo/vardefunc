@@ -7,7 +7,6 @@ from math import floor
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, NamedTuple, TypeAlias, Union, cast
 
 from jetpytools import SPathLike
-from lvsfunc import VSFunctionNoArgs
 from vsaa import NNEDI3
 from vsexprtools import ExprOp, norm_expr
 from vskernels import (
@@ -21,8 +20,8 @@ from vsrgtools.rgtools import RemoveGrain
 from vsscale import ArtCNN, PlaceboShader
 from vstools import (
     ChromaLocation, ColorRange, ConstantFormatVideoNode, DitherType, FieldBased, FieldBasedT, GenericVSFunction,
-    KwargsT, VSFunction, check_variable, core, depth, expect_bits, get_peak_value, get_w, get_y, initialize_clip,
-    iterate, join, mod2, scale_value, split, vs
+    KwargsT, VSFunction, VSFunctionNoArgs, check_variable, core, depth, expect_bits, get_peak_value, get_w, get_y,
+    initialize_clip, iterate, join, mod2, scale_value, split, vs
 )
 
 from .types import Count

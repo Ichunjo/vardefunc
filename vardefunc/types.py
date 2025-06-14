@@ -4,7 +4,7 @@ __all__ = ['DuplicateFrame']
 
 from fractions import Fraction
 from os import PathLike
-from typing import Any, Callable, Dict, List, Protocol, Sequence, Tuple, TypeAlias, TypeVar, Union
+from typing import Any, Callable, List, Protocol, Sequence, TypeAlias, TypeVar, Union
 
 from numpy import array as np_array
 from numpy import c_, int8, int16, int32, uint8, uint16, uint32
@@ -23,18 +23,18 @@ Count: TypeAlias = int
 # Some outputs
 Output = Union[
     VideoNode,
-    List[VideoNode],
-    Tuple[int, VideoNode],
-    Tuple[int, List[VideoNode]]
+    list[VideoNode],
+    tuple[int, VideoNode],
+    tuple[int, List[VideoNode]]
 ]
 # Operator Input
 OpInput = Union[
     VideoNode,
-    List[VideoNode],
-    Tuple[VideoNode, ...],
-    Tuple[List[VideoNode], ...],
-    Dict[str, VideoNode],
-    Dict[str, List[VideoNode]]
+    list[VideoNode],
+    tuple[VideoNode, ...],
+    tuple[List[VideoNode], ...],
+    dict[str, VideoNode],
+    dict[str, List[VideoNode]]
 ]
 # Function Debug
 F_OpInput = TypeVar('F_OpInput', bound=Callable[..., OpInput])

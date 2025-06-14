@@ -3,27 +3,23 @@ from __future__ import annotations
 import logging
 
 from functools import lru_cache
-from typing import Any, Callable, Concatenate, Iterator, Literal, Sequence, SupportsFloat, cast, overload
+from typing import Any, Iterator, cast, overload
 
 import numpy as np
-import vsdenoise
 import vsmasktools
 import vstools
 
-from vskernels import Catrom, KernelT
-from vstools import CustomStrEnum, FrameRangeN, FrameRangesN, MatrixT, copy_signature, core, set_output, vs
+from vstools import FrameRangeN, FrameRangesN, copy_signature, set_output, vs
 
 from .types import AnyInt, NDArray, RangesCallBack, RangesCallBackF, RangesCallBackNF, RangesCallBackT
 from .types import VNumpy as vnp
 from .util import normalise_ranges, ranges_to_indices, select_frames, to_incl_incl
 
 __all__ = [
-    "is_preview", "set_output", "replace_ranges", "BestestSource",
-    "BoundingBox",
+    "is_preview", "set_output", "replace_ranges",
     "DeferredMask", "HardsubASS", "HardsubLine", "HardsubLineFade", "HardsubMask",
     "HardsubSign", "HardsubSignFades",
-    "replace_squaremask", "rekt_partial",
-    "dpir",
+    "replace_squaremask",
 ]
 
 
@@ -172,53 +168,6 @@ def replace_ranges(
     )
 
 
-try:
-    from vssource import BestSource
-except ImportError:
-    pass
-else:
-    class BestestSource(BestSource):
-        def __init__(self, *, force: bool = True, **kwargs: Any) -> None:
-            kwargs.setdefault("showprogress", True)
-            kwargs.setdefault("cachemode", 3)
-            super().__init__(force=force, **kwargs)
-
-            def handler_func(m_type: vs.MessageType, msg: str) -> None:
-                if all([
-                    m_type == vs.MESSAGE_TYPE_INFORMATION,
-                    msg.startswith(("VideoSource ", "AudioSource ")),
-                    logging.getLogger().level <= logging.WARNING,
-                    is_preview()
-                ]):
-                    print(msg, end="\r")
-
-            self._log_handle = core.add_log_handler(handler_func)
-
-        def __del__(self) -> None:
-            core.remove_log_handler(self._log_handle)
-
-
-class BoundingBox(vsmasktools.BoundingBox):
-    """Same as vsmasktools.BoundingBox but follow CropAbs order"""
-
-    @overload
-    def __init__(self, width: int, height: int, offset_x: int, offset_y: int, /, *, invert: bool = False) -> None:
-        ...
-
-    @overload
-    def __init__(self, pos: tuple[int, int] | vstools.Position, size: tuple[int, int] | vstools.Size, /, *, invert: bool = False) -> None:
-        ...
-
-    def __init__(self, *args: Any, invert: bool = False) -> None:
-        if len(args) == 4:
-            pos, size = (args[2], args[3]), (args[0], args[1])
-        elif len(args) == 2:
-            pos, size = args[0], args[1]
-        else:
-            raise NotImplementedError
-        super().__init__(pos, size, invert)
-
-
 class DeferredMask(vsmasktools.DeferredMask):
     _incl_excl_ranges: FrameRangesN
 
@@ -260,39 +209,3 @@ def replace_squaremask(*args: Any, **kwargs: Any) -> Any:
     ))
 
     return vsmasktools.replace_squaremask(*argsl, **kwargs)
-
-
-def rekt_partial(
-    clip: vs.VideoNode, left: int = 0, right: int = 0, top: int = 0, bottom: int = 0,
-    func: Callable[Concatenate[vs.VideoNode, vstools.P], vs.VideoNode] = lambda clip, *args, **kwargs: clip,
-    *args: vstools.P.args, **kwargs: vstools.P.kwargs
-) -> vs.VideoNode:
-    """Same as vsmasktools.rekt_partial but follow CropRel order"""
-    return vsmasktools.rekt_partial(clip, left, top, right, bottom, func, *args, **kwargs)
-
-
-StrengthT = SupportsFloat | vs.VideoNode | None
-
-
-class _dpir(CustomStrEnum):
-    DEBLOCK: _dpir = 'deblock'  # type: ignore
-    DENOISE: _dpir = 'denoise'  # type: ignore
-
-    def __call__(
-        self, clip: vs.VideoNode, strength: StrengthT | tuple[StrengthT, StrengthT] = 10,
-        matrix: MatrixT | None = None, cuda: bool | Literal['trt'] | None = None, i444: bool = False,
-        tiles: int | tuple[int, int] | None = None, overlap: int | tuple[int, int] | None = 8,
-        zones: Sequence[tuple[FrameRangeN | FrameRangesN | None, StrengthT]] | None = None,
-        fp16: bool | None = None, num_streams: int | None = None, device_id: int = 0, kernel: KernelT = Catrom,
-        **kwargs: Any
-    ) -> vs.VideoNode:
-        if zones:
-            zones = [(to_incl_incl(normalise_ranges(clip, r, norm_dups=True)), stre) for r, stre in zones]
-
-        return vsdenoise.deblock._dpir(self.value)(
-            clip, strength, matrix, cuda, i444, tiles, overlap,
-            zones, fp16, num_streams, device_id, kernel, **kwargs  # type: ignore
-        )
-
-
-dpir = _dpir.DEBLOCK
