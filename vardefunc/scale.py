@@ -35,6 +35,12 @@ __all__ = [
 ]
 
 
+class PlHermite(Placebo):
+    _kernel = 'hermite'
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(None, 0, 0, **kwargs)
+
 
 
 RescaleFunc = Callable[["BaseRescale", vs.VideoNode], vs.VideoNode]
