@@ -6,9 +6,8 @@ __all__ = [
 
 from typing import Any
 
-from vsexprtools import average_merge
-from vskernels import Bilinear, Scaler, ScalerT
-from vsrgtools import box_blur
+from vskernels import Bilinear, Scaler, ScalerLike
+from vsrgtools import box_blur, MeanMode
 from vstools import DitherType, VSFunction, core, depth, get_depth, vs
 
 
@@ -17,7 +16,7 @@ def cambi_mask(
     scale: int = 1,
     merge_previous: bool = True,
     blur_func: VSFunction = lambda clip: box_blur(clip, 2, 3, planes=0),
-    scaler: ScalerT = Bilinear,
+    scaler: ScalerLike = Bilinear,
     **cambi_args: Any
 ) -> vs.VideoNode:
     """Generate a deband mask
@@ -39,7 +38,8 @@ def cambi_mask(
             for i in range(0, scale + 1)
         ]
         scaler = Scaler.ensure_obj(scaler)
-        deband_mask = average_merge([scaler.scale(c, scores.width, scores.height) for c in cscores])
+
+        deband_mask = MeanMode.ARITHMETIC((scaler.scale(c, scores.width, scores.height) for c in cscores), func=cambi_mask)
     else:
         deband_mask = blur_func(scores.std.PropToClip(f'CAMBI_SCALE{scale}').std.Deflate().std.Deflate())
 

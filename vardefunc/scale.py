@@ -4,20 +4,25 @@ from __future__ import annotations
 from abc import abstractmethod
 from functools import cached_property, wraps
 from math import floor
-from typing import TYPE_CHECKING, Any, Callable, NamedTuple, TypeAlias, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, NamedTuple, TypeAlias, Union, cast
 
-from vsaa import Nnedi3
+from jetpytools import SPathLike
+from lvsfunc import VSFunctionNoArgs
+from vsaa import NNEDI3
 from vsexprtools import ExprOp, norm_expr
-from vskernels import Bilinear, BorderHandling, Hermite, Kernel, KernelT, Scaler, ScalerT
+from vskernels import (
+    Bilinear, BorderHandling, Catrom, EwaLanczos, Hermite, Kernel, KernelLike, KernelT, Placebo, Scaler, ScalerLike
+)
 from vskernels.types import LeftShift, TopShift
 from vsmasktools import FDoG, FDoGTCanny, KirschTCanny, Morpho, XxpandMode, region_abs_mask, region_rel_mask
 from vsmasktools.utils import _get_region_expr
-from vsrgtools import RemoveGrainMode, bilateral, box_blur, gauss_blur, removegrain
-from vsscale import PlaceboShader
+from vsrgtools import bilateral, box_blur, gauss_blur, removegrain
+from vsrgtools.rgtools import RemoveGrain
+from vsscale import ArtCNN, PlaceboShader
 from vstools import (
-    ChromaLocation, ColorRange, ConstantFormatVideoNode, DitherType, FieldBased, FieldBasedT,
-    GenericVSFunction, KwargsT, VSFunction, check_variable, core, depth, expect_bits,
-    get_peak_value, get_w, get_y, initialize_clip, iterate, join, mod2, scale_value, split, vs
+    ChromaLocation, ColorRange, ConstantFormatVideoNode, DitherType, FieldBased, FieldBasedT, GenericVSFunction,
+    KwargsT, VSFunction, check_variable, core, depth, expect_bits, get_peak_value, get_w, get_y, initialize_clip,
+    iterate, join, mod2, scale_value, split, vs
 )
 
 from .types import Count
@@ -33,6 +38,7 @@ __all__ = [
 
 
 RescaleFunc = Callable[["BaseRescale", vs.VideoNode], vs.VideoNode]
+
 
 class BaseRescale:
     """
@@ -106,8 +112,8 @@ class BaseRescale:
         /,
         height: int,
         kernel: KernelT,
-        upscaler: ScalerT = Nnedi3,
-        downscaler: ScalerT = Hermite(linear=True),
+        upscaler: ScalerLike = NNEDI3,
+        downscaler: ScalerLike = Hermite(linear=True),
         width: int | None = None,
         shift: tuple[TopShift, LeftShift] = (0, 0),
         border_handling: BorderHandling = BorderHandling.MIRROR
@@ -118,7 +124,7 @@ class BaseRescale:
         :param clip:                Clip to be rescaled.
         :param height:              Height to be descaled to.
         :param kernel:              Kernel used for descaling.
-        :param upscaler:            Scaler that supports doubling, defaults to Nnedi3
+        :param upscaler:            Scaler that supports doubling, defaults to NNEDI3
         :param downscaler:          Scaler used for downscaling the upscaled clip back to input res, defaults to Hermite(linear=True)
         :param width:               Width to be descaled to, defaults to None
         :param shift:               Shifts to apply during descale and upscale, defaults to (0, 0)
@@ -253,8 +259,8 @@ class Rescale(BaseRescale):
         /,
         height: int,
         kernel: KernelT,
-        upscaler: ScalerT = Nnedi3,
-        downscaler: ScalerT = Hermite(linear=True),
+        upscaler: ScalerLike = NNEDI3,
+        downscaler: ScalerLike = Hermite(linear=True),
         width: int | None = None,
         shift: tuple[TopShift, LeftShift] = (0, 0),
         border_handling: BorderHandling = BorderHandling.MIRROR,
@@ -265,7 +271,7 @@ class Rescale(BaseRescale):
         :param clip:                Clip to be rescaled.
         :param height:              Height to be descaled to.
         :param kernel:              Kernel used for descaling.
-        :param upscaler:            Scaler that supports doubling, defaults to Nnedi3
+        :param upscaler:            Scaler that supports doubling, defaults to NNEDI3
         :param downscaler:          Scaler used for downscaling the upscaled clip back to input res, defaults to Hermite(linear=True)
         :param width:               Width to be descaled to, defaults to None
         :param shift:               Shifts to apply during descale and upscale, defaults to (0, 0)
@@ -320,7 +326,7 @@ class Rescale(BaseRescale):
     def line_mask(self) -> None:
         self._line_mask = None
 
-    def default_line_mask(self, clip: vs.VideoNode | None = None, scaler: ScalerT = Bilinear) -> vs.VideoNode:
+    def default_line_mask(self, clip: vs.VideoNode | None = None, scaler: ScalerLike = Bilinear) -> vs.VideoNode:
         """
         Load a default Kirsch line mask in the class instance. Additionnaly, it is returned.
 
@@ -337,7 +343,7 @@ class Rescale(BaseRescale):
         self, clip: vs.VideoNode | None = None,
         lthrs: tuple[float, float] = (0.2, 0.2),
         multis: tuple[float, float] = (1.2, 0.3),
-        scaler: ScalerT = Bilinear,
+        scaler: ScalerLike = Bilinear,
         **kwargs: Any
     ) -> vs.VideoNode:
         """
@@ -350,7 +356,7 @@ class Rescale(BaseRescale):
         clip = clip if clip else self.clip
         clipy = get_y(clip) if clip else self.clipy
         scaler = Scaler.ensure_obj(scaler)
-        
+
         hthrs = kwargs.setdefault("hthrs", (None, None))
         clamps = kwargs.setdefault("clamps", (False, False))
         planes = kwargs.setdefault("planes", (None, None))
@@ -371,7 +377,7 @@ class Rescale(BaseRescale):
 
     def vodes_line_mask(
         self,
-        clip: vs.VideoNode | None = None, scaler: ScalerT = Bilinear,
+        clip: vs.VideoNode | None = None, scaler: ScalerLike = Bilinear,
         lthr: float | None = None, hthr: float | None = None
     ) -> vs.VideoNode:
         """
@@ -414,8 +420,8 @@ class Rescale(BaseRescale):
     def default_credit_mask(
         self, rescale: vs.VideoNode | None = None, src: vs.VideoNode | None = None,
         thr: float = 0.216, blur: float | KwargsT | None = None,
-        prefilter: int | KwargsT | bool | VSFunction = False,
-        postfilter: int | tuple[Count, RemoveGrainMode] | list[tuple[Count, RemoveGrainMode]] | VSFunction = 2,
+        prefilter: int | KwargsT | bool | VSFunctionNoArgs[vs.VideoNode, vs.VideoNode] = False,
+        postfilter: int | tuple[Count, RemoveGrain.Mode] | list[tuple[Count, RemoveGrain.Mode]] | VSFunctionNoArgs[vs.VideoNode, vs.VideoNode] = 2,
         ampl_expr: str | None = None,
         expand: int = 2
     ) -> vs.VideoNode:
@@ -467,7 +473,7 @@ class Rescale(BaseRescale):
 
         if postfilter:
             if isinstance(postfilter, int):
-                mask = iterate(diff, removegrain, postfilter, RemoveGrainMode.MINMAX_AROUND2)
+                mask = iterate(diff, removegrain, postfilter, RemoveGrain.Mode.MINMAX_AROUND2)
             elif isinstance(postfilter, tuple):
                 mask = iterate(diff, removegrain, postfilter[0], postfilter[1])
             elif isinstance(postfilter, list):
@@ -517,8 +523,8 @@ class RescaleFrac(Rescale):
         height: float,
         kernel: KernelT,
         base_height: int,
-        upscaler: ScalerT = Nnedi3,
-        downscaler: ScalerT = Hermite(linear=True),
+        upscaler: ScalerLike = NNEDI3,
+        downscaler: ScalerLike = Hermite(linear=True),
         width: float | None = None,
         base_width: int | None = None,
         shift: tuple[TopShift, LeftShift] = (0, 0),
@@ -531,7 +537,7 @@ class RescaleFrac(Rescale):
         :param height:              Float Height to be descaled to.
         :param kernel:              Kernel used for descaling.
         :param base_height:         Integer height at which the clip will be contained
-        :param upscaler:            Scaler that supports doubling, defaults to Nnedi3
+        :param upscaler:            Scaler that supports doubling, defaults to NNEDI3
         :param downscaler:          Scaler used for downscaling the upscaled clip back to input res, defaults to Hermite(linear=True)
         :param width:               Float width to be descaled to, defaults to None
         :param base_width:          Integer width at which the clip will be contained, defaults to None
@@ -571,7 +577,7 @@ class RescaleFrac(Rescale):
         self, rescale: vs.VideoNode | None = None, src: vs.VideoNode | None = None,
         thr: float = 0.216, blur: float | KwargsT | None = None,
         prefilter: int | KwargsT | bool | VSFunction = False,
-        postfilter: int | tuple[Count, RemoveGrainMode] | list[tuple[Count, RemoveGrainMode]] | VSFunction = 2,
+        postfilter: int | tuple[Count, RemoveGrain.Mode] | list[tuple[Count, RemoveGrain.Mode]] | VSFunction = 2,
         ampl_expr: str | None = None,
         expand: int = 2,
         use_base_height: bool = False
@@ -614,7 +620,7 @@ class RescaleCropBase(RescaleFrac):
     pre: vs.VideoNode
     crop: tuple[int, ...]
 
-    crop_function: GenericVSFunction
+    crop_function: GenericVSFunction[vs.VideoNode]
 
     def __init__(
         self,
@@ -623,8 +629,8 @@ class RescaleCropBase(RescaleFrac):
         height: float,
         kernel: KernelT,
         crop: tuple[int, ...] | None = None,
-        upscaler: ScalerT = Nnedi3,
-        downscaler: ScalerT = Hermite(linear=True),
+        upscaler: ScalerLike = NNEDI3,
+        downscaler: ScalerLike = Hermite(linear=True),
         width: float | None = None,
         shift: tuple[TopShift, LeftShift] = (0, 0),
         border_handling: BorderHandling = BorderHandling.MIRROR,
@@ -685,8 +691,8 @@ class RescaleCropRel(RescaleCropBase):
         height: float,
         kernel: KernelT,
         crop: tuple[LeftCrop, RightCrop, TopCrop, BottomCrop],
-        upscaler: ScalerT = Nnedi3,
-        downscaler: ScalerT = Hermite(linear=True),
+        upscaler: ScalerLike = NNEDI3,
+        downscaler: ScalerLike = Hermite(linear=True),
         width: float | None = None,
         shift: tuple[TopShift, LeftShift] = (0, 0),
         border_handling: BorderHandling = BorderHandling.MIRROR,
@@ -715,8 +721,8 @@ class RescaleCropAbs(RescaleCropBase):
             tuple[WidthCrop, HeightCrop],
             tuple[WidthCrop, HeightCrop, LeftCrop, TopCrop],
         ],
-        upscaler: ScalerT = Nnedi3,
-        downscaler: ScalerT = Hermite(linear=True),
+        upscaler: ScalerLike = NNEDI3,
+        downscaler: ScalerLike = Hermite(linear=True),
         width: float | None = None,
         shift: tuple[TopShift, LeftShift] = (0, 0),
         border_handling: BorderHandling = BorderHandling.MIRROR,
@@ -750,8 +756,8 @@ class RescaleInter(Rescale):
         /,
         height: int,
         kernel: KernelT,
-        upscaler: ScalerT = Nnedi3,
-        downscaler: ScalerT = Hermite(linear=True),
+        upscaler: ScalerLike = NNEDI3,
+        downscaler: ScalerLike = Hermite(linear=True),
         width: int | None = None,
         shift: tuple[TopShift, LeftShift] = (0, 0),
         field_based: FieldBasedT | None = None,
