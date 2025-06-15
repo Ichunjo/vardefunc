@@ -64,6 +64,94 @@ class EwaLanczosChroma(EwaLanczos):
 
         return core.std.ShufflePlanes([clip, u, v], [0, 0, 0], vs.YUV, clip)
 
+
+class ArtCNNShaderBase(PlaceboShader):
+    shader_file: ClassVar[SPathLike]
+
+    def __init__(
+        self,
+        *,
+        kernel: KernelLike = Catrom,
+        scaler: ScalerLike | None = None,
+        shifter: KernelLike | None = None,
+        **kwargs: Any
+    ) -> None:
+        super().__init__(self.shader_file, kernel=kernel, scaler=scaler, shifter=shifter, **kwargs)
+
+
+class ArtCNNShader(ArtCNNShaderBase):
+    shader_file = r"C:\Users\Varde\mpv\Shaders\ArtCNN_C4F16.glsl"
+
+    class C4F16(ArtCNNShaderBase):
+        shader_file = r"C:\Users\Varde\mpv\Shaders\ArtCNN_C4F16.glsl"
+
+    class C4F32(ArtCNNShaderBase):
+        shader_file = r"C:\Users\Varde\mpv\Shaders\ArtCNN_C4F32.glsl"
+
+    class C4F16_Chroma(ArtCNNShaderBase):
+        shader_file = r"C:\Users\Varde\mpv\Shaders\ArtCNN_C4F16_Chroma.glsl"
+
+    class C4F32_Chroma(ArtCNNShaderBase):
+        shader_file = r"C:\Users\Varde\mpv\Shaders\ArtCNN_C4F32_Chroma.glsl"
+
+
+def mpv_preview(
+    clip: vs.VideoNode, w: int | None = None, h: int | None = None,
+    scale: ScalerLike = ArtCNNShader.C4F16,
+    dscale: ScalerLike = PlHermite(linearize=True),
+    cscale: ScalerLike = EwaLanczos(antiring=0.6),
+    dither_type: DitherType = DitherType.ORDERED
+) -> vs.VideoNode:
+    clip = depth(clip, 16)
+
+    scale = Scaler.ensure_obj(scale)
+    dscale = Scaler.ensure_obj(dscale)
+    cscale = Scaler.ensure_obj(cscale)
+
+    props = KwargsT()
+
+    planes = list[vs.VideoNode](split(clip))
+
+    if w and h and (w, h) > (clip.width, clip.height):
+        if isinstance(scale, ArtCNNShader):
+            planes[0] = scale.supersample(planes[0], 2)
+
+            if (planes[0].width, planes[0].height) > (w, h):
+                planes[0] = dscale.scale(planes[0], w, h)
+
+                if is_preview():
+                    props["PreviewDscale"] = dscale.__class__.__name__
+        else:
+            planes[0] = scale.scale(planes[0], w, h)
+
+        if is_preview():
+            props["PreviewScale"] = scale.__class__.__name__
+
+    if isinstance(cscale, (ArtCNNShader, ArtCNN)) and (w, h) == (None, None):
+        preview = cscale.scale(clip.resize.Bilinear(format=vs.YUV444P16))
+    else:
+        left_shift, top_shift = ChromaLocation.from_video(clip).get_offsets(clip)
+        left_shift *= planes[1].width / planes[0].width
+        top_shift *= planes[1].height / planes[0].height
+
+        planes[1] = cscale.scale(planes[1], planes[0].width, planes[0].height, (- top_shift, - left_shift))
+        planes[2] = cscale.scale(planes[2], planes[0].width, planes[0].height, (- top_shift, - left_shift))
+
+        preview = core.std.CopyFrameProps(join(planes), clip)
+
+    preview = cast(ConstantFormatVideoNode, preview)
+
+    if is_preview():
+        props["PreviewCscale"] = cscale.__class__.__name__
+
+    return dither_type.apply(
+        preview,
+        preview.format.replace(color_family=vs.RGB, sample_type=vs.INTEGER, bits_per_sample=8),
+        ColorRange.from_video(preview),
+        ColorRange.FULL
+    ).std.SetFrameProps(**props)
+
+
 RescaleFunc = Callable[["BaseRescale", vs.VideoNode], vs.VideoNode]
 
 
