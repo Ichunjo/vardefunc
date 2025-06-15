@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, List, Optional, Self, Sequence, Tuple, U
 from jetpytools import fallback
 from vsdenoise import DFTTest, bm3d, mc_degrain, nl_means, prefilter_to_full_range, wnnm
 from vsmasktools import FDoGTCanny, adg_mask, range_mask
-from vstools import ColorRange, DitherType, core, depth, get_depth, get_plane_sizes, get_y, join, plane, split, vs, vs_object
+from vstools import ColorRange, ConstantFormatVideoNode, DitherType, check_variable_format, core, depth, get_depth, get_plane_sizes, get_y, join, plane, split, vs, vs_object
 
 from .util import pick_px_op
 
@@ -21,7 +21,7 @@ __all__ = [
 ]
 
 class BasedDenoise(vs_object):
-    out: vs.VideoNode
+    out: ConstantFormatVideoNode
 
     def __init__(
         self,
@@ -34,6 +34,8 @@ class BasedDenoise(vs_object):
         nlmeans_args: dict[str, Any] | None = dict(h=0.25, num_streams=2),
         wnnn_args: dict[str, Any] | None = dict(sigma=0.5),
     ) -> None:
+        assert check_variable_format(clip, self.__class__)
+
         self.clip = clip
         self.tr = tr
         self.full_range_args = fallback(full_range_args, {})
@@ -62,11 +64,11 @@ class BasedDenoise(vs_object):
         )
 
     @cached_property
-    def bm3d(self) -> vs.VideoNode:
+    def bm3d(self) -> ConstantFormatVideoNode:
         return bm3d(self._process, **dict[str, Any](tr=self.tr, ref=self.mc_degrain) | self.bm3d_args)
 
     @cached_property
-    def nl_means(self) -> vs.VideoNode:
+    def nl_means(self) -> ConstantFormatVideoNode:
         return nl_means(self._process, **dict[str, Any](tr=self.tr, ref=self.mc_degrain) | self.nl_means_args)
 
     @cached_property
@@ -83,7 +85,7 @@ class BasedDenoise(vs_object):
 
         self._process = get_y(self.out)
         self.mc_degrain = plane(self.mc_degrain, 0)
-        self.out = join(self.bm3d, self.out)
+        self.out = join(self.bm3d, self.out) if self.out.format.color_family is vs.YUV else self.bm3d
 
         self.mc_degrain = mc_degrain
 
@@ -113,7 +115,7 @@ class BasedDenoise(vs_object):
         self._process = self.out
         self.wnnn_args.update(planes=[1, 2])
         
-        self.out = self.wnnn
+        self.out = self.wnnn  # type: ignore
 
         self.wnnn_args.pop("planes")
 
