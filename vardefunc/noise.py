@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, List, Optional, Self, Sequence, Tuple, U
 from jetpytools import fallback
 from vsdenoise import DFTTest, bm3d, mc_degrain, nl_means, prefilter_to_full_range, wnnm
 from vsmasktools import FDoGTCanny, adg_mask, range_mask
-from vstools import ColorRange, DitherType, core, depth, get_depth, get_plane_sizes, get_y, join, split, vs, vs_object
+from vstools import ColorRange, DitherType, core, depth, get_depth, get_plane_sizes, get_y, join, plane, split, vs, vs_object
 
 from .util import pick_px_op
 
@@ -79,8 +79,13 @@ class BasedDenoise(vs_object):
         except AttributeError:
             pass
 
+        mc_degrain = self.mc_degrain
+
         self._process = get_y(self.out)
+        self.mc_degrain = plane(self.mc_degrain, 0)
         self.out = join(self.bm3d, self.out)
+
+        self.mc_degrain = mc_degrain
 
         return self
 
