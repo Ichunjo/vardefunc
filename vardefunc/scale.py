@@ -20,14 +20,15 @@ from vsrgtools.rgtools import RemoveGrain
 from vsscale import ArtCNN, PlaceboShader
 from vstools import (
     ChromaLocation, ColorRange, ConstantFormatVideoNode, DitherType, FieldBased, FieldBasedT, GenericVSFunction,
-    KwargsT, VSFunction, VSFunctionNoArgs, check_variable, core, depth, expect_bits, get_peak_value, get_w, get_y,
-    initialize_clip, iterate, join, mod2, scale_value, split, vs
+    KwargsT, VSFunction, VSFunctionNoArgs, check_variable, core, depth, expect_bits, get_peak_value, get_u, get_v,
+    get_w, get_y, initialize_clip, iterate, join, mod2, scale_value, split, vs
 )
 
 from .types import Count
 from .vsjet_proxy import is_preview
 
 __all__ = [
+    "EwaLanczosChroma",
     'BaseRescale', 'Rescale', 'RescaleFrac',
     'RescaleCropBase', 'RescaleCropRel', 'RescaleCropAbs',
     'RescaleInter', 'MixedRescale'
@@ -41,6 +42,27 @@ class PlHermite(Placebo):
         super().__init__(None, 0, 0, **kwargs)
 
 
+class EwaLanczosChroma(EwaLanczos):
+    def scale(
+        self,
+        clip: vs.VideoNode,
+        width: int | None = None,
+        height: int | None = None,
+        shift: tuple[TopShift | list[TopShift], LeftShift | list[LeftShift]] = (0, 0),
+        **kwargs: Any,
+    ) -> vs.VideoNode | ConstantFormatVideoNode:
+        assert check_variable(clip, self.__class__)
+        assert clip.format.color_family is vs.YUV
+
+        u, v = get_u(clip), get_v(clip)
+        left_shift, top_shift = ChromaLocation.from_video(clip).get_offsets(clip)
+        left_shift *= u.width / clip.width
+        top_shift *= u.height / clip.height
+
+        u = super().scale(u, clip.width, clip.height, (- top_shift, - left_shift), **kwargs)  # type: ignore
+        v = super().scale(v, clip.width, clip.height, (- top_shift, - left_shift), **kwargs)  # type: ignore
+
+        return core.std.ShufflePlanes([clip, u, v], [0, 0, 0], vs.YUV, clip)
 
 RescaleFunc = Callable[["BaseRescale", vs.VideoNode], vs.VideoNode]
 
