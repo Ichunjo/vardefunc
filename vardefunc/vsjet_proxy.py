@@ -1,17 +1,30 @@
 from __future__ import annotations
 
-import logging
-
 from functools import lru_cache
-from typing import Any, Iterator, cast, overload
+from typing import Any, Iterator, Literal, Sequence, cast, overload
 
 import numpy as np
+import vsaa
 import vsmasktools
 import vstools
+from jetpytools import KwargsT
+from vskernels import ScalerLike
+from vsrgtools import box_blur
+from vsscale import ArtCNN
+from vstools import (
+    ConstantFormatVideoNode,
+    FrameRangeN,
+    FrameRangesN,
+    VSFunctionNoArgs,
+    copy_signature,
+    get_y,
+    limiter,
+    scale_mask,
+    set_output,
+    vs,
+)
 
-from vstools import FrameRangeN, FrameRangesN, copy_signature, set_output, vs
-
-from .types import AnyInt, NDArray, RangesCallBack, RangesCallBackF, RangesCallBackNF, RangesCallBackT
+from .types import AnyInt, NDArray
 from .types import VNumpy as vnp
 from .util import normalise_ranges, ranges_to_indices, select_frames, to_incl_incl
 
@@ -20,6 +33,7 @@ __all__ = [
     "DeferredMask", "HardsubASS", "HardsubLine", "HardsubLineFade", "HardsubMask",
     "HardsubSign", "HardsubSignFades",
     "replace_squaremask",
+    "based_aa",
 ]
 
 
@@ -209,3 +223,41 @@ def replace_squaremask(*args: Any, **kwargs: Any) -> Any:
     ))
 
     return vsmasktools.replace_squaremask(*argsl, **kwargs)
+
+
+def based_aa(
+    clip: vs.VideoNode,
+    rfactor: float = 2.0,
+    mask_thr: int = 60,
+    pscale: float = 0.0,
+    downscaler: ScalerLike | None = None,
+    supersampler: ScalerLike | Literal[False] = ArtCNN,
+    prefilter: vs.VideoNode | VSFunctionNoArgs[vs.VideoNode, ConstantFormatVideoNode] | Literal[False] = False,
+    postfilter: VSFunctionNoArgs[vs.VideoNode, ConstantFormatVideoNode] | Literal[False] | KwargsT | None = None,
+    show_mask: bool = False,
+    **aa_kwargs: Any
+) -> vs.VideoNode:
+    """vsaa.based_aa stripped down with mclip back"""
+
+    wclip = get_y(clip)
+
+    mask = vsmasktools.Prewitt().edgemask(wclip, 0).std.Binarize(scale_mask(mask_thr, 8, wclip))
+
+    mask = box_blur(mask.std.Maximum())
+    mask = limiter(mask, func=based_aa)
+
+    if show_mask:
+        return mask
+
+    aaw, aah = [round(dimension * rfactor) for dimension in (wclip.width, wclip.height)]
+
+    mclip = mask
+
+    if supersampler is not False:
+        mclip = vs.core.resize.Bilinear(mclip, aaw, aah)
+
+    aa_kwargs = {"mclip": mclip, "opt": 3} | aa_kwargs
+
+    return vsaa.based_aa(
+        clip, rfactor, mask, mask_thr, pscale, downscaler, supersampler, None, prefilter, postfilter, False, **aa_kwargs
+    )
