@@ -23,10 +23,11 @@ import vapoursynth as vs
 
 from pytimeconv import Convert
 from vstools import ClipsCache, FrameRangeN, FrameRangesN
+from vstools.utils.ranges import _RangesCallBack
 
 from .types import AnyInt
 from .types import DuplicateFrame as DF
-from .types import NDArray, Range, RangesCallBack, Trim
+from .types import NDArray, Range, Trim
 from .types import VNumpy as vnp
 
 core = vs.core
@@ -84,7 +85,7 @@ def select_frames(
 
 @overload
 def normalise_ranges(
-    clip: vs.VideoNode, ranges: FrameRangeN | FrameRangesN | RangesCallBack,
+    clip: vs.VideoNode, ranges: FrameRangeN | FrameRangesN | _RangesCallBack,
     *,
     norm_dups: bool = True
 ) -> list[Range]:
@@ -93,7 +94,7 @@ def normalise_ranges(
 
 @overload
 def normalise_ranges(
-    clip: vs.AudioNode, ranges: FrameRangeN | FrameRangesN | RangesCallBack,
+    clip: vs.AudioNode, ranges: FrameRangeN | FrameRangesN | _RangesCallBack,
     *,
     norm_dups: bool = True, ref_fps: Fraction | None = None
 ) -> list[Range]:
@@ -110,7 +111,7 @@ def normalise_ranges(
 
 
 def normalise_ranges(
-    clip: vs.VideoNode | vs.AudioNode | None, ranges: FrameRangeN | FrameRangesN | RangesCallBack,
+    clip: vs.VideoNode | vs.AudioNode | None, ranges: FrameRangeN | FrameRangesN | _RangesCallBack,
     *,
     norm_dups: bool = True, ref_fps: Fraction | None = None
 ) -> list[Range] | list[tuple[int, int | None]]:
@@ -137,7 +138,7 @@ def normalise_ranges(
         return [(0, num_frames)]
 
     def _resolve_ranges_type(
-        rngs: int | tuple[int | None, int | None] | FrameRangesN | RangesCallBack
+        rngs: int | tuple[int | None, int | None] | FrameRangesN | _RangesCallBack
     ) -> Sequence[int | tuple[int | None, int | None] | None]:
         if isinstance(rngs, int):
             return [rngs]
@@ -244,7 +245,7 @@ def to_incl_excl(ranges: list[Range]) -> list[Range]:
 
 class _ranges_to_indices:
     def __call__(
-        self, ref: vs.VideoNode, ranges: FrameRangeN | FrameRangesN | RangesCallBack,
+        self, ref: vs.VideoNode, ranges: FrameRangeN | FrameRangesN | _RangesCallBack,
         ref_indices: tuple[int, int] = (0, 1)
     ) -> NDArray[AnyInt]:
         return vnp.zip_arrays(
@@ -253,7 +254,7 @@ class _ranges_to_indices:
         )
 
     def gen_indices(
-        self, ref: vs.VideoNode, ranges: FrameRangeN | FrameRangesN | RangesCallBack,
+        self, ref: vs.VideoNode, ranges: FrameRangeN | FrameRangesN | _RangesCallBack,
         ref_indices: tuple[int, int]
     ) -> Iterable[int]:
         nranges = normalise_ranges(ref, ranges)

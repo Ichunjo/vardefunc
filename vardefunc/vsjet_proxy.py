@@ -60,7 +60,7 @@ def replace_ranges(
 @overload
 def replace_ranges(
     clip_a: vs.VideoNode, clip_b: vs.VideoNode,
-    ranges: RangesCallBack,
+    ranges: vstools.utils.ranges._RangesCallBack,
     /, *,
     mismatch: bool = False,
 ) -> vs.VideoNode:
@@ -69,7 +69,7 @@ def replace_ranges(
 @overload
 def replace_ranges(
     clip_a: vs.VideoNode, clip_b: vs.VideoNode,
-    ranges: RangesCallBackF[vs.VideoFrame] | RangesCallBackNF[vs.VideoFrame],
+    ranges: vstools.utils.ranges._RangesCallBackF[vs.VideoFrame] | vstools.utils.ranges._RangesCallBackNF[vs.VideoFrame],
     /, *,
     mismatch: bool = False,
     prop_src: vs.VideoNode
@@ -79,7 +79,7 @@ def replace_ranges(
 @overload
 def replace_ranges(
     clip_a: vs.VideoNode, clip_b: vs.VideoNode,
-    ranges: RangesCallBackF[list[vs.VideoFrame]] | RangesCallBackNF[list[vs.VideoFrame]],
+    ranges: vstools.utils.ranges._RangesCallBackF[Sequence[vs.VideoFrame]] | vstools.utils.ranges._RangesCallBackNF[Sequence[vs.VideoFrame]],
     /, *,
     mismatch: bool = False,
     prop_src: list[vs.VideoNode]
@@ -88,7 +88,7 @@ def replace_ranges(
 
 @overload
 def replace_ranges(
-    clip_a: vs.VideoNode, *clip_b: tuple[vs.VideoNode, FrameRangeN | FrameRangesN | RangesCallBack],
+    clip_a: vs.VideoNode, *clip_b: tuple[vs.VideoNode, FrameRangeN | FrameRangesN | vstools.utils.ranges._RangesCallBack],
     mismatch: bool = False,
 ) -> vs.VideoNode:
     ...
@@ -137,7 +137,7 @@ def replace_ranges(
         return clip_a
 
     if isinstance(clip_b := args[0], vs.VideoNode):
-        ranges: FrameRangeN | FrameRangesN | RangesCallBackT | None = args[1]
+        ranges: FrameRangeN | FrameRangesN | vstools.utils.ranges._RangesCallBackT | None = args[1]
 
         if exclusive and not callable(ranges):
             ranges = normalise_ranges(clip_b, ranges, norm_dups=True)
@@ -147,7 +147,7 @@ def replace_ranges(
     if not exclusive:
         raise NotImplementedError
 
-    rclips: tuple[tuple[vs.VideoNode, FrameRangeN | FrameRangesN | RangesCallBack], ...] = args
+    rclips: tuple[tuple[vs.VideoNode, FrameRangeN | FrameRangesN | vstools.utils.ranges._RangesCallBack], ...] = args
 
     if len(rclips) <= 10:
         for c, r in rclips:
