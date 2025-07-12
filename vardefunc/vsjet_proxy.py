@@ -253,3 +253,39 @@ def based_aa(
         **{"use_mclip": True, "opt": 3} | aa_kwargs,
     )
 
+
+class Rescale(vsscale.Rescale):
+    def __init__(
+        self,
+        clip: vs.VideoNode,
+        /,
+        height: int | float,
+        kernel: KernelLike,
+        upscaler: ScalerLike = vsscale.ArtCNN,
+        downscaler: ScalerLike = Hermite(linear=True),
+        width: int | float | None = None,
+        base_height: int | None = None,
+        base_width: int | None = None,
+        crop: tuple[
+            vsscale.helpers.LeftCrop, vsscale.helpers.RightCrop, vsscale.helpers.TopCrop, vsscale.helpers.BottomCrop
+        ] = vsscale.helpers.CropRel(),
+        shift: tuple[TopShift, LeftShift] = (0, 0),
+        field_based: FieldBasedT | bool | None = None,
+        border_handling: int | BorderHandling = BorderHandling.MIRROR,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            clip,
+            height,
+            kernel,
+            upscaler,
+            downscaler,
+            width,
+            base_height,
+            base_width,
+            crop,
+            shift,
+            field_based,
+            border_handling,
+            **{"_add_props": is_preview()} | kwargs,
+        )
