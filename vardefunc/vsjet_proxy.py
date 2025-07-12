@@ -26,9 +26,16 @@ from .types import VNumpy as vnp
 from .util import normalise_ranges, ranges_to_indices, select_frames, to_incl_incl
 
 __all__ = [
-    "is_preview", "set_output", "replace_ranges",
-    "DeferredMask", "HardsubASS", "HardsubLine", "HardsubLineFade", "HardsubMask",
-    "HardsubSign", "HardsubSignFades",
+    "is_preview",
+    "set_output",
+    "replace_ranges",
+    "DeferredMask",
+    "HardsubASS",
+    "HardsubLine",
+    "HardsubLineFade",
+    "HardsubMask",
+    "HardsubSign",
+    "HardsubSignFades",
     "replace_squaremask",
     "based_aa",
 ]
@@ -47,53 +54,67 @@ def is_preview() -> bool:
 
 @overload
 def replace_ranges(
-    clip_a: vs.VideoNode, clip_b: vs.VideoNode,
+    clip_a: vs.VideoNode,
+    clip_b: vs.VideoNode,
     ranges: FrameRangeN | FrameRangesN,
-    /, *,
-    exclusive: bool = True, mismatch: bool = False,
-) -> vs.VideoNode:
-    ...
+    /,
+    *,
+    exclusive: bool = True,
+    mismatch: bool = False,
+) -> vs.VideoNode: ...
+
 
 @overload
 def replace_ranges(
-    clip_a: vs.VideoNode, clip_b: vs.VideoNode,
+    clip_a: vs.VideoNode,
+    clip_b: vs.VideoNode,
     ranges: vstools.utils.ranges._RangesCallBack,
-    /, *,
+    /,
+    *,
     mismatch: bool = False,
-) -> vs.VideoNode:
-    ...
+) -> vs.VideoNode: ...
+
 
 @overload
 def replace_ranges(
-    clip_a: vs.VideoNode, clip_b: vs.VideoNode,
-    ranges: vstools.utils.ranges._RangesCallBackF[vs.VideoFrame] | vstools.utils.ranges._RangesCallBackNF[vs.VideoFrame],
-    /, *,
+    clip_a: vs.VideoNode,
+    clip_b: vs.VideoNode,
+    ranges: vstools.utils.ranges._RangesCallBackF[vs.VideoFrame]
+    | vstools.utils.ranges._RangesCallBackNF[vs.VideoFrame],
+    /,
+    *,
     mismatch: bool = False,
-    prop_src: vs.VideoNode
-) -> vs.VideoNode:
-    ...
+    prop_src: vs.VideoNode,
+) -> vs.VideoNode: ...
+
 
 @overload
 def replace_ranges(
-    clip_a: vs.VideoNode, clip_b: vs.VideoNode,
-    ranges: vstools.utils.ranges._RangesCallBackF[Sequence[vs.VideoFrame]] | vstools.utils.ranges._RangesCallBackNF[Sequence[vs.VideoFrame]],
-    /, *,
+    clip_a: vs.VideoNode,
+    clip_b: vs.VideoNode,
+    ranges: vstools.utils.ranges._RangesCallBackF[Sequence[vs.VideoFrame]]
+    | vstools.utils.ranges._RangesCallBackNF[Sequence[vs.VideoFrame]],
+    /,
+    *,
     mismatch: bool = False,
-    prop_src: list[vs.VideoNode]
-) -> vs.VideoNode:
-    ...
+    prop_src: list[vs.VideoNode],
+) -> vs.VideoNode: ...
+
 
 @overload
 def replace_ranges(
-    clip_a: vs.VideoNode, *clip_b: tuple[vs.VideoNode, FrameRangeN | FrameRangesN | vstools.utils.ranges._RangesCallBack],
+    clip_a: vs.VideoNode,
+    *clip_b: tuple[vs.VideoNode, FrameRangeN | FrameRangesN | vstools.utils.ranges._RangesCallBack],
     mismatch: bool = False,
-) -> vs.VideoNode:
-    ...
+) -> vs.VideoNode: ...
+
 
 def replace_ranges(
-    clip_a: vs.VideoNode, *args: Any,
-    exclusive: bool = True, mismatch: bool = False,
-    prop_src: vs.VideoNode | list[vs.VideoNode] | None = None
+    clip_a: vs.VideoNode,
+    *args: Any,
+    exclusive: bool = True,
+    mismatch: bool = False,
+    prop_src: vs.VideoNode | list[vs.VideoNode] | None = None,
 ) -> vs.VideoNode:
     """
     Replaces frames in a clip, either with pre-calculated indices or on-the-fly with a callback.
@@ -173,9 +194,7 @@ def replace_ranges(
     nindices = np.max([ref_indices, *indices], axis=0, out=ref_indices)
 
     return select_frames(
-        [clip_a, *clips],
-        vnp.zip_arrays(nindices, np.arange(clip_a.num_frames, dtype=np.uint32)),
-        mismatch=mismatch
+        [clip_a, *clips], vnp.zip_arrays(nindices, np.arange(clip_a.num_frames, dtype=np.uint32)), mismatch=mismatch
     )
 
 
@@ -215,9 +234,9 @@ class HardsubASS(vsmasktools.HardsubASS, HardsubMask): ...
 @copy_signature(vsmasktools.replace_squaremask)
 def replace_squaremask(*args: Any, **kwargs: Any) -> Any:
     argsl = list(args)
-    argsl[3] = to_incl_incl(normalise_ranges(
-        kwargs.get("clipa", argsl[0]), kwargs.pop("ranges", argsl[3]), norm_dups=True
-    ))
+    argsl[3] = to_incl_incl(
+        normalise_ranges(kwargs.get("clipa", argsl[0]), kwargs.pop("ranges", argsl[3]), norm_dups=True)
+    )
 
     return vsmasktools.replace_squaremask(*argsl, **kwargs)
 
