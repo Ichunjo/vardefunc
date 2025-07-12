@@ -6,20 +6,17 @@ from typing import Any, Iterator, Literal, Sequence, cast, overload
 import numpy as np
 import vsaa
 import vsmasktools
+import vsscale
 import vstools
 from jetpytools import KwargsT
-from vskernels import ScalerLike
-from vsrgtools import box_blur
-from vsscale import ArtCNN
+from vskernels import BorderHandling, Hermite, KernelLike, LeftShift, ScalerLike, TopShift
 from vstools import (
     ConstantFormatVideoNode,
+    FieldBasedT,
     FrameRangeN,
     FrameRangesN,
     VSFunctionNoArgs,
     copy_signature,
-    get_y,
-    limiter,
-    scale_mask,
     set_output,
     vs,
 )
@@ -228,36 +225,31 @@ def replace_squaremask(*args: Any, **kwargs: Any) -> Any:
 def based_aa(
     clip: vs.VideoNode,
     rfactor: float = 2.0,
+    mask: vs.VideoNode | vsmasktools.EdgeDetectT | Literal[False] = vsmasktools.Prewitt,
     mask_thr: int = 60,
     pscale: float = 0.0,
     downscaler: ScalerLike | None = None,
-    supersampler: ScalerLike | Literal[False] = ArtCNN,
+    supersampler: ScalerLike | Literal[False] = vsscale.ArtCNN,
+    antialiaser: vsaa.AntiAliaser | None = None,
     prefilter: vs.VideoNode | VSFunctionNoArgs[vs.VideoNode, ConstantFormatVideoNode] | Literal[False] = False,
     postfilter: VSFunctionNoArgs[vs.VideoNode, ConstantFormatVideoNode] | Literal[False] | KwargsT | None = None,
     show_mask: bool = False,
-    **aa_kwargs: Any
+    **aa_kwargs: Any,
 ) -> vs.VideoNode:
-    """vsaa.based_aa stripped down with mclip back"""
-
-    wclip = get_y(clip)
-
-    mask = vsmasktools.Prewitt().edgemask(wclip, 0).std.Binarize(scale_mask(mask_thr, 8, wclip))
-
-    mask = box_blur(mask.std.Maximum())
-    mask = limiter(mask, func=based_aa)
-
-    if show_mask:
-        return mask
-
-    aaw, aah = [round(dimension * rfactor) for dimension in (wclip.width, wclip.height)]
-
-    mclip = mask
-
-    if supersampler is not False:
-        mclip = vs.core.resize.Bilinear(mclip, aaw, aah)
-
-    aa_kwargs = {"mclip": mclip, "opt": 3} | aa_kwargs
+    """vsaa.based_aa with use_mclip=True and opt=3"""
 
     return vsaa.based_aa(
-        clip, rfactor, mask, mask_thr, pscale, downscaler, supersampler, None, prefilter, postfilter, False, **aa_kwargs
+        clip,
+        rfactor,
+        mask,
+        mask_thr,
+        pscale,
+        downscaler,
+        supersampler,
+        antialiaser,
+        prefilter,
+        postfilter,
+        show_mask,
+        **{"use_mclip": True, "opt": 3} | aa_kwargs,
     )
+
