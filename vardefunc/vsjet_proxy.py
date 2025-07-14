@@ -16,27 +16,18 @@ from vstools import (
     FrameRangeN,
     FrameRangesN,
     VSFunctionNoArgs,
-    copy_signature,
     set_output,
     vs,
 )
 
 from .types import AnyInt, NDArray
 from .types import VNumpy as vnp
-from .util import normalise_ranges, ranges_to_indices, select_frames, to_incl_incl
+from .util import normalise_ranges, ranges_to_indices, select_frames
 
 __all__ = [
     "is_preview",
     "set_output",
     "replace_ranges",
-    "DeferredMask",
-    "HardsubASS",
-    "HardsubLine",
-    "HardsubLineFade",
-    "HardsubMask",
-    "HardsubSign",
-    "HardsubSignFades",
-    "replace_squaremask",
     "based_aa",
 ]
 
@@ -196,49 +187,6 @@ def replace_ranges(
     return select_frames(
         [clip_a, *clips], vnp.zip_arrays(nindices, np.arange(clip_a.num_frames, dtype=np.uint32)), mismatch=mismatch
     )
-
-
-class DeferredMask(vsmasktools.DeferredMask):
-    _incl_excl_ranges: FrameRangesN
-
-    @property
-    def ranges(self) -> FrameRangesN:
-        return [
-            (s, (e - 1) if e is not None else e)
-            for (s, e) in normalise_ranges(None, self._incl_excl_ranges, norm_dups=True)
-        ]
-
-    @ranges.setter
-    def ranges(self, value: FrameRangesN) -> None:
-        self._incl_excl_ranges = value
-
-
-class HardsubMask(vsmasktools.HardsubMask, DeferredMask): ...
-
-
-class HardsubSignFades(vsmasktools.HardsubSignFades, HardsubMask): ...
-
-
-class HardsubSign(vsmasktools.HardsubSign, HardsubMask): ...
-
-
-class HardsubLine(vsmasktools.HardsubLine, HardsubMask): ...
-
-
-class HardsubLineFade(vsmasktools.HardsubLineFade, HardsubMask): ...
-
-
-class HardsubASS(vsmasktools.HardsubASS, HardsubMask): ...
-
-
-@copy_signature(vsmasktools.replace_squaremask)
-def replace_squaremask(*args: Any, **kwargs: Any) -> Any:
-    argsl = list(args)
-    argsl[3] = to_incl_incl(
-        normalise_ranges(kwargs.get("clipa", argsl[0]), kwargs.pop("ranges", argsl[3]), norm_dups=True)
-    )
-
-    return vsmasktools.replace_squaremask(*argsl, **kwargs)
 
 
 def based_aa(
