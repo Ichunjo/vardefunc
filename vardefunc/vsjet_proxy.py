@@ -43,6 +43,9 @@ def is_preview() -> bool:
     return is_preview
 
 
+vstools.replace_ranges.exclusive = True
+
+
 @overload
 def replace_ranges(
     clip_a: vs.VideoNode,
@@ -146,7 +149,7 @@ def replace_ranges(
         return clip_a
 
     if isinstance(clip_b := args[0], vs.VideoNode):
-        ranges: FrameRangeN | FrameRangesN | vstools.utils.ranges._RangesCallBackT | None = args[1]
+        ranges: FrameRangeN | FrameRangesN | vstools.utils.ranges._RangesCallBackLike | None = args[1]
 
         if exclusive and not callable(ranges):
             ranges = normalise_ranges(clip_b, ranges, norm_dups=True)
