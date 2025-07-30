@@ -1,137 +1,509 @@
 """Noising/denoising functions"""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from functools import cached_property, partial
-from typing import Any, Callable, Dict, List, Optional, Self, Sequence, Tuple, Union, cast
+from functools import cache, cached_property, partial, wraps
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    Generic,
+    List,
+    Mapping,
+    Optional,
+    Protocol,
+    Self,
+    Sequence,
+    SupportsFloat,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
+)
 
-from jetpytools import fallback
-from vsdenoise import DFTTest, bm3d, mc_degrain, nl_means, prefilter_to_full_range, wnnm
+from jetpytools import KwargsNotNone, P, R, Singleton, T
+from vsdenoise import (
+    DFTTest,
+    MVTools,
+    SLocationT,
+    bm3d,
+    ccd,
+    dpir,
+    mc_degrain,
+    nl_means,
+    prefilter_to_full_range,
+    wnnm,
+)
+from vsdenoise import mc_clamp as vsdenoise_mc_clamp
 from vsmasktools import FDoGTCanny, adg_mask, range_mask
-from vstools import ColorRange, ConstantFormatVideoNode, DitherType, check_variable_format, core, depth, get_depth, get_plane_sizes, get_y, join, plane, split, vs, vs_object
+from vstools import (
+    ColorRange,
+    DitherType,
+    PlanesT,
+    VSFunctionKwArgs,
+    check_variable_format,
+    core,
+    depth,
+    get_depth,
+    get_plane_sizes,
+    get_y,
+    join,
+    normalize_planes,
+    split,
+    vs,
+)
 
 from .util import pick_px_op
 
 __all__ = [
-    'BasedDenoise',
-    'Grainer', 'AddGrain', 'F3kdbGrain',
-    'Graigasm', 'BilateralMethod', 'decsiz',
-    'adaptative_regrain'
+    "based_denoise",
+    "BasedDenoise",
+    "Grainer",
+    "AddGrain",
+    "F3kdbGrain",
+    "Graigasm",
+    "BilateralMethod",
+    "decsiz",
+    "adaptative_regrain",
 ]
 
-class BasedDenoise(vs_object):
-    out: ConstantFormatVideoNode
+VideoNodeT_contra = TypeVar("VideoNodeT_contra", bound=vs.VideoNode, contravariant=True)
+VideoNodeT_co = TypeVar("VideoNodeT_co", bound=vs.VideoNode, covariant=True)
 
-    def __init__(
-        self,
-        clip: vs.VideoNode,
-        tr: int = 1,
-        full_range_args: dict[str, Any] | None = None,
-        dfttest_args: dict[str, Any] | None = dict(sloc=[(0.0, 12.0), (0.35, 8.0), (1.0, 4.0)]),
-        mc_degrain_args: dict[str, Any] | None = dict(thsad=80),
-        bm3d_args: dict[str, Any] | None = dict(sigma=0.75),
-        nlmeans_args: dict[str, Any] | None = dict(h=0.25, num_streams=2),
-        wnnn_args: dict[str, Any] | None = dict(sigma=0.5),
-    ) -> None:
-        assert check_variable_format(clip, self.__class__)
 
-        self.clip = clip
-        self.tr = tr
-        self.full_range_args = fallback(full_range_args, {})
-        self.dfttest_args = fallback(dfttest_args, {})
-        self.mc_degrain_args = fallback(mc_degrain_args, {})
-        self.bm3d_args = fallback(bm3d_args, {})
-        self.nl_means_args = fallback(nlmeans_args, {})
-        self.wnnn_args = fallback(wnnn_args, {})
-        self.out = clip
-        self._process = clip
+class _MCDegrainFunc(Protocol[VideoNodeT_contra, VideoNodeT_co]):
+    def __call__(self, clip: VideoNodeT_contra, *args: Any, **kwargs: Any) -> tuple[VideoNodeT_co, MVTools]: ...
+
+
+class FilterBase(Generic[P, R], Singleton):
+    setting_name: ClassVar[str]
+    __is_selected__: bool = True
+
+    _filter_func: Callable[..., Any]
+
+    def __init__(self, obj: BasedDenoise[P, R], filter_func: VSFunctionKwArgs[vs.VideoNode, vs.VideoNode]) -> None:
+        self._bd = obj
+        self._filter_func = filter_func
+
+    def __call__(self, **kwargs: Any) -> BasedDenoise[P, R]:
+        self._bd.settings[self.setting_name].update(KwargsNotNone(kwargs))
+        return self._bd
+
+    def apply_filter(self, clip: vs.VideoNode, **kwargs: Any) -> vs.VideoNode:
+        return self._filter_func(clip, **self._bd.settings[self.setting_name] | KwargsNotNone(kwargs))
+
+    def select(self) -> Self:
+        self.__is_selected__ = True
+        return self
+
+    def unselect(self) -> BasedDenoise[P, R]:
+        self.__is_selected__ = False
+        return self._bd
+
+    def is_selected(self) -> bool:
+        return self.__is_selected__
+
+    @property
+    def denoise(self) -> BasedDenoise[P, R]:
+        return self._bd
+
+    @property
+    def frange(self) -> Filter.FullRange[P, R]:
+        return self._bd.frange
+
+    @property
+    def dfttest(self) -> Filter.DFTTest[P, R]:
+        return self._bd.dfttest
+
+    @property
+    def mc(self) -> Filter.MC[P, R]:
+        return self._bd.mc
+
+    @property
+    def bm3d(self) -> Filter.BM3D[P, R]:
+        return self._bd.bm3d
+
+    @property
+    def nl_means(self) -> Filter.NLMeans[P, R]:
+        return self._bd.nl_means
+
+    @property
+    def wnnm(self) -> Filter.WNNM[P, R]:
+        return self._bd.wnnm
+
+    @property
+    def dpir(self) -> Filter.DPIR[P, R]:
+        return self._bd.dpir
+
+    @property
+    def ccd(self) -> Filter.CCD[P, R]:
+        return self._bd.ccd
+
+
+class FilterChroma(FilterBase[P, R]):
+    __is_selected_chroma__: bool = False
+
+
+class Filter:
+    class FullRange(FilterBase[P, R]):
+        setting_name = "frange"
+
+        if TYPE_CHECKING:
+
+            def __call__(
+                self, *, slope: float | None = None, smooth: float | None = None, **kwargs: Any
+            ) -> BasedDenoise[P, R]: ...
+
+    class DFTTest(FilterBase[P, R]):
+        setting_name = "dfttest"
+
+        if TYPE_CHECKING:
+
+            def __call__(
+                self, *, tr: int | None = None, sloc: SLocationT | None = None, **kwargs: Any
+            ) -> BasedDenoise[P, R]: ...
+
+    class MC(FilterBase[P, R]):
+        setting_name = "mc"
+
+        mv: MVTools
+
+        def __init__(self, obj: BasedDenoise[P, R], filter_func: _MCDegrainFunc[vs.VideoNode, vs.VideoNode]) -> None:
+            self._bd = obj
+            self._filter_func = filter_func
+
+        def apply_filter(self, clip: vs.VideoNode, **kwargs: Any) -> vs.VideoNode:
+            clip, mv = self._filter_func(clip, **self._bd.settings[self.setting_name] | KwargsNotNone(kwargs))
+            self.mv = mv
+            return clip
+
+        if TYPE_CHECKING:
+
+            def __call__(
+                self, *, tr: int | None = None, thsad: int | None = None, **kwargs: Any
+            ) -> BasedDenoise[P, R]: ...
+
+    class BM3D(FilterBase[P, R]):
+        setting_name = "bm3d"
+
+        if TYPE_CHECKING:
+
+            def __call__(
+                self, *, tr: int | None = None, sigma: float | None = None, **kwargs: Any
+            ) -> BasedDenoise[P, R]: ...
+
+    class NLMeans(FilterChroma[P, R]):
+        setting_name = "nl_means"
+        __is_selected_chroma__ = True
+
+        if TYPE_CHECKING:
+
+            def __call__(
+                self, *, tr: int | None = None, h: float | None = None, **kwargs: Any
+            ) -> BasedDenoise[P, R]: ...
+
+    class WNNM(FilterChroma[P, R]):
+        setting_name = "wnnm"
+
+        if TYPE_CHECKING:
+
+            def __call__(
+                self, *, tr: int | None = None, sigma: float | None = None, **kwargs: Any
+            ) -> BasedDenoise[P, R]: ...
+
+    class DPIR(FilterChroma[P, R]):
+        setting_name = "dpir"
+
+        if TYPE_CHECKING:
+
+            def DEBLOCK(
+                self, *, strength: SupportsFloat | vs.VideoNode | None = None, **kwargs: Any
+            ) -> BasedDenoise[P, R]: ...
+
+            def DENOISE(
+                self, *, strength: SupportsFloat | vs.VideoNode | None = None, **kwargs: Any
+            ) -> BasedDenoise[P, R]: ...
+
+            def __call__(
+                self, *, strength: SupportsFloat | vs.VideoNode | None = None, **kwargs: Any
+            ) -> BasedDenoise[P, R]: ...
+
+        def __getattribute__(self, name: str) -> Any:
+            if name == "DEBLOCK":
+                self._filter_func = lambda clip, **kwargs: dpir.DEBLOCK(clip, **kwargs)
+                return self.__call__
+
+            if name == "DENOISE":
+                self._filter_func = lambda clip, **kwargs: dpir.DENOISE(clip, **kwargs)
+                return self.__call__
+
+            return super().__getattribute__(name)
+
+    class CCD(FilterChroma[P, R]):
+        setting_name = "ccd"
+
+        if TYPE_CHECKING:
+
+            def __call__(
+                self, *, tr: int | None = None, thr: float | None = None, **kwargs: Any
+            ) -> BasedDenoise[P, R]: ...
+
+
+class BasedDenoise(Generic[P, R]):
+    def __init__(self, func: Callable[P, R]) -> None:
+        self.func = func
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> R:
+        res = self.func(*args, **kwargs)
+
+        for v in self._settings_internal.values():
+            v.clear()
+        del self._settings_internal
+
+        return res
+
+    denoise = __call__
+
+    @property
+    def settings(self) -> Mapping[str, dict[str, Any]]:
+        if not hasattr(self, "_settings_internal"):
+            self._settings_internal: Mapping[str, dict[str, Any]] = {
+                "frange": {},
+                "dfttest": {"tr": 1, "sloc": [(0.0, 12.0), (0.35, 8.0), (1.0, 4.0)]},
+                "mc": {"tr": 1, "thsad": 80},
+                "bm3d": {"tr": 1, "sigma": 0.75},
+                "nl_means": {"tr": 1, "h": 0.25, "planes": [1, 2]},
+                "wnnm": {"tr": 1, "planes": [1, 2]},
+                "dpir": {"planes": [1, 2]},
+                "ccd": {"tr": 1, "planes": [1, 2]},
+            }
+
+        return self._settings_internal
 
     @cached_property
-    def full_range(self) -> vs.VideoNode:
-        return prefilter_to_full_range(self.clip, **self.full_range_args)
+    def frange(self) -> Filter.FullRange[P, R]:
+        return Filter.FullRange(self, lambda clip, **kwargs: prefilter_to_full_range(clip, **kwargs))
 
     @cached_property
-    def dfttest(self) -> vs.VideoNode:
-        return DFTTest(**self.dfttest_args).denoise(self.full_range, tr=self.tr)
+    def dfttest(self) -> Filter.DFTTest[P, R]:
+        return Filter.DFTTest(self, lambda clip, **kwargs: DFTTest(**kwargs).denoise(clip))
 
     @cached_property
-    def mc_degrain(self) -> vs.VideoNode:
-        return mc_degrain(  # type: ignore
-            self.clip,
-            **dict[str, Any](prefilter=self.dfttest, tr=self.tr) | self.mc_degrain_args,
-            export_globals=False
+    def mc(self) -> Filter.MC[P, R]:
+        return Filter.MC(self, lambda clip, **kwargs: mc_degrain(clip, export_globals=True, **kwargs))
+
+    @cached_property
+    def bm3d(self) -> Filter.BM3D[P, R]:
+        return Filter.BM3D(self, lambda clip, **kwargs: bm3d(clip, **kwargs))
+
+    @cached_property
+    def chroma_denoisers(self) -> Mapping[str, FilterChroma[P, R]]:
+        return {
+            "nl_means": Filter.NLMeans(self, lambda clip, **kwargs: nl_means(clip, **kwargs)),
+            "wnnm": Filter.WNNM(self, lambda clip, **kwargs: wnnm(clip, **kwargs)),
+            "dpir": Filter.DPIR(self, lambda clip, **kwargs: dpir.DEBLOCK(clip, **kwargs)),
+            "ccd": Filter.CCD(self, lambda clip, **kwargs: ccd(clip, **kwargs)),
+        }
+
+    @property
+    def chroma_denoiser(self) -> FilterChroma[P, R]:
+        return next(cd for cd in self.chroma_denoisers.values() if cd.__is_selected_chroma__)
+
+    @staticmethod
+    def _select_chroma_denoiser(func: Callable[[BasedDenoise[P, R]], T]) -> Callable[[BasedDenoise[P, R]], T]:
+        @wraps(func)
+        def _wrapper(self: BasedDenoise[P, R]) -> T:
+            for cn in self.chroma_denoisers.values():
+                cn.__is_selected_chroma__ = False
+
+            chroma_denoiser = func(self)
+
+            setattr(chroma_denoiser, "__is_selected_chroma__", True)
+
+            return chroma_denoiser
+
+        return _wrapper
+
+    @property
+    @_select_chroma_denoiser
+    @cache
+    def nl_means(self) -> Filter.NLMeans[P, R]:
+        return self.chroma_denoisers["nl_means"]  # type: ignore[return-value]
+
+    @property
+    @_select_chroma_denoiser
+    @cache
+    def wnnm(self) -> Filter.WNNM[P, R]:
+        return self.chroma_denoisers["wnnm"]  # type: ignore[return-value]
+
+    @property
+    @_select_chroma_denoiser
+    @cache
+    def dpir(self) -> Filter.DPIR[P, R]:
+        return self.chroma_denoisers["dpir"]  # type: ignore[return-value]
+
+    @property
+    @_select_chroma_denoiser
+    @cache
+    def ccd(self) -> Filter.CCD[P, R]:
+        return self.chroma_denoisers["ccd"]  # type: ignore[return-value]
+
+
+@BasedDenoise
+def based_denoise(
+    clip: vs.VideoNode,
+    tr: int | None = None,
+    sigma: float | None = None,
+    h: float | None = None,
+    sloc: SLocationT | None = None,
+    thsad: float | None = None,
+    mc_clamp: bool | None = None,
+    planes: PlanesT = None,
+    *,
+    full_range_args: dict[str, Any] | None = None,
+    dfttest_args: dict[str, Any] | None = None,
+    mc_degrain_args: dict[str, Any] | None = None,
+    bm3d_args: dict[str, Any] | None = None,
+    nlmeans_args: dict[str, Any] | None = None,
+    wnnm_args: dict[str, Any] | None = None,
+    dpir_args: dict[str, Any] | None = None,
+    ccd_args: dict[str, Any] | None = None,
+    mc_clamp_args: dict[str, Any] | None = None,
+    **kwargs: Any,
+) -> vs.VideoNode:
+    """
+    Most based denoise function you've ever seen.
+
+    Default pipeline is prefilter_to_full_range -> dfttest -> mc_degrain -> bm3d -> nl_means -> mc_clamp
+
+    Examples:
+    - Basic
+    ```
+    denoised = based_denoise(clip, 1, 1.5, 0.25)
+    ```
+    - Without mvtools
+    ```
+    denoised = based_denoise.mc.unselect()(clip, 1, 1.5, 0.25)
+    # Slightly more verbose
+    denoised = based_denoise.mc.unselect().denoise(clip, 1, 1.5, 0.25)
+    ```
+    - Using WNNM
+    ```
+    denoised = based_denoise.wnnm.denoise(clip, 1, 1.5, wnnm_sigma=0.5)
+    # Or
+    denoised = based_denoise.wnnm(sigma=0.5).denoise(clip, 1, 1.5)
+    ```
+
+    Args:
+        clip: Source clip.
+        tr: Global temporal radius. Default is 1.
+        sigma: BM3D sigma. Default is 0.75.
+        h: h strength of nl_means. Defauts is 0.25.
+        sloc: Slocation of DFTTest. Defauts is [(0.0, 12.0), (0.35, 8.0), (1.0, 4.0)].
+        thsad: thsad of mc_degrain. Default is 80.
+        mc_clamp: Applies mc_clamp or not. Default is True if mc_degrain is selected.
+        planes: Which planes to process.
+        full_range_args: Additional arguments.
+        dfttest_args: Additional arguments.
+        mc_degrain_args: Additional arguments.
+        bm3d_args: Additional arguments.
+        nlmeans_args: Additional arguments.
+        wnnm_args: Additional arguments.
+        dpir_args: Additional arguments.
+        ccd_args: Additional arguments.
+        mc_clamp_args: Additional arguments.
+        **kwargs: Additional arguments prefixed by the name of the filter.
+
+    Returns:
+        Denoised clip.
+    """
+
+    assert check_variable_format(clip, based_denoise)
+
+    bd = based_denoise
+
+    full_range_args = {} if full_range_args is None else full_range_args.copy()
+    dfttest_args = {} if dfttest_args is None else dfttest_args.copy()
+    mc_degrain_args = {} if mc_degrain_args is None else mc_degrain_args.copy()
+    bm3d_args = {} if bm3d_args is None else bm3d_args.copy()
+    nlmeans_args = {} if nlmeans_args is None else nlmeans_args.copy()
+    wnnm_args = {} if wnnm_args is None else wnnm_args.copy()
+    dpir_args = {} if dpir_args is None else dpir_args.copy()
+    ccd_args = {} if ccd_args is None else ccd_args.copy()
+    mc_clamp_args = {} if mc_clamp_args is None else mc_clamp_args.copy()
+
+    dict_args = [
+        full_range_args,
+        dfttest_args,
+        mc_degrain_args,
+        bm3d_args,
+        nlmeans_args,
+        wnnm_args,
+        dpir_args,
+        ccd_args,
+        mc_clamp_args,
+    ]
+    prefixes = [
+        "full_range_",
+        "dfttest_",
+        "mc_degrain_",
+        "bm3d_",
+        "nlmeans_",
+        "wnnm_",
+        "dpir_",
+        "ccd_",
+        "mc_clamp_",
+    ]
+
+    for k in kwargs.copy():
+        for prefix, ckwargs in zip(prefixes, dict_args):
+            if k.startswith(prefix):
+                ckwargs[k.removeprefix(prefix)] = kwargs.pop(k)
+                break
+
+    mc_clamp = mc_clamp if isinstance(mc_clamp, bool) else bd.mc.is_selected()
+    planes = normalize_planes(clip, planes)
+
+    if bd.mc.is_selected():
+        clip = (
+            clip
+            if (bd.chroma_denoiser.is_selected() and bd.chroma_denoiser.setting_name in ("nl_means", "wnnm"))
+            else get_y(clip)
         )
+        frange = bd.frange.apply_filter(clip, **full_range_args) if bd.frange.is_selected() else clip
+        dft = bd.dfttest.apply_filter(frange, tr=tr, sloc=sloc, **dfttest_args) if bd.dfttest.is_selected() else frange
+        mc = bd.mc.apply_filter(clip, prefilter=dft, tr=tr, thsad=thsad, **mc_degrain_args)
+    else:
+        mc = clip
 
-    @cached_property
-    def bm3d(self) -> ConstantFormatVideoNode:
-        return bm3d(self._process, **dict[str, Any](tr=self.tr, ref=self.mc_degrain) | self.bm3d_args)
+    y = get_y(clip)
 
-    @cached_property
-    def nl_means(self) -> ConstantFormatVideoNode:
-        return nl_means(self._process, **dict[str, Any](tr=self.tr, ref=self.mc_degrain) | self.nl_means_args)
+    if 0 in planes:
+        bm3dd = bd.bm3d.apply_filter(y, tr=tr, sigma=sigma, ref=get_y(mc), **bm3d_args) if bd.bm3d.is_selected() else y
+    else:
+        bm3dd = y
 
-    @cached_property
-    def wnnn(self) -> vs.VideoNode:
-        return wnnm(self._process, **dict[str, Any](tr=self.tr, ref=self.mc_degrain) | self.wnnn_args)
+    if clip.format.color_family is vs.GRAY:
+        return vsdenoise_mc_clamp(bm3dd, y, bd.mc.mv, **mc_clamp_args) if mc_clamp else bm3dd
 
-    def luma(self) -> Self:
-        try:
-            del self.bm3d
-        except AttributeError:
-            pass
+    if bd.chroma_denoiser.is_selected() and any(p in planes for p in [1, 2]):
+        chroma_args_map = {
+            "nl_means": nlmeans_args | {"h": h, "ref": mc},
+            "wnnm": wnnm_args | {"ref": mc},
+            "dpir": dpir_args,
+            "ccd": ccd_args,
+        }
+        chromad = bd.chroma_denoiser.apply_filter(clip, **chroma_args_map[bd.chroma_denoiser.setting_name])
+    else:
+        chromad = clip
 
-        mc_degrain = self.mc_degrain
+    out = join(bm3dd, chromad)
 
-        self._process = get_y(self.out)
-        self.mc_degrain = plane(self.mc_degrain, 0)
-        self.out = join(self.bm3d, self.out) if self.out.format.color_family is vs.YUV else self.bm3d
-
-        self.mc_degrain = mc_degrain
-
-        return self
-
-    def chroma_nl_means(self) -> Self:
-        try:
-            del self.nl_means
-        except AttributeError:
-            pass
-
-        self._process = self.out
-        self.nl_means_args.update(planes=[1, 2])
-
-        self.out = self.nl_means
-
-        self.nl_means_args.pop("planes")
-
-        return self
-
-    def chroma_wnnn(self) -> Self:
-        try:
-            del self.wnnn
-        except AttributeError:
-            pass
-
-        self._process = self.out
-        self.wnnn_args.update(planes=[1, 2])
-        
-        self.out = self.wnnn  # type: ignore
-
-        self.wnnn_args.pop("planes")
-
-        return self
-
-    def __vs_del__(self, core_id: int) -> None:
-        try:
-            del self.clip
-            del self.full_range
-            del self.dfttest
-            del self.mc_degrain
-            del self.bm3d
-            del self.out
-            del self._process
-        except BaseException:
-            pass
+    return vsdenoise_mc_clamp(out, clip, bd.mc.mv, **mc_clamp_args) if mc_clamp else out
 
 
 class Grainer(ABC):
