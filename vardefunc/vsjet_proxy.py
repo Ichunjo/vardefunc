@@ -110,41 +110,6 @@ def replace_ranges(
     mismatch: bool = False,
     prop_src: vs.VideoNode | list[vs.VideoNode] | None = None,
 ) -> vs.VideoNode:
-    """
-    Replaces frames in a clip, either with pre-calculated indices or on-the-fly with a callback.
-    Frame ranges are by default exclusive. This behaviour can be changed by setting `exclusive=False`.
-
-    Examples with clips ``black`` and ``white`` of equal length:
-        * ``replace_ranges(black, white, [(0, 1)])``: replace frames 0 with ``white``
-        * ``replace_ranges(black, white, [(0, 2)])``: replace frames 0 and 1 with ``white``
-        * ``replace_ranges(black, white, [(None, None)])``: replace the entire clip with ``white``
-        * ``replace_ranges(black, white, [(0, None)])``: same as previous
-        * ``replace_ranges(black, white, [(200, None)])``: replace 200 until the end with ``white``
-        * ``replace_ranges(black, white, [(200, -1)])``: replace 200 until the end with ``white``,
-                                                         leaving 1 frame of ``black``
-
-    Optional Dependencies:
-        * Either of the following two plugins:
-            * `VS Julek Plugin <https://github.com/dnjulek/vapoursynth-julek-plugin>`_ (recommended!)
-            * `VSRemapFrames <https://github.com/Irrational-Encoding-Wizardry/Vapoursynth-RemapFrames>`_
-
-    :param clip_a:      Original clip.
-    :param clip_b:      Replacement clip.
-    :param ranges:      Ranges to replace clip_a (original clip) with clip_b (replacement clip).
-                        Integer values in the list indicate single frames,
-                        Tuple values indicate inclusive ranges.
-                        Callbacks must return true to replace a with b.
-                        Negative integer values will be wrapped around based on clip_b's length.
-                        None values are context dependent:
-                            * None provided as sole value to ranges: no-op
-                            * Single None value in list: Last frame in clip_b
-                            * None as first value of tuple: 0
-                            * None as second value of tuple: Last frame in clip_b
-    :param exclusive:   Use exclusive ranges (Default: True).
-    :param mismatch:    Accept format or resolution mismatch between clips.
-
-    :return:            Clip with ranges from clip_a replaced with clip_b.
-    """
     if len(args) == 0:
         return clip_a
 
