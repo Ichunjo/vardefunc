@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from enum import Enum
 from functools import cache, partial, wraps
 from typing import (
@@ -10,16 +9,11 @@ from typing import (
     Any,
     Callable,
     ClassVar,
-    Dict,
-    List,
     Mapping,
     Optional,
     Protocol,
     Self,
-    Sequence,
     SupportsFloat,
-    Tuple,
-    Union,
     cast,
 )
 
@@ -46,8 +40,6 @@ from vstools import (
     check_variable_format,
     core,
     depth,
-    get_depth,
-    get_plane_sizes,
     get_y,
     join,
     normalize_planes,
@@ -57,17 +49,7 @@ from vstools import (
 
 from .util import pick_px_op
 
-__all__ = [
-    "based_denoise",
-    "BasedDenoise",
-    "Grainer",
-    "AddGrain",
-    "F3kdbGrain",
-    "Graigasm",
-    "BilateralMethod",
-    "decsiz",
-    "adaptative_regrain",
-]
+__all__ = ["based_denoise", "BasedDenoise", "BilateralMethod", "decsiz", "adaptative_regrain"]
 
 
 class _MCDegrainFunc[VideoNodeT: vs.VideoNode](Protocol):
@@ -501,241 +483,6 @@ def based_denoise(
     return vsdenoise_mc_clamp(out, clip, bd.mc.mv, **mc_clamp_args) if mc_clamp else out
 
 
-class Grainer(ABC):
-    """Abstract graining interface"""
-
-    def __init__(self, **kwargs: Any) -> None:
-        self.kwargs = kwargs
-        super().__init__()
-
-    @abstractmethod
-    def grain(self, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
-        """Graining function of the Grainer
-
-        Args:
-            clip (vs.VideoNode):
-                Source clip.
-
-            strength (Tuple[float, float]):
-                First value is luma strength, second value is chroma strength.
-
-        Returns:
-            vs.VideoNode: Grained clip.
-        """
-
-
-class AddGrain(Grainer):
-    """Built-in grain.Add plugin"""
-
-    def grain(self, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
-        return clip.grain.Add(var=strength[0], uvar=strength[1], **self.kwargs)
-
-
-class F3kdbGrain(Grainer):
-    """Built-in f3kdb.Deband plugin"""
-
-    def grain(self, clip: vs.VideoNode, /, strength: Tuple[float, float]) -> vs.VideoNode:
-        return core.neo_f3kdb.Deband(clip, None, 1, 1, 1, int(strength[0]), int(strength[1]), **self.kwargs)
-
-
-class Graigasm:
-    """Custom graining interface based on luma values"""
-
-    thrs: List[float]
-    strengths: List[Tuple[float, float]]
-    sizes: List[float]
-    sharps: List[float]
-    overflows: List[float]
-    grainers: List[Grainer]
-
-    def __init__(
-        self,
-        thrs: Sequence[float],
-        strengths: Sequence[Tuple[float, float]],
-        sizes: Sequence[float],
-        sharps: Sequence[float],
-        *,
-        overflows: Union[float, Sequence[float], None] = None,
-        grainers: Union[Grainer, Sequence[Grainer]] = AddGrain(seed=-1, constant=False),
-    ) -> None:
-        """Constructor checks and initializes the values.
-           Length of thrs must be equal to strengths, sizes and sharps.
-           thrs, strengths, sizes and sharps match the same area.
-
-        Args:
-            thrs (Sequence[float]):
-                Sequence of thresholds defining the grain boundary.
-                Below the threshold, it's grained, above the threshold, it's not grained.
-
-            strengths (Sequence[Tuple[float, float]]):
-                Sequence of tuple representing the grain strengh of the luma and the chroma, respectively.
-
-            sizes (Sequence[float]):
-                Sequence of size of grain.
-
-            sharps (Sequence[float]):
-                Sequence of sharpened grain values. 50 is neutral Catmull-Rom (b=0, c=0.5).
-
-            overflows (Union[float, Sequence[float]], optional):
-                Percentage value determining by how much the hard limit of threshold will be extended.
-                Range 0.0 - 1.0. Defaults to 1 divided by thrs's length for each thr.
-
-            grainers (Union[Grainer, Sequence[Grainer]], optional):
-                Grainer used for each combo of thrs, strengths, sizes and sharps.
-                Defaults to AddGrain(seed=-1, constant=False).
-        """
-        self.thrs = list(thrs)
-        self.strengths = list(strengths)
-        self.sizes = list(sizes)
-        self.sharps = list(sharps)
-
-        length = len(self.thrs)
-        datas: List[Any] = [self.strengths, self.sizes, self.sharps]
-        if all(len(lst) != length for lst in datas):
-            raise ValueError('Graigasm: "thrs", "strengths", "sizes" and "sharps" must have the same length!')
-
-        if overflows is None:
-            overflows = [1 / length]
-        if isinstance(overflows, (float, int)):
-            overflows = [float(overflows)] * length
-        else:
-            overflows = list(overflows)
-            overflows += [overflows[-1]] * (length - len(overflows))
-        self.overflows = overflows
-
-        if isinstance(grainers, Grainer):
-            grainers = [grainers] * length
-        else:
-            grainers = list(grainers)
-            grainers += [grainers[-1]] * (length - len(grainers))
-        self.grainers = grainers
-
-    def graining(
-        self, clip: vs.VideoNode, /, *, prefilter: Optional[vs.VideoNode] = None, show_masks: bool = False
-    ) -> vs.VideoNode:
-        """Do grain stuff using settings from constructor.
-
-        Args:
-            clip (vs.VideoNode): Source clip.
-
-            prefilter (clip, optional):
-                Prefilter clip used to compute masks.
-                Defaults to None.
-
-            show_masks (bool, optional):
-                Returns interleaved masks. Defaults to False.
-
-        Returns:
-            vs.VideoNode: Grained clip.
-        """
-        assert clip.format
-        if clip.format.color_family not in (vs.YUV, vs.GRAY):
-            raise ValueError("graining: Only YUV and GRAY format are supported!")
-
-        bits = get_depth(clip)
-        is_float = clip.format.sample_type == vs.FLOAT
-        peak = 1.0 if is_float else (1 << bits) - 1
-        num_planes = clip.format.num_planes
-        neutral = [0.5] + [0.0] * (num_planes - 1) if is_float else [float(1 << (bits - 1))] * num_planes
-
-        pref = prefilter if prefilter is not None else get_y(clip)
-
-        mod = self._get_mod(clip)
-
-        masks = [
-            self._make_mask(pref, thr, ovf, peak, is_float=is_float) for thr, ovf in zip(self.thrs, self.overflows)
-        ]
-        masks = [pref.std.BlankClip(color=0)] + masks
-        masks = [core.std.Expr([masks[i], masks[i - 1]], "x y -") for i in range(1, len(masks))]
-
-        if num_planes == 3:
-            if is_float:
-                masks_chroma = [mask.resize.Bilinear(*get_plane_sizes(clip, 1)) for mask in masks]
-                masks = [join([mask, mask_chroma, mask_chroma]) for mask, mask_chroma in zip(masks, masks_chroma)]
-            else:
-                masks = [join([mask] * 3).resize.Bilinear(format=clip.format.id) for mask in masks]
-
-        if show_masks:
-            return core.std.Interleave(
-                [mask.text.Text(f"Threshold: {thr}", 7).text.FrameNum(9) for thr, mask in zip(self.thrs, masks)]
-            )
-
-        graineds = [
-            self._make_grained(clip, strength, size, sharp, grainer, neutral, mod)
-            for strength, size, sharp, grainer in zip(self.strengths, self.sizes, self.sharps, self.grainers)
-        ]
-
-        clips_adg = [
-            core.std.Expr([grained, clip, mask], f"x z {peak} / * y 1 z {peak} / - * +")
-            for grained, mask in zip(graineds, masks)
-        ]
-
-        out = clip
-        for clip_adg in clips_adg:
-            out = core.std.MergeDiff(clip_adg, core.std.MakeDiff(clip, out))  # type: ignore
-
-        return out
-
-    def _make_grained(
-        self,
-        clip: vs.VideoNode,
-        strength: Tuple[float, float],
-        size: float,
-        sharp: float,
-        grainer: Grainer,
-        neutral: List[float],
-        mod: int,
-    ) -> vs.VideoNode:
-        ss_w = self._m__(round(clip.width / size), mod)
-        ss_h = self._m__(round(clip.height / size), mod)
-        b = sharp / -50 + 1
-        c = (1 - b) / 2
-
-        blank = core.std.BlankClip(clip, ss_w, ss_h, color=neutral)
-        grained = grainer.grain(blank, strength=strength).resize.Bicubic(
-            clip.width, clip.height, filter_param_a=b, filter_param_b=c
-        )
-
-        return clip.std.MakeDiff(grained)
-
-    @staticmethod
-    def _get_mod(clip: vs.VideoNode) -> int:
-        ss_mod: Dict[Tuple[int, int], int] = {(0, 0): 1, (1, 1): 2, (1, 0): 2, (0, 1): 2, (2, 2): 4, (2, 0): 4}
-        assert clip.format is not None
-        try:
-            return ss_mod[(clip.format.subsampling_w, clip.format.subsampling_h)]
-        except KeyError as kerr:
-            raise ValueError("Graigasm: Format unknown!") from kerr
-
-    @staticmethod
-    def _make_mask(clip: vs.VideoNode, thr: float, overflow: float, peak: float, *, is_float: bool) -> vs.VideoNode:
-        def _func(x: float) -> int:
-            min_thr = thr - (overflow * peak) / 2
-            max_thr = thr + (overflow * peak) / 2
-            if min_thr <= x <= max_thr:
-                x = abs(((x - min_thr) / (max_thr - min_thr)) * peak - peak)
-            elif x < min_thr:
-                x = peak
-            elif x > max_thr:
-                x = 0.0
-            return round(x)
-
-        min_thr = f"{thr} {overflow} {peak} * 2 / -"
-        max_thr = f"{thr} {overflow} {peak} * 2 / +"
-        # if x >= min_thr and x <= max_thr -> gradient else ...
-        expr = f"x {min_thr} >= x {max_thr} <= and x {min_thr} - {max_thr} {min_thr} - / {peak} * {peak} - abs _ ?"
-        # ... if x < min_thr -> peak else ...
-        expr = expr.replace("_", f"x {min_thr} < {peak} _ ?")
-        # ... if x > max_thr -> 0 else x
-        expr = expr.replace("_", f"x {max_thr} > 0 x ?")
-
-        return pick_px_op(is_float, (expr, _func))(clip)
-
-    @staticmethod
-    def _m__(x: int, mod: int, /) -> int:
-        return x - x % mod
-
-
 class BilateralMethod(Enum):
     BILATERAL = 0
     BILATERAL_GPU = 1
@@ -760,7 +507,7 @@ def decsiz(
     blur_method: BilateralMethod = BilateralMethod.BILATERAL,
     protect_mask: Optional[vs.VideoNode] = None,
     prefilter: bool = True,
-    planes: Optional[List[int]] = None,
+    planes: Optional[list[int]] = None,
     show_mask: bool = False,
 ) -> vs.VideoNode:
     """Denoising function using Bilateral intended to decrease the filesize
@@ -792,7 +539,7 @@ def decsiz(
         prefilter (bool, optional):
             Blurs the luma as reference or not. Defaults to True.
 
-        planes (List[int], optional): Defaults to all planes.
+        planes (list[int], optional): Defaults to all planes.
 
         show_mask (bool, optional): Returns the mask.
 
@@ -837,7 +584,7 @@ def decsiz(
         (
             f"x {min_in} max {max_in} min {min_in} - {max_in} {min_in} - / {gamma} pow 0 max 1 min {peak} *",
             lambda x: round(
-                min(1, max(0, pow((min(max_in, max(min_in, x)) - min_in) / (max_in - min_in), gamma))) * peak
+                min(1, max(0, pow((min(max_in, max(min_in, x)) - min_in) / (max_in - min_in), gamma))) * peak  # type: ignore
             ),
         ),  # type: ignore
     )(pre)
@@ -858,14 +605,14 @@ def decsiz(
     else:
         denoise = blur_method.func(clip, sigmaS, sigmaR)
 
-    return core.std.MaskedMerge(clip, denoise, mask, planes)
+    return core.std.MaskedMerge(clip, denoise, mask, planes)  # type: ignore
 
 
 def adaptative_regrain(
     denoised: vs.VideoNode,
     new_grained: vs.VideoNode,
     original_grained: vs.VideoNode,
-    range_avg: Tuple[float, float] = (0.5, 0.4),
+    range_avg: tuple[float, float] = (0.5, 0.4),
     luma_scaling: int = 28,
 ) -> vs.VideoNode:
     """Merge back the original grain below the lower range_avg value,
@@ -879,7 +626,7 @@ def adaptative_regrain(
         denoised (vs.VideoNode): The denoised clip.
         new_grained (vs.VideoNode): The new regrained clip.
         original_grained (vs.VideoNode): The original regrained clip.
-        range_avg (Tuple[float, float], optional): Range used in PlaneStatsAverage. Defaults to (0.5, 0.4).
+        range_avg (tuple[float, float], optional): Range used in PlaneStatsAverage. Defaults to (0.5, 0.4).
         luma_scaling (int, optional): Parameter in adg.Mask. Defaults to 28.
 
     Returns:
