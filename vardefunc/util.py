@@ -1,6 +1,7 @@
 """Helper functions for the main functions in this module"""
 
 from __future__ import annotations
+from math import inf
 
 __all__ = [
     "select_frames",
@@ -13,9 +14,6 @@ __all__ = [
     "MutableVideoNode",
 ]
 
-import math
-import warnings
-
 from fractions import Fraction
 from functools import cached_property, partial
 from itertools import groupby
@@ -23,18 +21,15 @@ from types import NoneType
 from typing import Any, Callable, Iterable, MutableSequence, Optional, Self, Sequence, TypeGuard, cast, overload
 
 import numpy as np
-import vapoursynth as vs
 
 from pytimeconv import Convert
-from vstools import ClipsCache, FrameRangeN, FrameRangesN
+from vstools import ClipsCache, FrameRangeN, FrameRangesN, core, vs
 from vstools.utils.ranges import _RangesCallBack
 
 from .types import AnyInt
 from .types import DuplicateFrame as DF
 from .types import NDArray, Range, Trim
 from .types import VNumpy as vnp
-
-core = vs.core
 
 
 def select_frames(
@@ -202,6 +197,8 @@ def normalise_ranges(
             end += num_frames
 
         if end is not None:
+            import warnings
+
             if start > end:
                 warnings.warn(f'normalise_ranges: start frame "{start}" is higher than end frame "{end}"')
 
@@ -227,7 +224,7 @@ def normalise_ranges(
                 continue
 
             if start2 < start1 <= end2 < end1:
-                nranges_d[start2] = max(end1, nranges_d[start1], key=lambda x: x if x is not None else math.inf)
+                nranges_d[start2] = max(end1, nranges_d[start1], key=lambda x: x if x is not None else inf)
                 del nranges_d[start1]
 
             if start2 < start1 and end1 <= end2:

@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from functools import cache, cached_property, partial, wraps
+from functools import cache, partial, wraps
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
     ClassVar,
     Dict,
-    Generic,
     List,
     Mapping,
     Optional,
@@ -20,12 +19,11 @@ from typing import (
     Sequence,
     SupportsFloat,
     Tuple,
-    TypeVar,
     Union,
     cast,
 )
 
-from jetpytools import KwargsNotNone, P, R, Singleton, T
+from jetpytools import KwargsNotNone, Singleton, cachedproperty
 from vsdenoise import (
     DFTTest,
     MVTools,
@@ -43,7 +41,7 @@ from vsmasktools import FDoGTCanny, adg_mask, range_mask
 from vstools import (
     ColorRange,
     DitherType,
-    PlanesT,
+    Planes,
     VSFunctionKwArgs,
     check_variable_format,
     core,
@@ -71,15 +69,12 @@ __all__ = [
     "adaptative_regrain",
 ]
 
-VideoNodeT_contra = TypeVar("VideoNodeT_contra", bound=vs.VideoNode, contravariant=True)
-VideoNodeT_co = TypeVar("VideoNodeT_co", bound=vs.VideoNode, covariant=True)
+
+class _MCDegrainFunc[VideoNodeT: vs.VideoNode](Protocol):
+    def __call__(self, clip: VideoNodeT, *args: Any, **kwargs: Any) -> tuple[VideoNodeT, MVTools]: ...
 
 
-class _MCDegrainFunc(Protocol[VideoNodeT_contra, VideoNodeT_co]):
-    def __call__(self, clip: VideoNodeT_contra, *args: Any, **kwargs: Any) -> tuple[VideoNodeT_co, MVTools]: ...
-
-
-class FilterBase(Generic[P, R], Singleton):
+class FilterBase[**P, R](Singleton):
     setting_name: ClassVar[str]
     __is_selected__: bool = True
 
@@ -94,7 +89,7 @@ class FilterBase(Generic[P, R], Singleton):
         return self._bd
 
     def apply_filter(self, clip: vs.VideoNode, **kwargs: Any) -> vs.VideoNode:
-        return self._filter_func(clip, **self._bd.settings[self.setting_name] | KwargsNotNone(kwargs))
+        return self._filter_func(clip, **self._bd.settings[self.setting_name] | KwargsNotNone(kwargs))  # type:ignore[no-any-return]
 
     def select(self) -> Self:
         self.__is_selected__ = True
@@ -144,12 +139,12 @@ class FilterBase(Generic[P, R], Singleton):
         return self._bd.ccd
 
 
-class FilterChroma(FilterBase[P, R]):
+class FilterChroma[**P, R](FilterBase):
     __is_selected_chroma__: bool = False
 
 
 class Filter:
-    class FullRange(FilterBase[P, R]):
+    class FullRange[**P, R](FilterBase):
         setting_name = "frange"
 
         if TYPE_CHECKING:
@@ -158,7 +153,7 @@ class Filter:
                 self, *, slope: float | None = None, smooth: float | None = None, **kwargs: Any
             ) -> BasedDenoise[P, R]: ...
 
-    class DFTTest(FilterBase[P, R]):
+    class DFTTest[**P, R](FilterBase):
         setting_name = "dfttest"
 
         if TYPE_CHECKING:
@@ -167,12 +162,12 @@ class Filter:
                 self, *, tr: int | None = None, sloc: SLocationLike | None = None, **kwargs: Any
             ) -> BasedDenoise[P, R]: ...
 
-    class MC(FilterBase[P, R]):
+    class MC[**P, R](FilterBase):
         setting_name = "mc"
 
         mv: MVTools
 
-        def __init__(self, obj: BasedDenoise[P, R], filter_func: _MCDegrainFunc[vs.VideoNode, vs.VideoNode]) -> None:
+        def __init__(self, obj: BasedDenoise[P, R], filter_func: _MCDegrainFunc[vs.VideoNode]) -> None:
             self._bd = obj
             self._filter_func = filter_func
 
@@ -187,7 +182,7 @@ class Filter:
                 self, *, tr: int | None = None, thsad: int | None = None, **kwargs: Any
             ) -> BasedDenoise[P, R]: ...
 
-    class BM3D(FilterBase[P, R]):
+    class BM3D[**P, R](FilterBase):
         setting_name = "bm3d"
 
         if TYPE_CHECKING:
@@ -196,7 +191,7 @@ class Filter:
                 self, *, tr: int | None = None, sigma: float | None = None, **kwargs: Any
             ) -> BasedDenoise[P, R]: ...
 
-    class NLMeans(FilterChroma[P, R]):
+    class NLMeans[**P, R](FilterChroma):
         setting_name = "nl_means"
         __is_selected_chroma__ = True
 
@@ -206,7 +201,7 @@ class Filter:
                 self, *, tr: int | None = None, h: float | None = None, **kwargs: Any
             ) -> BasedDenoise[P, R]: ...
 
-    class WNNM(FilterChroma[P, R]):
+    class WNNM[**P, R](FilterChroma):
         setting_name = "wnnm"
 
         if TYPE_CHECKING:
@@ -215,7 +210,7 @@ class Filter:
                 self, *, tr: int | None = None, sigma: float | None = None, **kwargs: Any
             ) -> BasedDenoise[P, R]: ...
 
-    class DPIR(FilterChroma[P, R]):
+    class DPIR[**P, R](FilterChroma):
         setting_name = "dpir"
 
         if TYPE_CHECKING:
@@ -243,7 +238,7 @@ class Filter:
 
             return super().__getattribute__(name)
 
-    class CCD(FilterChroma[P, R]):
+    class CCD[**P, R](FilterChroma):
         setting_name = "ccd"
 
         if TYPE_CHECKING:
@@ -253,7 +248,7 @@ class Filter:
             ) -> BasedDenoise[P, R]: ...
 
 
-class BasedDenoise(Generic[P, R]):
+class BasedDenoise[**P, R]:
     def __init__(self, func: Callable[P, R]) -> None:
         self.func = func
 
@@ -284,23 +279,23 @@ class BasedDenoise(Generic[P, R]):
 
         return self._settings_internal
 
-    @cached_property
+    @cachedproperty
     def frange(self) -> Filter.FullRange[P, R]:
         return Filter.FullRange(self, lambda clip, **kwargs: prefilter_to_full_range(clip, **kwargs))
 
-    @cached_property
+    @cachedproperty
     def dfttest(self) -> Filter.DFTTest[P, R]:
         return Filter.DFTTest(self, lambda clip, **kwargs: DFTTest(**kwargs).denoise(clip))
 
-    @cached_property
+    @cachedproperty
     def mc(self) -> Filter.MC[P, R]:
         return Filter.MC(self, lambda clip, **kwargs: mc_degrain(clip, export_globals=True, **kwargs))
 
-    @cached_property
+    @cachedproperty
     def bm3d(self) -> Filter.BM3D[P, R]:
         return Filter.BM3D(self, lambda clip, **kwargs: bm3d(clip, **kwargs))
 
-    @cached_property
+    @cachedproperty
     def chroma_denoisers(self) -> Mapping[str, FilterChroma[P, R]]:
         return {
             "nl_means": Filter.NLMeans(self, lambda clip, **kwargs: nl_means(clip, **kwargs)),
@@ -314,7 +309,7 @@ class BasedDenoise(Generic[P, R]):
         return next(cd for cd in self.chroma_denoisers.values() if cd.__is_selected_chroma__)
 
     @staticmethod
-    def _select_chroma_denoiser(func: Callable[[BasedDenoise[P, R]], T]) -> Callable[[BasedDenoise[P, R]], T]:
+    def _select_chroma_denoiser[T](func: Callable[[BasedDenoise[P, R]], T]) -> Callable[[BasedDenoise[P, R]], T]:
         @wraps(func)
         def _wrapper(self: BasedDenoise[P, R]) -> T:
             for cn in self.chroma_denoisers.values():
@@ -362,7 +357,7 @@ def based_denoise(
     sloc: SLocationLike | None = None,
     thsad: float | None = None,
     mc_clamp: bool | None = None,
-    planes: PlanesT = None,
+    planes: Planes = None,
     *,
     full_range_args: dict[str, Any] | None = None,
     dfttest_args: dict[str, Any] | None = None,
