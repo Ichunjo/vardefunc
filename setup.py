@@ -1,10 +1,10 @@
 from setuptools import setup
 
 
-with open("README.md", encoding='utf-8') as fh:
+with open("README.md", encoding="utf-8") as fh:
     long_description = fh.read()
 
-with open("requirements.txt", encoding='utf-8') as fh:
+with open("requirements.txt", encoding="utf-8") as fh:
     install_requires = fh.read()
 
 NAME = "vardefunc"
@@ -21,10 +21,10 @@ setup(
     url="https://github.com/Ichunjo/vardefunc",
     packages=["vardefunc"],
     package_data={
-        'vardefunc': ['py.typed'],
+        "vardefunc": ["py.typed"],
     },
     install_requires=install_requires,
-    python_requires=">=3.11",
+    python_requires=">=3.13",
     zip_safe=False,
     classifiers=[
         "Intended Audience :: Developers",
