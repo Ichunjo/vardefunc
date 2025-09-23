@@ -171,7 +171,7 @@ def based_aa(
     show_mask: bool = False,
     **aa_kwargs: Any,
 ) -> vs.VideoNode:
-    """vsaa.based_aa with use_mclip=True and opt=3"""
+    """vsaa.based_aa with use_mclip=True"""
 
     return vsaa.based_aa(
         clip,
@@ -185,7 +185,7 @@ def based_aa(
         prefilter,
         postfilter,
         show_mask,
-        **{"use_mclip": True, "opt": 3} | aa_kwargs,
+        **{"use_mclip": True} | aa_kwargs,
     )
 
 
