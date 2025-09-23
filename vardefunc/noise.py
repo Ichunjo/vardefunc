@@ -29,7 +29,7 @@ from jetpytools import KwargsNotNone, P, R, Singleton, T
 from vsdenoise import (
     DFTTest,
     MVTools,
-    SLocationT,
+    SLocationLike,
     bm3d,
     ccd,
     dpir,
@@ -164,7 +164,7 @@ class Filter:
         if TYPE_CHECKING:
 
             def __call__(
-                self, *, tr: int | None = None, sloc: SLocationT | None = None, **kwargs: Any
+                self, *, tr: int | None = None, sloc: SLocationLike | None = None, **kwargs: Any
             ) -> BasedDenoise[P, R]: ...
 
     class MC(FilterBase[P, R]):
@@ -359,7 +359,7 @@ def based_denoise(
     tr: int | None = None,
     sigma: float | None = None,
     h: float | None = None,
-    sloc: SLocationT | None = None,
+    sloc: SLocationLike | None = None,
     thsad: float | None = None,
     mc_clamp: bool | None = None,
     planes: PlanesT = None,
@@ -469,14 +469,14 @@ def based_denoise(
     planes = normalize_planes(clip, planes)
 
     if bd.mc.is_selected():
-        clip = (
+        wclip = (
             clip
             if (bd.chroma_denoiser.is_selected() and bd.chroma_denoiser.setting_name in ("nl_means", "wnnm"))
             else get_y(clip)
         )
-        frange = bd.frange.apply_filter(clip, **full_range_args) if bd.frange.is_selected() else clip
+        frange = bd.frange.apply_filter(wclip, **full_range_args) if bd.frange.is_selected() else wclip
         dft = bd.dfttest.apply_filter(frange, tr=tr, sloc=sloc, **dfttest_args) if bd.dfttest.is_selected() else frange
-        mc = bd.mc.apply_filter(clip, prefilter=dft, tr=tr, thsad=thsad, **mc_degrain_args)
+        mc = bd.mc.apply_filter(wclip, prefilter=dft, tr=tr, thsad=thsad, **mc_degrain_args)
     else:
         mc = clip
 
