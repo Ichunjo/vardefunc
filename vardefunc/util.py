@@ -1,12 +1,16 @@
 """Helper functions for the main functions in this module"""
+
 from __future__ import annotations
 
 __all__ = [
-    'select_frames', 'normalise_ranges', 'ranges_to_indices',
-    'adjust_clip_frames', 'adjust_audio_frames',
-    'to_incl_incl',
-    'to_incl_excl',
-    'MutableVideoNode'
+    "select_frames",
+    "normalise_ranges",
+    "ranges_to_indices",
+    "adjust_clip_frames",
+    "adjust_audio_frames",
+    "to_incl_incl",
+    "to_incl_excl",
+    "MutableVideoNode",
 ]
 
 import math
@@ -37,7 +41,7 @@ def select_frames(
     clips: vs.VideoNode | Sequence[vs.VideoNode],
     indices: NDArray[AnyInt] | Sequence[int] | Sequence[tuple[int, int]],
     *,
-    mismatch: bool = False
+    mismatch: bool = False,
 ) -> vs.VideoNode:
     """
     Select frames from one or more clips at specified indices.
@@ -63,12 +67,12 @@ def select_frames(
     elif indices.ndim == 2:
         pass
     else:
-        raise ValueError('select_frames: only 1D and 2D array is allowed!')
+        raise ValueError("select_frames: only 1D and 2D array is allowed!")
 
     base = (
         clips[0].std.BlankClip(length=len(indices))
-        if not mismatch else
-        clips[0].std.BlankClip(length=len(indices), varsize=True, varformat=True)
+        if not mismatch
+        else clips[0].std.BlankClip(length=len(indices), varsize=True, varformat=True)
     )
 
     def _select_func(n: int, clips: Sequence[vs.VideoNode], indices: NDArray[AnyInt]) -> vs.VideoNode:
@@ -85,35 +89,35 @@ def select_frames(
 
 @overload
 def normalise_ranges(
-    clip: vs.VideoNode, ranges: FrameRangeN | FrameRangesN | _RangesCallBack,
-    *,
-    norm_dups: bool = True
-) -> list[Range]:
-    ...
+    clip: vs.VideoNode, ranges: FrameRangeN | FrameRangesN | _RangesCallBack, *, norm_dups: bool = True
+) -> list[Range]: ...
 
 
 @overload
 def normalise_ranges(
-    clip: vs.AudioNode, ranges: FrameRangeN | FrameRangesN | _RangesCallBack,
-    *,
-    norm_dups: bool = True, ref_fps: Fraction | None = None
-) -> list[Range]:
-    ...
-
-
-@overload
-def normalise_ranges(
-    clip: None, ranges: FrameRangeN | FrameRangesN,
+    clip: vs.AudioNode,
+    ranges: FrameRangeN | FrameRangesN | _RangesCallBack,
     *,
     norm_dups: bool = True,
-) -> list[tuple[int, int | None]]:
-    ...
+    ref_fps: Fraction | None = None,
+) -> list[Range]: ...
+
+
+@overload
+def normalise_ranges(
+    clip: None,
+    ranges: FrameRangeN | FrameRangesN,
+    *,
+    norm_dups: bool = True,
+) -> list[tuple[int, int | None]]: ...
 
 
 def normalise_ranges(
-    clip: vs.VideoNode | vs.AudioNode | None, ranges: FrameRangeN | FrameRangesN | _RangesCallBack,
+    clip: vs.VideoNode | vs.AudioNode | None,
+    ranges: FrameRangeN | FrameRangesN | _RangesCallBack,
     *,
-    norm_dups: bool = True, ref_fps: Fraction | None = None
+    norm_dups: bool = True,
+    ref_fps: Fraction | None = None,
 ) -> list[Range] | list[tuple[int, int | None]]:
     """
     Normalise ranges to a list of positive ranges following python slicing syntax `(inclusive, exclusive)`
@@ -138,7 +142,7 @@ def normalise_ranges(
         return [(0, num_frames)]
 
     def _resolve_ranges_type(
-        rngs: int | tuple[int | None, int | None] | FrameRangesN | _RangesCallBack
+        rngs: int | tuple[int | None, int | None] | FrameRangesN | _RangesCallBack,
     ) -> Sequence[int | tuple[int | None, int | None] | None]:
         if isinstance(rngs, int):
             return [rngs]
@@ -173,7 +177,6 @@ def normalise_ranges(
     f2s = Convert.f2samples
 
     for r in ranges:
-
         if r is None:
             r = (None, None)
 
@@ -204,7 +207,7 @@ def normalise_ranges(
 
             if num_frames is not None:
                 if start >= num_frames or end > num_frames:
-                    warnings.warn(f'normalise_ranges: {r} out of range')
+                    warnings.warn(f"normalise_ranges: {r} out of range")
 
         if num_frames is not None:
             start = min(start, num_frames - 1)
@@ -245,17 +248,18 @@ def to_incl_excl(ranges: list[Range]) -> list[Range]:
 
 class _ranges_to_indices:
     def __call__(
-        self, ref: vs.VideoNode, ranges: FrameRangeN | FrameRangesN | _RangesCallBack,
-        ref_indices: tuple[int, int] = (0, 1)
+        self,
+        ref: vs.VideoNode,
+        ranges: FrameRangeN | FrameRangesN | _RangesCallBack,
+        ref_indices: tuple[int, int] = (0, 1),
     ) -> NDArray[AnyInt]:
         return vnp.zip_arrays(
             np.fromiter(self.gen_indices(ref, ranges, ref_indices), np.uint32, ref.num_frames),
-            np.arange(ref.num_frames, dtype=np.uint32)
+            np.arange(ref.num_frames, dtype=np.uint32),
         )
 
     def gen_indices(
-        self, ref: vs.VideoNode, ranges: FrameRangeN | FrameRangesN | _RangesCallBack,
-        ref_indices: tuple[int, int]
+        self, ref: vs.VideoNode, ranges: FrameRangeN | FrameRangesN | _RangesCallBack, ref_indices: tuple[int, int]
     ) -> Iterable[int]:
         nranges = normalise_ranges(ref, ranges)
 
@@ -285,7 +289,9 @@ def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: list[Trim | DF] | Trim)
     return select_frames(clip, indices)
 
 
-def adjust_audio_frames(audio: vs.AudioNode, trims_or_dfs: list[Trim | DF] | Trim, *, ref_fps: Optional[Fraction] = None) -> vs.AudioNode:
+def adjust_audio_frames(
+    audio: vs.AudioNode, trims_or_dfs: list[Trim | DF] | Trim, *, ref_fps: Optional[Fraction] = None
+) -> vs.AudioNode:
     audios: list[vs.AudioNode] = []
     trims_or_dfs = [trims_or_dfs] if isinstance(trims_or_dfs, tuple) else trims_or_dfs
     for trim_or_df in trims_or_dfs:
@@ -301,8 +307,7 @@ def adjust_audio_frames(audio: vs.AudioNode, trims_or_dfs: list[Trim | DF] | Tri
 
 
 def pick_px_op(
-    use_expr: bool,
-    operations: tuple[str, Sequence[int] | Sequence[float] | int | float | Callable[..., Any]]
+    use_expr: bool, operations: tuple[str, Sequence[int] | Sequence[float] | int | float | Callable[..., Any]]
 ) -> Callable[..., vs.VideoNode]:
     """Pick either std.Lut or std.Expr"""
     expr, lut = operations
@@ -317,30 +322,30 @@ def pick_px_op(
             elif all(isinstance(x, float) for x in lut):
                 func = partial(core.std.Lut, lutf=lut)
             else:
-                raise ValueError('pick_px_operation: operations[1] is not a valid type!')
+                raise ValueError("pick_px_operation: operations[1] is not a valid type!")
         elif isinstance(lut, int):
             func = partial(core.std.Lut, lut=lut)
         elif isinstance(lut, float):
             func = partial(core.std.Lut, lutf=lut)
         else:
-            raise ValueError('pick_px_operation: operations[1] is not a valid type!')
+            raise ValueError("pick_px_operation: operations[1] is not a valid type!")
     return func
 
 
 class MutableVideoNode(MutableSequence[vs.VideoNode]):
     def __init__(self, node: vs.VideoNode | Sequence[tuple[int, vs.VideoNode]]) -> None:
         if isinstance(node, vs.VideoNode):
-            self._mutable_node: list[vs.VideoNode | tuple[int, None | vs.VideoNode]] = [(x, node) for x in range(node.num_frames)]
+            self._mutable_node: list[vs.VideoNode | tuple[int, None | vs.VideoNode]] = [
+                (x, node) for x in range(node.num_frames)
+            ]
         else:
             self._mutable_node = list(node)
 
     @overload
-    def __getitem__(self, index: int) -> vs.VideoNode:
-        ...
+    def __getitem__(self, index: int) -> vs.VideoNode: ...
 
     @overload
-    def __getitem__(self, index: slice) -> Self:
-        ...
+    def __getitem__(self, index: slice) -> Self: ...
 
     def __getitem__(self, index: int | slice) -> vs.VideoNode | Self:
         self._normalize_inner_list()
@@ -355,25 +360,33 @@ class MutableVideoNode(MutableSequence[vs.VideoNode]):
         return self.__class__(values)
 
     @overload
-    def __setitem__(self, index: int, value: vs.VideoNode | tuple[int, None | vs.VideoNode]) -> None:
-        ...
+    def __setitem__(self, index: int, value: vs.VideoNode | tuple[int, None | vs.VideoNode]) -> None: ...
 
     @overload
     def __setitem__(
-        self, index: slice,
-        value: vs.VideoNode | tuple[int, None | vs.VideoNode] | Iterable[vs.VideoNode] | Iterable[tuple[int, None | vs.VideoNode]]
-    ) -> None:
-        ...
+        self,
+        index: slice,
+        value: vs.VideoNode
+        | tuple[int, None | vs.VideoNode]
+        | Iterable[vs.VideoNode]
+        | Iterable[tuple[int, None | vs.VideoNode]],
+    ) -> None: ...
 
     def __setitem__(
-        self, index: int | slice,
-        value: vs.VideoNode | tuple[int, None | vs.VideoNode] | Iterable[vs.VideoNode] | Iterable[tuple[int, None | vs.VideoNode]]
+        self,
+        index: int | slice,
+        value: vs.VideoNode
+        | tuple[int, None | vs.VideoNode]
+        | Iterable[vs.VideoNode]
+        | Iterable[tuple[int, None | vs.VideoNode]],
     ) -> None:
         self._normalize_inner_list()
 
         def _no_iterable(value: Any) -> TypeGuard[vs.VideoNode | tuple[int, None | vs.VideoNode]]:
             return (
-                isinstance(value, tuple) and isinstance(value[0], int) and isinstance(value[1], (NoneType, vs.VideoNode))
+                isinstance(value, tuple)
+                and isinstance(value[0], int)
+                and isinstance(value[1], (NoneType, vs.VideoNode))
             ) or isinstance(value, vs.VideoNode)
 
         if isinstance(index, int):
@@ -405,9 +418,7 @@ class MutableVideoNode(MutableSequence[vs.VideoNode]):
             del self.indices
         except AttributeError:
             pass
-        self._mutable_node = [
-            (f_i, self.all_nodes[c_i]) for c_i, f_i in self.indices
-        ]
+        self._mutable_node = [(f_i, self.all_nodes[c_i]) for c_i, f_i in self.indices]
 
     @cached_property
     def all_nodes(self) -> list[vs.VideoNode]:
