@@ -1,17 +1,22 @@
 """Miscellaneous functions and wrappers that didn't really have a place in any other submodules."""
+
 from __future__ import annotations
 
 __all__ = [
-    'DebugOutput', 'Thresholds', 'thresholding',
-    'fade_filter',
-    'Planes', 'YUVPlanes', 'RGBPlanes',
-    'get_chroma_shift', 'get_bicubic_params',
-    'set_ffms2_log_level'
+    "DebugOutput",
+    "Planes",
+    "RGBPlanes",
+    "Thresholds",
+    "YUVPlanes",
+    "fade_filter",
+    "get_bicubic_params",
+    "get_chroma_shift",
+    "set_ffms2_log_level",
+    "thresholding",
 ]
 
 import math
 import warnings
-
 from abc import ABC
 from contextlib import AbstractContextManager
 from functools import partial, wraps
@@ -19,12 +24,28 @@ from itertools import count
 from operator import ilshift, imatmul, ior
 from types import TracebackType
 from typing import (
-    Any, Callable, ClassVar, Dict, Iterable, Iterator, List, Literal, MutableMapping, NamedTuple,
-    Optional, Sequence, Tuple, Type, TypeVar, Union, cast, overload
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Literal,
+    MutableMapping,
+    NamedTuple,
+    Optional,
+    Self,
+    Sequence,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+    overload,
 )
 
 import vapoursynth as vs
-
 from vstools import Direction, depth, get_depth, get_w, insert_clip, join, plane
 
 from .types import F_OpInput, OpInput, Output
@@ -33,15 +54,12 @@ core = vs.core
 
 
 OpDebug = Callable[["DebugOutput", OpInput], "DebugOutput"]
-_OPS = {
-    '<<=': cast(OpDebug, ilshift),
-    '@=': cast(OpDebug, imatmul),
-    '|=': cast(OpDebug, ior)
-}
+_OPS = {"<<=": cast(OpDebug, ilshift), "@=": cast(OpDebug, imatmul), "|=": cast(OpDebug, ior)}
 
 
 class DebugOutputMMap(MutableMapping[int, vs.VideoNode], ABC):
     """Abstract Debug Output interface implementing the mutable mapping methods"""
+
     outputs: ClassVar[Dict[int, vs.VideoNode]] = {}
 
     _props: int
@@ -78,9 +96,9 @@ class DebugOutputMMap(MutableMapping[int, vs.VideoNode], ABC):
         yield from self.outputs.keys()
 
     def __str__(self) -> str:
-        string = ''
+        string = ""
         for idx, clip in sorted(self.items()):
-            string += f'Index N° {idx}\n' + str(clip) + '---------------\n'
+            string += f"Index N° {idx}\n" + str(clip) + "---------------\n"
         return string
 
     def __repr__(self) -> str:
@@ -112,8 +130,16 @@ class DebugOutputMMap(MutableMapping[int, vs.VideoNode], ABC):
 class DebugOutput(DebugOutputMMap):
     """Utility class to ouput multiple clips"""
 
-    def __init__(self, *clips: Output, props: int = 0, num: int = 0, scale: int = 1,
-                 clear_outputs: bool = False, check_curr_env: bool = True, **named_clips: Output) -> None:
+    def __init__(
+        self,
+        *clips: Output,
+        props: int = 0,
+        num: int = 0,
+        scale: int = 1,
+        clear_outputs: bool = False,
+        check_curr_env: bool = True,
+        **named_clips: Output,
+    ) -> None:
         """
         Args:
             clips (vs.VideoNode | List[vs.VideoNode] | Tuple[int, vs.VideoNode] | Tuple[int, List[vs.VideoNode]]):
@@ -153,17 +179,16 @@ class DebugOutput(DebugOutputMMap):
         self._min_idx = 0
         self._load_clips(*clips, clear_outputs=clear_outputs, check_curr_env=check_curr_env, **named_clips)
 
-    def _load_clips(self, *clips: Output, clear_outputs: bool = False, check_curr_env: bool = True, **named_clips: Output) -> None:
-        rclips = [
-            self._resolve_clips(i, clip, None) for i, clip in enumerate(clips)
-        ]
+    def _load_clips(
+        self, *clips: Output, clear_outputs: bool = False, check_curr_env: bool = True, **named_clips: Output
+    ) -> None:
+        rclips = [self._resolve_clips(i, clip, None) for i, clip in enumerate(clips)]
         rclips += [
-            self._resolve_clips(i, clip, name)
-            for i, (name, clip) in enumerate(named_clips.items(), start=len(rclips))
+            self._resolve_clips(i, clip, name) for i, (name, clip) in enumerate(named_clips.items(), start=len(rclips))
         ]
 
         if len(all_idx := [idx for idx, _ in rclips]) != len(set(all_idx)):
-            raise ValueError('DebugOutput: there are shared indexes!')
+            raise ValueError("DebugOutput: there are shared indexes!")
 
         if clear_outputs:
             self.clear()
@@ -173,15 +198,15 @@ class DebugOutput(DebugOutputMMap):
                 self._check_curr_env(all_idx)
             self.update(self._get_outputs() | dict(rclips))
 
-    def __ilshift__(self, clips: OpInput) -> DebugOutput:
+    def __ilshift__(self, clips: OpInput) -> Self:
         """Adds from the biggest index <<="""
         return self._resolve_input_operator(self._index_gen(self._max_idx + 1), clips, True)
 
-    def __imatmul__(self, clips: OpInput) -> DebugOutput:
+    def __imatmul__(self, clips: OpInput) -> Self:
         """Fills unused indexes @="""
         return self._resolve_input_operator(self._index_not_used_gen(), clips, True)
 
-    def __ior__(self, clips: OpInput) -> DebugOutput:
+    def __ior__(self, clips: OpInput) -> Self:
         """Fills and replaces existing indexes |="""
         return self._resolve_input_operator(self._index_gen(self._min_idx), clips, False)
 
@@ -192,10 +217,7 @@ class DebugOutput(DebugOutputMMap):
             out = i, self._stack_planes(clip)
         else:
             idx, clp = clip
-            if isinstance(clp, list):
-                out = idx, self._stack_planes(clp)
-            else:
-                out = idx, clp
+            out = (idx, self._stack_planes(clp)) if isinstance(clp, list) else (idx, clp)
 
         if name:
             idx, c = out
@@ -203,21 +225,29 @@ class DebugOutput(DebugOutputMMap):
 
         return out
 
-    def _resolve_input_operator(self, yield_func: Iterable[int], clips: OpInput, env: bool = True) -> DebugOutput:
+    def _resolve_input_operator(self, yield_func: Iterable[int], clips: OpInput, env: bool = True) -> Self:
         if isinstance(clips, dict):
             self._load_clips(
-                clear_outputs=False, check_curr_env=env,
-                **{name: cast(Output, (i, clip)) for i, (name, clip) in zip(yield_func, clips.items())}
+                clear_outputs=False,
+                check_curr_env=env,
+                **{name: cast(Output, (i, clip)) for i, (name, clip) in zip(yield_func, clips.items())},
             )
         elif isinstance(clips, tuple):
             if isinstance(clips[0], vs.VideoNode):
                 self._load_clips(
-                    *zip(yield_func, (c for c in clips if isinstance(c, vs.VideoNode))), check_curr_env=env,
+                    *zip(yield_func, (c for c in clips if isinstance(c, vs.VideoNode))),
+                    check_curr_env=env,
                 )
             else:
-                self._load_clips(*zip(yield_func, (c for c in clips if isinstance(c, list))), check_curr_env=env,)
+                self._load_clips(
+                    *zip(yield_func, (c for c in clips if isinstance(c, list))),
+                    check_curr_env=env,
+                )
         elif isinstance(clips, list):
-            self._load_clips(*zip(yield_func, [clips]), check_curr_env=env,)
+            self._load_clips(
+                *zip(yield_func, [clips]),
+                check_curr_env=env,
+            )
         else:
             self._load_clips(*zip(yield_func, [clips]), check_curr_env=env)
         return self
@@ -228,21 +258,17 @@ class DebugOutput(DebugOutputMMap):
                 yield i
 
     @overload
-    def catch(self, func: Optional[F_OpInput], /) -> F_OpInput:
-        ...
+    def catch(self, func: Optional[F_OpInput], /) -> F_OpInput: ...
 
     @overload
-    def catch(self, /, *, op: Union[OpDebug, str] = '<<=') -> Callable[[F_OpInput], F_OpInput]:
-        ...
+    def catch(self, /, *, op: Union[OpDebug, str] = "<<=") -> Callable[[F_OpInput], F_OpInput]: ...
 
-    def catch(self, func: Optional[F_OpInput] = None, /, *, op: Union[OpDebug, str] = '<<='
-              ) -> Union[Callable[[F_OpInput], F_OpInput], F_OpInput]:
+    def catch(
+        self, func: Optional[F_OpInput] = None, /, *, op: Union[OpDebug, str] = "<<="
+    ) -> Union[Callable[[F_OpInput], F_OpInput], F_OpInput]:
         """Decorator to catch the output of the function decorated"""
         if func is None:
-            return cast(
-                Callable[[F_OpInput], F_OpInput],
-                partial(self.catch, op=op)
-            )
+            return cast(Callable[[F_OpInput], F_OpInput], partial(self.catch, op=op))
 
         @wraps(func)
         def _wrapper(*args: Any, **kwargs: Any) -> OpInput:
@@ -261,10 +287,10 @@ class DebugOutput(DebugOutputMMap):
     @staticmethod
     def _stack_planes(planes: List[vs.VideoNode]) -> vs.VideoNode:
         if len(planes) > 3:
-            warnings.warn('DebugOutput: output list out of range', Warning)
-            out = core.std.BlankClip(
-                format=vs.GRAY8, color=128
-            ).text.Text('Problematic output: \noutput list out of range', 5, 2)
+            warnings.warn("DebugOutput: output list out of range", Warning)
+            out = core.std.BlankClip(format=vs.GRAY8, color=128).text.Text(
+                "Problematic output: \noutput list out of range", 5, 2
+            )
         else:
             from lvsfunc.comparison import Stack
 
@@ -274,17 +300,17 @@ class DebugOutput(DebugOutputMMap):
                 try:
                     out = Stack([planes[0], Stack(planes[1:], direction=Direction.VERTICAL).clip]).clip
                 except ValueError:
-                    warnings.warn('DebugOutput: unexpected subsampling')
-                    out = core.std.BlankClip(
-                        format=vs.GRAY8, color=128
-                    ).text.Text('Problematic output: \nunexpected subsampling', 5, 2)
+                    warnings.warn("DebugOutput: unexpected subsampling")
+                    out = core.std.BlankClip(format=vs.GRAY8, color=128).text.Text(
+                        "Problematic output: \nunexpected subsampling", 5, 2
+                    )
         return out
 
     @staticmethod
     def _check_curr_env(idx: Iterable[int]) -> None:
         for i in idx:
-            if i in vs.get_outputs().keys():
-                raise ValueError(f'DebugOutput: index {i} is already used in current environment!')
+            if i in vs.get_outputs():
+                raise ValueError(f"DebugOutput: index {i} is already used in current environment!")
 
     @staticmethod
     def _get_outputs() -> Dict[int, vs.VideoNode]:
@@ -302,6 +328,7 @@ class Thresholds(NamedTuple):
     """
     [soft_bound_min, [hard_bound_min, hard_bound_max], soft_bound_max)
     """
+
     clip: vs.VideoNode
     soft_bound_min: int | float | Sequence[int] | Sequence[float]
     hard_bound_min: int | float | Sequence[int] | Sequence[float]
@@ -311,7 +338,9 @@ class Thresholds(NamedTuple):
     coef_max: int | float | Sequence[int] | Sequence[float] | None = None
 
 
-def thresholding(*thrs: Thresholds, base: Optional[vs.VideoNode] = None, guidance: Optional[vs.VideoNode] = None) -> vs.VideoNode:
+def thresholding(
+    *thrs: Thresholds, base: Optional[vs.VideoNode] = None, guidance: Optional[vs.VideoNode] = None
+) -> vs.VideoNode:
     """
     General function for applying specific filtering on specific thresholds
     with gradation support before and after the hard thresholds
@@ -338,11 +367,11 @@ def thresholding(*thrs: Thresholds, base: Optional[vs.VideoNode] = None, guidanc
         guidance = thrs[0].clip
 
     if not base.format or not guidance.format:
-        raise ValueError('thresholding: variable format not allowed')
+        raise ValueError("thresholding: variable format not allowed")
 
     for i, thr in enumerate(thrs):
         if thr.clip.format != base.format:
-            raise ValueError(f'thresholding: threshold {i} has a different format than base clip')
+            raise ValueError(f"thresholding: threshold {i} has a different format than base clip")
 
     def _normalise_thr(thr: int | float | Sequence[int] | Sequence[float], num_planes: int) -> List[int | float]:
         thr = [thr] if isinstance(thr, (float, int)) else thr
@@ -351,28 +380,33 @@ def thresholding(*thrs: Thresholds, base: Optional[vs.VideoNode] = None, guidanc
     pclip = base
 
     for thr in thrs:
-        soft_bound_min, hard_bound_min, hard_bound_max, soft_bound_max = (_normalise_thr(t, base.format.num_planes) for t in thr[1:5])
+        soft_bound_min, hard_bound_min, hard_bound_max, soft_bound_max = (
+            _normalise_thr(t, base.format.num_planes) for t in thr[1:5]
+        )
         coef_min = _normalise_thr(thr.coef_min, base.format.num_planes) if thr.coef_min else None
         coef_max = _normalise_thr(thr.coef_max, base.format.num_planes) if thr.coef_max else None
 
         exprs: List[str] = []
         for i in range(base.format.num_planes):
-            if_in_min = f'x {soft_bound_min[i]} >= x {hard_bound_min[i]} < and'
-            if_in_max = f'x {hard_bound_max[i]} >= x {soft_bound_max[i]} < and'
-            if_in_hard = f'x {hard_bound_min[i]} >= x {hard_bound_max[i]} < and'
+            if_in_min = f"x {soft_bound_min[i]} >= x {hard_bound_min[i]} < and"
+            if_in_max = f"x {hard_bound_max[i]} >= x {soft_bound_max[i]} < and"
+            if_in_hard = f"x {hard_bound_min[i]} >= x {hard_bound_max[i]} < and"
 
-            str_min = f'x {soft_bound_min[i]} - {hard_bound_min[i]} {soft_bound_min[i]} - /'
+            str_min = f"x {soft_bound_min[i]} - {hard_bound_min[i]} {soft_bound_min[i]} - /"
             if coef_min:
-                str_min += f' {coef_min[i]} pow'
+                str_min += f" {coef_min[i]} pow"
 
-            str_max = f'x {hard_bound_max[i]} - {soft_bound_max[i]} {hard_bound_max[i]} - /'
+            str_max = f"x {hard_bound_max[i]} - {soft_bound_max[i]} {hard_bound_max[i]} - /"
             if coef_max:
-                str_max += f' {coef_max[i]} pow'
+                str_max += f" {coef_max[i]} pow"
 
             exprs.append(
-                if_in_min + f' z {str_min} * y 1 {str_min} - * + '
-                + if_in_max + f' y {str_max} * z 1 {str_max} - * + '
-                + if_in_hard + ' z y ? ? ?'
+                if_in_min
+                + f" z {str_min} * y 1 {str_min} - * + "
+                + if_in_max
+                + f" y {str_max} * z 1 {str_max} - * + "
+                + if_in_hard
+                + " z y ? ? ?"
             )
 
         pclip = core.std.Expr([guidance, pclip, thr.clip], exprs)
@@ -380,8 +414,9 @@ def thresholding(*thrs: Thresholds, base: Optional[vs.VideoNode] = None, guidanc
     return pclip
 
 
-def fade_filter(clip: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode,
-                start_f: int, end_f: int) -> vs.VideoNode:
+def fade_filter(
+    clip: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode, start_f: int, end_f: int
+) -> vs.VideoNode:
     """Applies a filter by fading clip_a to clip_b.
 
     Args:
@@ -403,19 +438,19 @@ def fade_filter(clip: vs.VideoNode, clip_a: vs.VideoNode, clip_b: vs.VideoNode,
     def _fade(n: int, clip_a: vs.VideoNode, clip_b: vs.VideoNode, length: int) -> vs.VideoNode:
         return core.std.Merge(clip_a, clip_b, n / length)
 
-    func = partial(_fade, clip_a=clip_a[start_f:end_f + 1], clip_b=clip_b[start_f:end_f + 1], length=length)
-    clip_fad = core.std.FrameEval(clip[start_f:end_f + 1], func)
+    func = partial(_fade, clip_a=clip_a[start_f : end_f + 1], clip_b=clip_b[start_f : end_f + 1], length=length)
+    clip_fad = core.std.FrameEval(clip[start_f : end_f + 1], func)
 
     return insert_clip(clip, clip_fad, start_f)
 
 
-PlanesT = TypeVar('PlanesT', bound='Planes')
+PlanesT = TypeVar("PlanesT", bound="Planes")
 
 
 class Planes(AbstractContextManager[PlanesT], Sequence[vs.VideoNode]):
     """General context manager for easier planes management"""
 
-    __slots__ = ('_clip', '_family', '_final_clip', '_planes', '_in_context')
+    __slots__ = ("_clip", "_family", "_final_clip", "_in_context", "_planes")
 
     def __init__(self, clip: vs.VideoNode, bits: Optional[int] = None, family: vs.ColorFamily = vs.YUV) -> None:
         """
@@ -437,45 +472,43 @@ class Planes(AbstractContextManager[PlanesT], Sequence[vs.VideoNode]):
         self._in_context = False
         super().__init__()
 
-    def __enter__(self: PlanesT) -> PlanesT:
+    def __enter__(self) -> Self:
         if isinstance(planes := self._clip.std.SplitPlanes(), Sequence):
             self._planes = list(planes)
         else:
-            raise ValueError(f'{self.__class__.__name__}: GRAY colour family isn\'t supported!')
+            raise ValueError(f"{self.__class__.__name__}: GRAY colour family isn't supported!")
         self._in_context = True
         return self
 
-    def __exit__(self, __exc_type: Type[BaseException] | None, __exc_value: BaseException | None,
-                 __traceback: TracebackType | None) -> bool | None:
+    def __exit__(
+        self,
+        __exc_type: Type[BaseException] | None,
+        __exc_value: BaseException | None,
+        __traceback: TracebackType | None,
+    ) -> bool | None:
         self._final_clip = join(self._planes, self._family)
         self._planes.clear()
         self._in_context = False
         return None
 
     @overload
-    def __getitem__(self, i: int) -> vs.VideoNode:
-        ...
+    def __getitem__(self, i: int) -> vs.VideoNode: ...
 
     @overload
-    def __getitem__(self, i: slice) -> Sequence[vs.VideoNode]:
-        ...
+    def __getitem__(self, i: slice) -> Sequence[vs.VideoNode]: ...
 
     def __getitem__(self, i: int | slice) -> vs.VideoNode | Sequence[vs.VideoNode]:
         if self._in_context:
             return self._planes[i]
-        raise RuntimeError(
-            f'{self.__class__.__name__}: You can only get the planes inside the context manager'
-        )
+        raise RuntimeError(f"{self.__class__.__name__}: You can only get the planes inside the context manager")
 
     def __setitem__(self, index: int, gray: vs.VideoNode) -> None:
         if not self._in_context:
-            raise RuntimeError(
-                f'{self.__class__.__name__}: You can only set the planes inside the context manager'
-            )
+            raise RuntimeError(f"{self.__class__.__name__}: You can only set the planes inside the context manager")
         try:
             self._planes[index] = gray
         except IndexError as i_err:
-            raise ValueError(f'{self.__class__.__name__}: plane number out of range') from i_err
+            raise ValueError(f"{self.__class__.__name__}: plane number out of range") from i_err
         if get_depth(gray) != (bits := get_depth(self._clip)):
             # 32 bits float in YUV and doing on chroma planes
             if bits == 32 and self._family == vs.YUV and index in {1, 2}:
@@ -487,9 +520,7 @@ class Planes(AbstractContextManager[PlanesT], Sequence[vs.VideoNode]):
     def __delitem__(self, index: int) -> None:
         if self._in_context:
             self[index] = self[index].std.BlankClip()
-        raise RuntimeError(
-            f'{self.__class__.__name__}: You can only delete the planes inside the context manager'
-        )
+        raise RuntimeError(f"{self.__class__.__name__}: You can only delete the planes inside the context manager")
 
     def __len__(self) -> Literal[3]:
         return 3
@@ -640,20 +671,20 @@ def get_bicubic_params(cubic_filter: str) -> Tuple[float, float]:
         c = 7 / (2 + 12 * sqrt2)
         return b, c
 
-    cubic_filter = cubic_filter.lower().replace(' ', '_').replace('-', '_')
+    cubic_filter = cubic_filter.lower().replace(" ", "_").replace("-", "_")
     cubic_filters = {
-        'spline': (1.0, 0.0),
-        'b_spline': (1.0, 0.0),
-        'hermite': (0.0, 0.0),
-        'mitchell_netravali': (1 / 3, 1 / 3),
-        'mitchell': (1 / 3, 1 / 3),
-        'catmull_rom': (0.0, 0.5),
-        'catrom': (0.0, 0.5),
-        'bicubic_sharp': (0.0, 1.0),
-        'sharp_bicubic': (0.0, 1.0),
-        'robidoux_soft': _get_robidoux_soft(),
-        'robidoux': _get_robidoux(),
-        'robidoux_sharp': _get_robidoux_sharp()
+        "spline": (1.0, 0.0),
+        "b_spline": (1.0, 0.0),
+        "hermite": (0.0, 0.0),
+        "mitchell_netravali": (1 / 3, 1 / 3),
+        "mitchell": (1 / 3, 1 / 3),
+        "catmull_rom": (0.0, 0.5),
+        "catrom": (0.0, 0.5),
+        "bicubic_sharp": (0.0, 1.0),
+        "sharp_bicubic": (0.0, 1.0),
+        "robidoux_soft": _get_robidoux_soft(),
+        "robidoux": _get_robidoux(),
+        "robidoux_sharp": _get_robidoux_sharp(),
     }
     return cubic_filters[cubic_filter]
 
@@ -668,15 +699,15 @@ def set_ffms2_log_level(level: Union[str, int] = 0) -> None:
                                Defaults to 0.
     """
     levels = {
-        'quiet': -8,
-        'panic': 0,
-        'fatal': 8,
-        'error': 16,
-        'warning': 24,
-        'info': 32,
-        'verbose': 40,
-        'debug': 48,
-        'trace': 56,
+        "quiet": -8,
+        "panic": 0,
+        "fatal": 8,
+        "error": 16,
+        "warning": 24,
+        "info": 32,
+        "verbose": 40,
+        "debug": 48,
+        "trace": 56,
         0: -8,
         1: 0,
         2: 8,
@@ -685,6 +716,6 @@ def set_ffms2_log_level(level: Union[str, int] = 0) -> None:
         5: 32,
         6: 40,
         7: 48,
-        8: 56
+        8: 56,
     }
     core.ffms2.SetLogLevel(levels[level])

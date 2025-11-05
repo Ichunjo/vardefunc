@@ -39,7 +39,7 @@ from vstools import (
 
 from .util import pick_px_op
 
-__all__ = ["based_denoise", "BasedDenoise", "BilateralMethod", "decsiz", "adaptative_regrain"]
+__all__ = ["BasedDenoise", "BilateralMethod", "adaptative_regrain", "based_denoise", "decsiz"]
 
 
 class FilterBase[**P, R](Singleton):
@@ -227,7 +227,7 @@ class BasedDenoise[**P, R](VSObject):
         self.dfttest.select()
         self.mc.select()
         self.bm3d.select()
-        self.nl_means.select()
+        self.nl_means
 
         return res
 
@@ -545,25 +545,17 @@ def decsiz(
     is_float = clip.format.sample_type == vs.FLOAT
     peak = (1 << bits) - 1 if not is_float else 1.0
     gamma = 1 / gamma
-    if clip.format.color_family == vs.GRAY:
-        planes = [0]
-    else:
-        planes = [0, 1, 2] if not planes else planes
+    planes = [0] if clip.format.color_family == vs.GRAY else planes if planes else [0, 1, 2]
 
     if not protect_mask:
         clip16 = depth(clip, 16)
-        masks = split(range_mask(clip16, rad=3, radc=2).resize.Bilinear(format=vs.YUV444P16)) + [
-            FDoGTCanny().edgemask(get_y(clip16)).std.Maximum().std.Minimum()
-        ]
+        masks = [*split(range_mask(clip16, rad=3, radc=2).resize.Bilinear(format=vs.YUV444P16)), FDoGTCanny().edgemask(get_y(clip16)).std.Maximum().std.Minimum()]
         protect_mask = core.std.Expr(masks, "x y max z max 3250 < 0 65535 ? a max 8192 < 0 65535 ?").std.BoxBlur(
             hradius=1, vradius=1, hpasses=2, vpasses=2
         )
 
     clip_y = get_y(clip)
-    if prefilter:
-        pre = clip_y.std.BoxBlur(hradius=2, vradius=2, hpasses=4, vpasses=4)
-    else:
-        pre = clip_y
+    pre = clip_y.std.BoxBlur(hradius=2, vradius=2, hpasses=4, vpasses=4) if prefilter else clip_y
 
     denoise_mask = pick_px_op(
         is_float,
@@ -642,7 +634,7 @@ def adaptative_regrain(
         n: int,
         f: vs.VideoFrame,
         avg_max: float,
-        avg_min: float,  # noqa: PLW0613
+        avg_min: float,
         new: vs.VideoNode,
         adapt: vs.VideoNode,
     ) -> vs.VideoNode:

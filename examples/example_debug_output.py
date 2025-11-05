@@ -1,6 +1,7 @@
 import vapoursynth as vs
-from vardefunc.misc import DebugOutput
 from vsutil import split
+
+from vardefunc.misc import DebugOutput
 
 core = vs.core
 
@@ -25,7 +26,7 @@ def main_filter() -> vs.VideoNode:
     debug <<= den  # Add the den clip from the biggest index
 
     db = deband(den)
-    debug <<= dict(deband=db)  # Add the named den clip from the biggest index
+    debug <<= {"deband": db}  # Add the named den clip from the biggest index
 
     grained = grain(db)
     debug <<= split(grained)  # Add grained den planes from the biggest index
@@ -46,7 +47,7 @@ def grain(clip: vs.VideoNode) -> vs.VideoNode:
 
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass
 else:
     filtered = main_filter()

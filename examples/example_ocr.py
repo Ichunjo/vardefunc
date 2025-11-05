@@ -1,6 +1,7 @@
 import vapoursynth as vs
-from vardefunc.ocr import OCR
 from vsutil import get_y
+
+from vardefunc.ocr import OCR
 
 core = vs.core
 
@@ -15,16 +16,16 @@ def ocring() -> None:
     ocr.preview_cropped.set_output(0)
     ocr.preview_cleaned.set_output(1)
 
-    ocr.launch(datapath=r'C:\Users\Varde\AppData\Roaming\VapourSynth\plugins64\tessdata', language='fra+eng')
+    ocr.launch(datapath=r"C:\Users\Varde\AppData\Roaming\VapourSynth\plugins64\tessdata", language="fra+eng")
     ocr.write_ass(
-        'output.ass',
-        [('_', '-'), ('…', '...'), ('‘', "'"), ('’', "'"), (" '", "'"),
-         ('—', '-'), ('- ', '– '), ('0u', 'Ou'), ('Gomme', 'Comme'), ('A ', 'À '),
-         ('II', 'Il'), ('ees', 'ces'), ('@', 'O'), ('oe', 'œ'), ('téte', 'tête')]
+        "output.ass",
+        [("_", "-"), ("…", "..."), ("‘", "'"), ("’", "'"), (" '", "'"),
+         ("—", "-"), ("- ", "– "), ("0u", "Ou"), ("Gomme", "Comme"), ("A ", "À "),
+         ("II", "Il"), ("ees", "ces"), ("@", "O"), ("oe", "œ"), ("téte", "tête")]
     )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     ocring()
 else:
     ocring()

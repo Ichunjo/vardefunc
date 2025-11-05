@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-__all__ = ['DuplicateFrame']
+__all__ = ["DuplicateFrame"]
 
 from fractions import Fraction
 from os import PathLike
-from typing import Any, Callable, List, Sequence, TypeAlias, TypeVar, Union
+from typing import Any, Callable, List, Self, Sequence, TypeAlias, TypeVar, Union
 
 from numpy import array as np_array
 from numpy import c_, int8, int16, int32, uint8, uint16, uint32
@@ -36,7 +36,7 @@ OpInput = Union[
     dict[str, List[VideoNode]]
 ]
 # Function Debug
-F_OpInput = TypeVar('F_OpInput', bound=Callable[..., OpInput])
+F_OpInput = TypeVar("F_OpInput", bound=Callable[..., OpInput])
 # Any Numpy integrer
 AnyInt = Union[int8, int16, int32, uint8, uint16, uint32]
 
@@ -57,7 +57,7 @@ class DuplicateFrame(int):
     """Class depicting a duplicate frame"""
     dup: int
 
-    def __new__(cls, x: int, /, dup: int = 1) -> DuplicateFrame:
+    def __new__(cls, x: int, /, dup: int = 1) -> Self:
         df = super().__new__(cls, x)
         df.dup = dup
         return df
@@ -66,10 +66,10 @@ class DuplicateFrame(int):
         return DuplicateFrame(Convert.f2samples(int(self), ref_fps, sample_rate), dup=self.dup)
 
     def __repr__(self) -> str:
-        return f'<DuplicateFrame object: \'x:{super().__repr__()}, dup:{self.dup}\'>'
+        return f"<DuplicateFrame object: 'x:{super().__repr__()}, dup:{self.dup}'>"
 
     def __str__(self) -> str:
-        return f'{super().__str__()} * {self.dup}'
+        return f"{super().__str__()} * {self.dup}"
 
     def __add__(self, x: int) -> DuplicateFrame:
         return DuplicateFrame(self, dup=self.dup + x)

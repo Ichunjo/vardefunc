@@ -25,10 +25,10 @@ from .types import VNumpy as vnp
 from .util import normalise_ranges, ranges_to_indices, select_frames
 
 __all__ = [
-    "is_preview",
-    "set_output",
-    "replace_ranges",
     "based_aa",
+    "is_preview",
+    "replace_ranges",
+    "set_output",
 ]
 
 

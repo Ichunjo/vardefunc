@@ -1,34 +1,34 @@
 """Helper functions for the main functions in this module"""
 
 from __future__ import annotations
+
 from math import inf
 
 __all__ = [
-    "select_frames",
+    "MutableVideoNode",
+    "adjust_audio_frames",
+    "adjust_clip_frames",
     "normalise_ranges",
     "ranges_to_indices",
-    "adjust_clip_frames",
-    "adjust_audio_frames",
-    "to_incl_incl",
+    "select_frames",
     "to_incl_excl",
-    "MutableVideoNode",
+    "to_incl_incl",
 ]
 
+import contextlib
 from fractions import Fraction
 from functools import cached_property, partial
-from itertools import groupby
+from itertools import groupby, pairwise
 from types import NoneType
 from typing import Any, Callable, Iterable, MutableSequence, Optional, Self, Sequence, TypeGuard, cast, overload
 
 import numpy as np
-
 from pytimeconv import Convert
 from vstools import ClipsCache, FrameRangeN, FrameRangesN, core, vs
 from vstools.utils.ranges import _RangesCallBack
 
-from .types import AnyInt
+from .types import AnyInt, NDArray, Range, Trim
 from .types import DuplicateFrame as DF
-from .types import NDArray, Range, Trim
 from .types import VNumpy as vnp
 
 
@@ -126,10 +126,7 @@ def normalise_ranges(
     if isinstance(clip, vs.VideoNode):
         num_frames = clip.num_frames
     elif isinstance(clip, vs.AudioNode):
-        if ref_fps is not None:
-            num_frames = clip.num_samples
-        else:
-            num_frames = clip.num_frames
+        num_frames = clip.num_samples if ref_fps is not None else clip.num_frames
     else:
         num_frames = None
 
@@ -143,7 +140,7 @@ def normalise_ranges(
             return [rngs]
 
         if isinstance(rngs, tuple) and len(rngs) == 2:
-            if isinstance(rngs[0], int) or rngs[0] is None and isinstance(rngs[1], int) or rngs[1] is None:
+            if isinstance(rngs[0], int) or (rngs[0] is None and isinstance(rngs[1], int)) or rngs[1] is None:
                 return [cast(tuple[int | None, int | None], rngs)]
             else:
                 raise ValueError
@@ -202,9 +199,8 @@ def normalise_ranges(
             if start > end:
                 warnings.warn(f'normalise_ranges: start frame "{start}" is higher than end frame "{end}"')
 
-            if num_frames is not None:
-                if start >= num_frames or end > num_frames:
-                    warnings.warn(f"normalise_ranges: {r} out of range")
+            if num_frames is not None and (start >= num_frames or end > num_frames):
+                warnings.warn(f"normalise_ranges: {r} out of range")
 
         if num_frames is not None:
             start = min(start, num_frames - 1)
@@ -219,7 +215,7 @@ def normalise_ranges(
         nranges_d = dict(out)
         nranges_rev = sorted(nranges_d.items(), reverse=True)
 
-        for (start1, end1), (start2, end2) in zip(nranges_rev, nranges_rev[1:]):
+        for (start1, end1), (start2, end2) in pairwise(nranges_rev):
             if end1 is None or end2 is None:
                 continue
 
@@ -407,14 +403,10 @@ class MutableVideoNode(MutableSequence[vs.VideoNode]):
         self._mutable_node.insert(index, value)
 
     def _normalize_inner_list(self) -> None:
-        try:
+        with contextlib.suppress(AttributeError):
             del self.all_nodes
-        except AttributeError:
-            pass
-        try:
+        with contextlib.suppress(AttributeError):
             del self.indices
-        except AttributeError:
-            pass
         self._mutable_node = [(f_i, self.all_nodes[c_i]) for c_i, f_i in self.indices]
 
     @cached_property

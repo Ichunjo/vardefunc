@@ -1,13 +1,13 @@
 """Random masking functions"""
 
 __all__ = [
-    'cambi_mask',
+    "cambi_mask",
 ]
 
 from typing import Any
 
 from vskernels import Bilinear, Scaler, ScalerLike
-from vsrgtools import box_blur, MeanMode
+from vsrgtools import MeanMode, box_blur
 from vstools import DitherType, VSFunction, core, depth, get_depth, vs
 
 
@@ -34,13 +34,13 @@ def cambi_mask(
     scores = core.akarin.Cambi(clip, scores=True, **cambi_args)
     if merge_previous:
         cscores = [
-            blur_func(scores.std.PropToClip(f'CAMBI_SCALE{i}').std.Deflate().std.Deflate())
+            blur_func(scores.std.PropToClip(f"CAMBI_SCALE{i}").std.Deflate().std.Deflate())
             for i in range(0, scale + 1)
         ]
         scaler = Scaler.ensure_obj(scaler)
 
         deband_mask = MeanMode.ARITHMETIC((scaler.scale(c, scores.width, scores.height) for c in cscores), func=cambi_mask)
     else:
-        deband_mask = blur_func(scores.std.PropToClip(f'CAMBI_SCALE{scale}').std.Deflate().std.Deflate())
+        deband_mask = blur_func(scores.std.PropToClip(f"CAMBI_SCALE{scale}").std.Deflate().std.Deflate())
 
     return deband_mask.std.CopyFrameProps(scores)

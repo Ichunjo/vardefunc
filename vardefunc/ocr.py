@@ -1,13 +1,12 @@
 
-__all__ = ['OCR']
+__all__ = ["OCR"]
 
+import itertools
 import math
-
 from functools import partial
 from typing import Dict, List, Optional, Sequence, Set, Tuple, Union
 
 import vapoursynth as vs
-
 from pytimeconv import Convert
 from vsmasktools import max_planes, region_rel_mask
 from vstools import clip_async_render
@@ -64,8 +63,8 @@ class OCR:
         self.thr_in = thr_in if isinstance(thr_in, tuple) else [thr_in]
         self.thr_out = thr_out if isinstance(thr_out, tuple) else [thr_out]
 
-        if len(set([clip.format.num_planes, len(self.thr_in), len(self.thr_out)])) > 1:
-            raise ValueError('OCR: number of thr_in and thr_out values must correspond to the number of clip planes!')
+        if len({clip.format.num_planes, len(self.thr_in), len(self.thr_out)}) > 1:
+            raise ValueError("OCR: number of thr_in and thr_out values must correspond to the number of clip planes!")
 
     def launch(self, datapath: Optional[str] = None, language: Optional[str] = None,
                options: Optional[Sequence[str]] = None) -> None:
@@ -100,7 +99,7 @@ class OCR:
 
     def _do_ocr(self, ppclip: vs.VideoNode, ocred: vs.VideoNode) -> None:
         def _select_clips(n: int, f: vs.VideoFrame, clips: List[vs.VideoNode]) -> vs.VideoNode:
-            return clips[1] if f.props['PlaneStatsMax'] > 0 else clips[0].std.BlankClip(1, 1)  # type: ignore
+            return clips[1] if f.props["PlaneStatsMax"] > 0 else clips[0].std.BlankClip(1, 1)  # type: ignore
 
         ocred = core.std.FrameEval(
             core.std.Splice([ppclip[:-1], ppclip.std.BlankClip(1, 1, length=1)], True),
@@ -111,16 +110,16 @@ class OCR:
         results: Set[Tuple[int, bytes]] = set()
 
         def _callback(n: int, f: vs.VideoFrame) -> None:
-            if (prop_ocr := 'OCRString') in f.props.keys():
+            if (prop_ocr := "OCRString") in f.props:
                 results.add((n, f.props[prop_ocr]))  # type: ignore
 
-        clip_async_render(ocred, progress='OCRing clip...', callback=_callback)
+        clip_async_render(ocred, progress="OCRing clip...", callback=_callback)
         self.results += sorted(results)
 
     def write_ass(
         self, output: AnyPath,
         string_replace: List[Tuple[str, str]] = [
-            ('_', '-'), ('…', '...'), ('‘', "'"), ('’', "'"), (" '", "'")
+            ("_", "-"), ("…", "..."), ("‘", "'"), ("’", "'"), (" '", "'")
         ]
     ) -> None:
         """Write results as a readable ass file.
@@ -134,26 +133,26 @@ class OCR:
         """
         resultsd: Dict[int, Tuple[int, str]] = {}
         for frame, string_byte in sorted(self.results):
-            nstring = string_byte.decode('utf-8').replace('\n', '\\N')
+            nstring = string_byte.decode("utf-8").replace("\n", "\\N")
             for r in string_replace:
                 nstring = nstring.replace(*r)
             resultsd[frame] = (frame + 1, nstring)
 
         results_s = sorted(resultsd.items(), reverse=True)
 
-        for (start1, (end1, string1)), (start2, (end2, string2)) in zip(results_s, results_s[1:]):
+        for (start1, (end1, string1)), (start2, (end2, string2)) in itertools.pairwise(results_s):
             if string1 == string2 and end2 == start1:
                 resultsd[start2] = (max(end1, resultsd[start1][0]), string1)
                 del resultsd[start1]
 
         fps = self.clip.fps
 
-        with open(output, 'w', encoding='utf-8-sig') as ass:
-            ass.write('[Events]\n')
-            ass.write('Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n')
+        with open(output, "w", encoding="utf-8-sig") as ass:
+            ass.write("[Events]\n")
+            ass.write("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
             for s, (e, string) in sorted(resultsd.items()):
                 if string:
-                    ass.write(f'Dialogue: 0,{Convert.f2assts(s, fps)},{Convert.f2assts(e, fps)},Default,,0,0,0,,{string}\n')
+                    ass.write(f"Dialogue: 0,{Convert.f2assts(s, fps)},{Convert.f2assts(e, fps)},Default,,0,0,0,,{string}\n")
 
     def _cropping(self, clip: vs.VideoNode, c: Tuple[int, int, int], alt: bool) -> vs.VideoNode:
         cw, ch, h = c
@@ -174,7 +173,7 @@ class OCR:
         white_raw = clip.std.Binarize(self.thr_in)
         bright_raw = clip.std.Binarize(self.thr_out)
 
-        bright_out = core.std.Expr([bright_raw, square], 'x y min')
+        bright_out = core.std.Expr([bright_raw, square], "x y min")
         bright_not = core.misc.Hysteresis(bright_out, bright_raw).std.InvertMask()
         white_txt = core.std.MaskedMerge(clip.std.BlankClip(), white_raw, bright_not)
 
