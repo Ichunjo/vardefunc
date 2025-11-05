@@ -1,4 +1,0 @@
-numpy>=2.2.2
-pytimeconv>=0.0.2
-VapourSynth>=65
-vsjetpack>=0.4.0

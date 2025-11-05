@@ -1,0 +1,103 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vardefunc"
+version = "0.10.0"
+description = "Vardë's Vapoursynth functions"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "MIT" }
+authors = [
+    { name = "Vardë", email = "ichunjo.le.terrible@gmail.com" },
+]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Typing :: Typed"
+]
+
+dependencies = [
+    "numpy>=2.0.0",
+    "pytimeconv>=0.0.2",
+    "VapourSynth>=69",
+    "vsjetpack>=0.8.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy~=1.18.0",
+    "ruff~=0.14.0",
+    "twine>=6.2.0",
+]
+
+
+[project.urls]
+Homepage = "https://github.com/Ichunjo/vardefunc"
+Repository = "https://github.com/Ichunjo/vardefunc"
+Issues = "https://github.com/Ichunjo/vardefunc/issues"
+
+[tool.hatch.build]
+include = [
+    "vardefunc",
+    "vardefunc/py.typed",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "vardefunc",
+    "pyproject.toml",
+    "README.md",
+    "LICENSE",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["vardefunc"]
+include = ["vardefunc/py.typed"]
+
+
+[tool.mypy]
+mypy_path = "$MYPY_CONFIG_FILE_DIR/stubs"
+
+# Flags changed by --strict
+warn_return_any = false
+extra_checks = false
+
+# Misc
+warn_unreachable = true
+
+allow_redefinition_new = true
+local_partial_types = true
+implicit_reexport = false
+strict = true
+
+show_column_numbers = true
+pretty = true
+color_output = true
+error_summary = true
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+extend-select = [
+    "E",
+    "C4",
+    "I",
+    "PYI",
+    "Q",
+    "SIM",
+    "N",
+    "W",
+    "RUF"
+]
+ignore = ["PYI041"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.*" = ["F401", "F403"]
