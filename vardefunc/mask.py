@@ -17,7 +17,7 @@ def cambi_mask(
     merge_previous: bool = True,
     blur_func: VSFunction = lambda clip: box_blur(clip, 2, 3, planes=0),
     scaler: ScalerLike = Bilinear,
-    **cambi_args: Any
+    **cambi_args: Any,
 ) -> vs.VideoNode:
     """Generate a deband mask
 
@@ -34,12 +34,13 @@ def cambi_mask(
     scores = core.akarin.Cambi(clip, scores=True, **cambi_args)
     if merge_previous:
         cscores = [
-            blur_func(scores.std.PropToClip(f"CAMBI_SCALE{i}").std.Deflate().std.Deflate())
-            for i in range(0, scale + 1)
+            blur_func(scores.std.PropToClip(f"CAMBI_SCALE{i}").std.Deflate().std.Deflate()) for i in range(0, scale + 1)
         ]
         scaler = Scaler.ensure_obj(scaler)
 
-        deband_mask = MeanMode.ARITHMETIC((scaler.scale(c, scores.width, scores.height) for c in cscores), func=cambi_mask)
+        deband_mask = MeanMode.ARITHMETIC(
+            (scaler.scale(c, scores.width, scores.height) for c in cscores), func=cambi_mask
+        )
     else:
         deband_mask = blur_func(scores.std.PropToClip(f"CAMBI_SCALE{scale}").std.Deflate().std.Deflate())
 

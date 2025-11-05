@@ -34,17 +34,13 @@ def main_filter() -> vs.VideoNode:
     return grained
 
 
-def denoise(clip: vs.VideoNode) -> vs.VideoNode:
-    ...
+def denoise(clip: vs.VideoNode) -> vs.VideoNode: ...
 
 
-def deband(clip: vs.VideoNode) -> vs.VideoNode:
-    ...
+def deband(clip: vs.VideoNode) -> vs.VideoNode: ...
 
 
-def grain(clip: vs.VideoNode) -> vs.VideoNode:
-    ...
-
+def grain(clip: vs.VideoNode) -> vs.VideoNode: ...
 
 
 if __name__ == "__main__":

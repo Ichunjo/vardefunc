@@ -20,12 +20,7 @@ Count: TypeAlias = int
 
 
 # Some outputs
-Output = Union[
-    VideoNode,
-    list[VideoNode],
-    tuple[int, VideoNode],
-    tuple[int, List[VideoNode]]
-]
+Output = Union[VideoNode, list[VideoNode], tuple[int, VideoNode], tuple[int, List[VideoNode]]]
 # Operator Input
 OpInput = Union[
     VideoNode,
@@ -33,7 +28,7 @@ OpInput = Union[
     tuple[VideoNode, ...],
     tuple[List[VideoNode], ...],
     dict[str, VideoNode],
-    dict[str, List[VideoNode]]
+    dict[str, List[VideoNode]],
 ]
 # Function Debug
 F_OpInput = TypeVar("F_OpInput", bound=Callable[..., OpInput])
@@ -55,6 +50,7 @@ class VNumpy:
 
 class DuplicateFrame(int):
     """Class depicting a duplicate frame"""
+
     dup: int
 
     def __new__(cls, x: int, /, dup: int = 1) -> Self:

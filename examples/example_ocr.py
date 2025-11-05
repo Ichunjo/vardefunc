@@ -19,9 +19,23 @@ def ocring() -> None:
     ocr.launch(datapath=r"C:\Users\Varde\AppData\Roaming\VapourSynth\plugins64\tessdata", language="fra+eng")
     ocr.write_ass(
         "output.ass",
-        [("_", "-"), ("…", "..."), ("‘", "'"), ("’", "'"), (" '", "'"),
-         ("—", "-"), ("- ", "– "), ("0u", "Ou"), ("Gomme", "Comme"), ("A ", "À "),
-         ("II", "Il"), ("ees", "ces"), ("@", "O"), ("oe", "œ"), ("téte", "tête")]
+        [
+            ("_", "-"),
+            ("…", "..."),
+            ("‘", "'"),
+            ("’", "'"),
+            (" '", "'"),
+            ("—", "-"),
+            ("- ", "– "),
+            ("0u", "Ou"),
+            ("Gomme", "Comme"),
+            ("A ", "À "),
+            ("II", "Il"),
+            ("ees", "ces"),
+            ("@", "O"),
+            ("oe", "œ"),
+            ("téte", "tête"),
+        ],
     )
 
 

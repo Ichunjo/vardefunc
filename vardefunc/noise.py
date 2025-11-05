@@ -549,7 +549,10 @@ def decsiz(
 
     if not protect_mask:
         clip16 = depth(clip, 16)
-        masks = [*split(range_mask(clip16, rad=3, radc=2).resize.Bilinear(format=vs.YUV444P16)), FDoGTCanny().edgemask(get_y(clip16)).std.Maximum().std.Minimum()]
+        masks = [
+            *split(range_mask(clip16, rad=3, radc=2).resize.Bilinear(format=vs.YUV444P16)),
+            FDoGTCanny().edgemask(get_y(clip16)).std.Maximum().std.Minimum(),
+        ]
         protect_mask = core.std.Expr(masks, "x y max z max 3250 < 0 65535 ? a max 8192 < 0 65535 ?").std.BoxBlur(
             hradius=1, vradius=1, hpasses=2, vpasses=2
         )

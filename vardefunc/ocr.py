@@ -1,4 +1,3 @@
-
 __all__ = ["OCR"]
 
 import itertools
@@ -18,6 +17,7 @@ core = vs.core
 
 class OCR:
     """OCR Interface using ocr.Recognize"""
+
     clip: vs.VideoNode
     coord: Tuple[int, int, int]
     coord_alt: Optional[Tuple[int, int, int]]
@@ -29,10 +29,14 @@ class OCR:
 
     _brd_crop: int = 8
 
-    def __init__(self, clip: vs.VideoNode, coord: Tuple[int, int, int],
-                 coord_alt: Optional[Tuple[int, int, int]] = None,
-                 thr_in: Union[int, Tuple[int, int, int]] = 225,
-                 thr_out: Union[int, Tuple[int, int, int]] = 80) -> None:
+    def __init__(
+        self,
+        clip: vs.VideoNode,
+        coord: Tuple[int, int, int],
+        coord_alt: Optional[Tuple[int, int, int]] = None,
+        thr_in: Union[int, Tuple[int, int, int]] = 225,
+        thr_out: Union[int, Tuple[int, int, int]] = 80,
+    ) -> None:
         """
         Args:
             clip (vs.VideoNode):
@@ -66,8 +70,9 @@ class OCR:
         if len({clip.format.num_planes, len(self.thr_in), len(self.thr_out)}) > 1:
             raise ValueError("OCR: number of thr_in and thr_out values must correspond to the number of clip planes!")
 
-    def launch(self, datapath: Optional[str] = None, language: Optional[str] = None,
-               options: Optional[Sequence[str]] = None) -> None:
+    def launch(
+        self, datapath: Optional[str] = None, language: Optional[str] = None, options: Optional[Sequence[str]] = None
+    ) -> None:
         """http://www.vapoursynth.com/doc/plugins/ocr.html
 
         Args:
@@ -104,7 +109,7 @@ class OCR:
         ocred = core.std.FrameEval(
             core.std.Splice([ppclip[:-1], ppclip.std.BlankClip(1, 1, length=1)], True),
             partial(_select_clips, clips=[ppclip, ocred]),
-            prop_src=ppclip.std.PlaneStats()
+            prop_src=ppclip.std.PlaneStats(),
         )
 
         results: Set[Tuple[int, bytes]] = set()
@@ -117,10 +122,9 @@ class OCR:
         self.results += sorted(results)
 
     def write_ass(
-        self, output: AnyPath,
-        string_replace: List[Tuple[str, str]] = [
-            ("_", "-"), ("…", "..."), ("‘", "'"), ("’", "'"), (" '", "'")
-        ]
+        self,
+        output: AnyPath,
+        string_replace: List[Tuple[str, str]] = [("_", "-"), ("…", "..."), ("‘", "'"), ("’", "'"), (" '", "'")],
     ) -> None:
         """Write results as a readable ass file.
 
@@ -152,7 +156,9 @@ class OCR:
             ass.write("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
             for s, (e, string) in sorted(resultsd.items()):
                 if string:
-                    ass.write(f"Dialogue: 0,{Convert.f2assts(s, fps)},{Convert.f2assts(e, fps)},Default,,0,0,0,,{string}\n")
+                    ass.write(
+                        f"Dialogue: 0,{Convert.f2assts(s, fps)},{Convert.f2assts(e, fps)},Default,,0,0,0,,{string}\n"
+                    )
 
     def _cropping(self, clip: vs.VideoNode, c: Tuple[int, int, int], alt: bool) -> vs.VideoNode:
         cw, ch, h = c
@@ -162,12 +168,11 @@ class OCR:
         return clip.std.CropAbs(cw, ch, round(wcrop), hcrop)
 
     def _cleaning(self, clip: vs.VideoNode) -> vs.VideoNode:
-        clip_black = clip.std.BlankClip(
-            clip.width - self._brd_crop, clip.height - self._brd_crop
-        )
+        clip_black = clip.std.BlankClip(clip.width - self._brd_crop, clip.height - self._brd_crop)
         square = core.std.AddBorders(
-            clip_black, *(int(self._brd_crop / 2), ) * 4,
-            color=[(1 << clip.format.bits_per_sample) - 1] * clip_black.format.num_planes  # type: ignore
+            clip_black,
+            *(int(self._brd_crop / 2),) * 4,
+            color=[(1 << clip.format.bits_per_sample) - 1] * clip_black.format.num_planes,  # type: ignore
         )
 
         white_raw = clip.std.Binarize(self.thr_in)
@@ -192,10 +197,7 @@ class OCR:
             cmask_alt = self._compute_preview_cropped(self.coord_alt, True)
             cmask = core.std.Lut2(cmask, cmask_alt, function=lambda x, y: max(x, y))
 
-        return core.std.MaskedMerge(
-            core.std.Lut(self.clip, function=lambda x: round(x / 2)),
-            self.clip, cmask
-        )
+        return core.std.MaskedMerge(core.std.Lut(self.clip, function=lambda x: round(x / 2)), self.clip, cmask)
 
     def _compute_preview_cropped(self, c: Tuple[int, int, int], alt: bool) -> vs.VideoNode:
         cw, ch, h = c
@@ -204,10 +206,7 @@ class OCR:
         hcrop = self.clip.height - ch - h, h
         if alt:
             hcrop = hcrop[::-1]
-        return region_rel_mask(
-            self.clip.std.BlankClip(format=vs.GRAY8, color=255),
-            left, right, *hcrop
-        )
+        return region_rel_mask(self.clip.std.BlankClip(format=vs.GRAY8, color=255), left, right, *hcrop)
 
     @property
     def preview_cleaned(self) -> vs.VideoNode:
