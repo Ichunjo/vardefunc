@@ -20,7 +20,17 @@ from vsdenoise import (
 )
 from vsdenoise import mc_clamp as vsdenoise_mc_clamp
 from vsmasktools import adg_mask
-from vstools import InvalidColorFamilyError, Planes, VSFunctionKwArgs, VSObject, core, get_y, join, normalize_planes, vs
+from vstools import (
+    Planes,
+    UnsupportedColorFamilyError,
+    VSFunctionKwArgs,
+    VSObject,
+    core,
+    get_y,
+    join,
+    normalize_planes,
+    vs,
+)
 
 __all__ = ["BasedDenoise", "adaptative_regrain", "based_denoise"]
 
@@ -368,7 +378,7 @@ def based_denoise(
     """
     bd = based_denoise
 
-    InvalidColorFamilyError.check(clip, (vs.YUV, vs.GRAY), bd)
+    UnsupportedColorFamilyError.check(clip, (vs.YUV, vs.GRAY), bd)
 
     full_range_args = {} if full_range_args is None else full_range_args.copy()
     dfttest_args = {} if dfttest_args is None else dfttest_args.copy()

@@ -25,7 +25,7 @@ from typing import (
     overload,
 )
 
-from vstools import Direction, core, depth, get_depth, get_w, insert_clip, join, plane, vs
+from vstools import core, depth, get_depth, get_w, insert_clip, join, plane, vs
 
 from .types import OpInput, Output
 
@@ -282,7 +282,7 @@ class DebugOutput(DebugOutputMMap):
                 "Problematic output: \noutput list out of range", 5, 2
             )
         else:
-            from lvsfunc.comparison import Stack
+            from lvsfunc.comparison import Direction, Stack
 
             if len({c.width for c in planes}) == len({c.height for c in planes}) == 1:
                 out = Stack(planes).clip
