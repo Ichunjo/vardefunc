@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vardefunc"
-version = "0.10.0"
+version = "0.11.0"
 description = "Vardë's Vapoursynth functions"
 readme = "README.md"
 requires-python = ">=3.13"
