@@ -1,46 +1,43 @@
 from __future__ import annotations
 
-__all__ = ["DuplicateFrame"]
-
 from fractions import Fraction
 from os import PathLike
-from typing import Any, Callable, List, Self, Sequence, TypeAlias, TypeVar, Union
+from typing import Any, Self, Sequence
 
+from jetpytools import StrictRange
 from numpy import array as np_array
 from numpy import c_, int8, int16, int32, uint8, uint16, uint32
 from numpy.typing import NDArray
 from pytimeconv import Convert
 from vapoursynth import VideoNode
 
-Range: TypeAlias = tuple[int, int]
-RangeN: TypeAlias = tuple[int | None, int | None]
-Trim: TypeAlias = RangeN
+type Range = StrictRange
+type RangeN = tuple[int | None, int | None]
+type Trim = RangeN
 
-Count: TypeAlias = int
-
+__all__ = ["DuplicateFrame"]
 
 # Some outputs
-Output = Union[VideoNode, list[VideoNode], tuple[int, VideoNode], tuple[int, List[VideoNode]]]
+Output = VideoNode | list[VideoNode] | tuple[int, VideoNode] | tuple[int, list[VideoNode]]
 # Operator Input
-OpInput = Union[
-    VideoNode,
-    list[VideoNode],
-    tuple[VideoNode, ...],
-    tuple[List[VideoNode], ...],
-    dict[str, VideoNode],
-    dict[str, List[VideoNode]],
-]
-# Function Debug
-F_OpInput = TypeVar("F_OpInput", bound=Callable[..., OpInput])
-# Any Numpy integrer
-AnyInt = Union[int8, int16, int32, uint8, uint16, uint32]
+OpInput = (
+    VideoNode
+    | list[VideoNode]
+    | tuple[VideoNode, ...]
+    | tuple[list[VideoNode], ...]
+    | dict[str, VideoNode]
+    | dict[str, list[VideoNode]]
+)
 
-AnyPath = Union[PathLike[str], str]
+# Any Numpy integrer
+AnyInt = int8 | int16 | int32 | uint8 | uint16 | uint32
+
+AnyPath = PathLike[str] | str
 
 
 class VNumpy:
     @staticmethod
-    def array(obj: Union[NDArray[AnyInt], Sequence[Any]], **kwargs: Any) -> NDArray[AnyInt]:
+    def array(obj: NDArray[AnyInt] | Sequence[Any], **kwargs: Any) -> NDArray[AnyInt]:
         return np_array(obj, **kwargs)
 
     @classmethod

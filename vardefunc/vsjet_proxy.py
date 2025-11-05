@@ -7,7 +7,6 @@ import numpy as np
 import vsscale
 import vstools
 from jetpytools import copy_signature
-from numpy.typing import NDArray
 from vskernels import BorderHandling, ComplexKernelLike, Hermite, LeftShift, ScalerLike, TopShift
 from vstools import FieldBasedT, FrameRangeN, FrameRangesN, vs
 
@@ -136,9 +135,9 @@ def replace_ranges(
         for (i, (c, r)) in enumerate(rclips, 1)
     ]
 
-    clips, indices_iter = cast(tuple[Iterator[vs.VideoNode], Iterator[NDArray[AnyInt]]], zip(*rrclips))
+    clips, indices_iter = cast(tuple[Iterator[vs.VideoNode], Iterator[np.typing.NDArray[AnyInt]]], zip(*rrclips))
 
-    indices = list[NDArray[AnyInt]]()
+    indices = list[np.typing.NDArray[AnyInt]]()
 
     for i in indices_iter:
         if (isize := i.size) < (rsize := ref_indices.size):

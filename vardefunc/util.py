@@ -2,7 +2,20 @@
 
 from __future__ import annotations
 
+from contextlib import suppress
+from fractions import Fraction
+from functools import cached_property, partial
+from itertools import groupby, pairwise
 from math import inf
+from types import NoneType
+from typing import Any, Callable, Iterable, MutableSequence, Optional, Self, Sequence, TypeGuard, cast, overload
+
+import numpy as np
+from pytimeconv import Convert
+from vstools import ClipsCache, FrameRangeN, FrameRangesN, core, vs
+from vstools.functions.ranges import _RangesCallBack
+
+from .types import AnyInt, DuplicateFrame, Range, Trim, VNumpy
 
 __all__ = [
     "MutableVideoNode",
@@ -14,20 +27,6 @@ __all__ = [
     "to_incl_excl",
     "to_incl_incl",
 ]
-
-import contextlib
-from fractions import Fraction
-from functools import cached_property, partial
-from itertools import groupby, pairwise
-from types import NoneType
-from typing import Any, Callable, Iterable, MutableSequence, Optional, Self, Sequence, TypeGuard, cast, overload
-
-import numpy as np
-from pytimeconv import Convert
-from vstools import ClipsCache, FrameRangeN, FrameRangesN, core, vs
-from vstools.functions.ranges import _RangesCallBack
-
-from .types import AnyInt, DuplicateFrame, Range, Trim, VNumpy
 
 
 def select_frames(
@@ -401,9 +400,9 @@ class MutableVideoNode(MutableSequence[vs.VideoNode]):
         self._mutable_node.insert(index, value)
 
     def _normalize_inner_list(self) -> None:
-        with contextlib.suppress(AttributeError):
+        with suppress(AttributeError):
             del self.all_nodes
-        with contextlib.suppress(AttributeError):
+        with suppress(AttributeError):
             del self.indices
         self._mutable_node = [(f_i, self.all_nodes[c_i]) for c_i, f_i in self.indices]
 

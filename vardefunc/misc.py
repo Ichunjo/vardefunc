@@ -2,6 +2,33 @@
 
 from __future__ import annotations
 
+import math
+import warnings
+from abc import ABC
+from contextlib import AbstractContextManager
+from functools import partial, wraps
+from itertools import count
+from operator import ilshift, imatmul, ior
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Iterable,
+    Iterator,
+    Literal,
+    MutableMapping,
+    NamedTuple,
+    Self,
+    Sequence,
+    TypeVar,
+    cast,
+    overload,
+)
+
+from vstools import Direction, core, depth, get_depth, get_w, insert_clip, join, plane, vs
+
+from .types import OpInput, Output
+
 __all__ = [
     "DebugOutput",
     "Planes",
@@ -15,49 +42,16 @@ __all__ = [
     "thresholding",
 ]
 
-import math
-import warnings
-from abc import ABC
-from contextlib import AbstractContextManager
-from functools import partial, wraps
-from itertools import count
-from operator import ilshift, imatmul, ior
-from typing import (
-    Any,
-    Callable,
-    ClassVar,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Literal,
-    MutableMapping,
-    NamedTuple,
-    Optional,
-    Self,
-    Sequence,
-    Tuple,
-    Union,
-    cast,
-    overload,
-)
+F_OpInput = TypeVar("F_OpInput", bound=Callable[..., OpInput])
 
-import vapoursynth as vs
-from vstools import Direction, depth, get_depth, get_w, insert_clip, join, plane
-
-from .types import F_OpInput, OpInput, Output
-
-core = vs.core
-
-
-OpDebug = Callable[["DebugOutput", OpInput], "DebugOutput"]
+type OpDebug = Callable[["DebugOutput", OpInput], "DebugOutput"]
 _OPS = {"<<=": cast(OpDebug, ilshift), "@=": cast(OpDebug, imatmul), "|=": cast(OpDebug, ior)}
 
 
 class DebugOutputMMap(MutableMapping[int, vs.VideoNode], ABC):
     """Abstract Debug Output interface implementing the mutable mapping methods"""
 
-    outputs: ClassVar[Dict[int, vs.VideoNode]] = {}
+    outputs: ClassVar[dict[int, vs.VideoNode]] = {}
 
     _props: int
     _num: int
@@ -208,7 +202,7 @@ class DebugOutput(DebugOutputMMap):
         """Fills and replaces existing indexes |="""
         return self._resolve_input_operator(self._index_gen(self._min_idx), clips, False)
 
-    def _resolve_clips(self, i: int, clip: Output, name: Optional[str]) -> Tuple[int, vs.VideoNode]:
+    def _resolve_clips(self, i: int, clip: Output, name: str | None) -> tuple[int, vs.VideoNode]:
         if isinstance(clip, vs.VideoNode):
             out = i, clip
         elif isinstance(clip, list):
@@ -256,17 +250,15 @@ class DebugOutput(DebugOutputMMap):
                 yield i
 
     @overload
-    def catch(self, func: Optional[F_OpInput], /) -> F_OpInput: ...
+    def catch(self, func: F_OpInput | None, /) -> F_OpInput: ...
 
     @overload
-    def catch(self, /, *, op: Union[OpDebug, str] = "<<=") -> Callable[[F_OpInput], F_OpInput]: ...
+    def catch(self, /, *, op: OpDebug | str = "<<=") -> Callable[[F_OpInput], F_OpInput]: ...
 
-    def catch(
-        self, func: Optional[F_OpInput] = None, /, *, op: Union[OpDebug, str] = "<<="
-    ) -> Union[Callable[[F_OpInput], F_OpInput], F_OpInput]:
+    def catch(self, func: Any | None = None, /, *, op: OpDebug | str = "<<=") -> Any:
         """Decorator to catch the output of the function decorated"""
         if func is None:
-            return cast(Callable[[F_OpInput], F_OpInput], partial(self.catch, op=op))
+            return partial(self.catch, op=op)
 
         @wraps(func)
         def _wrapper(*args: Any, **kwargs: Any) -> OpInput:
@@ -276,14 +268,14 @@ class DebugOutput(DebugOutputMMap):
             opera(self, out)
             return out
 
-        return cast(F_OpInput, _wrapper)
+        return _wrapper
 
     @staticmethod
     def _index_gen(start: int) -> Iterable[int]:
         yield from count(start=start)
 
     @staticmethod
-    def _stack_planes(planes: List[vs.VideoNode]) -> vs.VideoNode:
+    def _stack_planes(planes: list[vs.VideoNode]) -> vs.VideoNode:
         if len(planes) > 3:
             warnings.warn("DebugOutput: output list out of range", Warning)
             out = core.std.BlankClip(format=vs.GRAY8, color=128).text.Text(
@@ -311,8 +303,8 @@ class DebugOutput(DebugOutputMMap):
                 raise ValueError(f"DebugOutput: index {i} is already used in current environment!")
 
     @staticmethod
-    def _get_outputs() -> Dict[int, vs.VideoNode]:
-        outputs: Dict[int, vs.VideoNode] = {}
+    def _get_outputs() -> dict[int, vs.VideoNode]:
+        outputs: dict[int, vs.VideoNode] = {}
         for idx, output in vs.get_outputs().items():
             if isinstance(output, vs.VideoOutputTuple):
                 if output.alpha:
@@ -337,7 +329,7 @@ class Thresholds(NamedTuple):
 
 
 def thresholding(
-    *thrs: Thresholds, base: Optional[vs.VideoNode] = None, guidance: Optional[vs.VideoNode] = None
+    *thrs: Thresholds, base: vs.VideoNode | None = None, guidance: vs.VideoNode | None = None
 ) -> vs.VideoNode:
     """
     General function for applying specific filtering on specific thresholds
@@ -371,7 +363,7 @@ def thresholding(
         if thr.clip.format != base.format:
             raise ValueError(f"thresholding: threshold {i} has a different format than base clip")
 
-    def _normalise_thr(thr: int | float | Sequence[int] | Sequence[float], num_planes: int) -> List[int | float]:
+    def _normalise_thr(thr: int | float | Sequence[int] | Sequence[float], num_planes: int) -> list[int | float]:
         thr = [thr] if isinstance(thr, (float, int)) else thr
         return (list(thr) + [thr[-1]] * (num_planes - len(thr)))[:num_planes]
 
@@ -384,7 +376,7 @@ def thresholding(
         coef_min = _normalise_thr(thr.coef_min, base.format.num_planes) if thr.coef_min else None
         coef_max = _normalise_thr(thr.coef_max, base.format.num_planes) if thr.coef_max else None
 
-        exprs: List[str] = []
+        exprs: list[str] = []
         for i in range(base.format.num_planes):
             if_in_min = f"x {soft_bound_min[i]} >= x {hard_bound_min[i]} < and"
             if_in_max = f"x {hard_bound_max[i]} >= x {soft_bound_max[i]} < and"
@@ -447,13 +439,13 @@ class Planes(AbstractContextManager["Planes"], Sequence[vs.VideoNode]):
 
     __slots__ = ("_clip", "_family", "_final_clip", "_in_context", "_planes")
 
-    def __init__(self, clip: vs.VideoNode, bits: Optional[int] = None, family: vs.ColorFamily = vs.YUV) -> None:
+    def __init__(self, clip: vs.VideoNode, bits: int | None = None, family: vs.ColorFamily = vs.YUV) -> None:
         """
         Args:
             clip (vs.VideoNode):
                 Source clip
 
-            bits (Optional[int], optional):
+            bits (int|None, optional):
                 Target bitdepth. Defaults to None.
 
             family (vs.ColorFamily, optional):
@@ -463,7 +455,7 @@ class Planes(AbstractContextManager["Planes"], Sequence[vs.VideoNode]):
         self._family = family
         # Initialisation
         self._final_clip: vs.VideoNode
-        self._planes: List[vs.VideoNode]
+        self._planes: list[vs.VideoNode]
         self._in_context = False
         super().__init__()
 
@@ -531,7 +523,7 @@ class Planes(AbstractContextManager["Planes"], Sequence[vs.VideoNode]):
 
 # ruff: noqa: N802
 class YUVPlanes(Planes):
-    def __init__(self, clip: vs.VideoNode, bits: Optional[int] = None) -> None:
+    def __init__(self, clip: vs.VideoNode, bits: int | None = None) -> None:
         super().__init__(clip, bits, vs.YUV)
 
     @property
@@ -572,7 +564,7 @@ class YUVPlanes(Planes):
 
 
 class RGBPlanes(Planes):
-    def __init__(self, clip: vs.VideoNode, bits: Optional[int] = None) -> None:
+    def __init__(self, clip: vs.VideoNode, bits: int | None = None) -> None:
         super().__init__(clip, bits, vs.RGB)
 
     @property
@@ -631,7 +623,7 @@ def get_chroma_shift(src_h: int, dst_h: int, aspect_ratio: float = 16 / 9) -> fl
     return ch_shift
 
 
-def get_bicubic_params(cubic_filter: str) -> Tuple[float, float]:
+def get_bicubic_params(cubic_filter: str) -> tuple[float, float]:
     """Return the parameter b and c for the bicubic filter
        Source: https://www.imagemagick.org/discourse-server/viewtopic.php?f=22&t=19823
                https://www.imagemagick.org/Usage/filter/#mitchell
@@ -641,22 +633,22 @@ def get_bicubic_params(cubic_filter: str) -> Tuple[float, float]:
                             Catmull-Rom, Catrom, Sharp Bicubic, Robidoux soft, Robidoux, Robidoux Sharp.
 
     Returns:
-        Tuple: b/c combo
+        tuple: b/c combo
     """
     sqrt = math.sqrt
 
-    def _get_robidoux_soft() -> Tuple[float, float]:
+    def _get_robidoux_soft() -> tuple[float, float]:
         b = (9 - 3 * sqrt(2)) / 7
         c = (1 - b) / 2
         return b, c
 
-    def _get_robidoux() -> Tuple[float, float]:
+    def _get_robidoux() -> tuple[float, float]:
         sqrt2 = sqrt(2)
         b = 12 / (19 + 9 * sqrt2)
         c = 113 / (58 + 216 * sqrt2)
         return b, c
 
-    def _get_robidoux_sharp() -> Tuple[float, float]:
+    def _get_robidoux_sharp() -> tuple[float, float]:
         sqrt2 = sqrt(2)
         b = 6 / (13 + 7 * sqrt2)
         c = 7 / (2 + 12 * sqrt2)
@@ -680,7 +672,7 @@ def get_bicubic_params(cubic_filter: str) -> Tuple[float, float]:
     return cubic_filters[cubic_filter]
 
 
-def set_ffms2_log_level(level: Union[str, int] = 0) -> None:
+def set_ffms2_log_level(level: str | int = 0) -> None:
     """A more friendly set of log level in ffms2
 
     Args:

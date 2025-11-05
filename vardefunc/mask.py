@@ -1,14 +1,14 @@
 """Random masking functions"""
 
-__all__ = [
-    "cambi_mask",
-]
-
 from typing import Any
 
 from vskernels import Bilinear, Scaler, ScalerLike
 from vsrgtools import MeanMode, box_blur
 from vstools import DitherType, VSFunction, core, depth, get_depth, vs
+
+__all__ = [
+    "cambi_mask",
+]
 
 
 def cambi_mask(

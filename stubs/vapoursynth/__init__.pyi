@@ -969,6 +969,10 @@ class VideoNode(RawNode):
     std: Final[_std._VideoNode_bound.Plugin]
     """VapourSynth Core Functions"""
 # </attribute/VideoNode_bound/std>
+# <attribute/VideoNode_bound/text>
+    text: Final[_text._VideoNode_bound.Plugin]
+    """VapourSynth Text"""
+# </attribute/VideoNode_bound/text>
 # <attribute/VideoNode_bound/zsmooth>
     zsmooth: Final[_zsmooth._VideoNode_bound.Plugin]
     """Smoothing functions in Zig"""
@@ -1068,6 +1072,10 @@ class Core:
     std: Final[_std._Core_bound.Plugin]
     """VapourSynth Core Functions"""
 # </attribute/Core_bound/std>
+# <attribute/Core_bound/text>
+    text: Final[_text._Core_bound.Plugin]
+    """VapourSynth Text"""
+# </attribute/Core_bound/text>
 # <attribute/Core_bound/zsmooth>
     zsmooth: Final[_zsmooth._Core_bound.Plugin]
     """Smoothing functions in Zig"""
@@ -1522,6 +1530,36 @@ class _std:
             def SplitChannels(self) -> AudioNode | list[AudioNode]: ...
 
 # </implementation/std>
+
+# <implementation/text>
+class _text:
+    class _Core_bound:
+        class Plugin(_VSPlugin):
+            @_Wrapper.Function
+            def ClipInfo(self, clip: VideoNode, alignment: int | None = None, scale: int | None = None) -> VideoNode: ...
+            @_Wrapper.Function
+            def CoreInfo(self, clip: VideoNode | None = None, alignment: int | None = None, scale: int | None = None) -> VideoNode: ...
+            @_Wrapper.Function
+            def FrameNum(self, clip: VideoNode, alignment: int | None = None, scale: int | None = None) -> VideoNode: ...
+            @_Wrapper.Function
+            def FrameProps(self, clip: VideoNode, props: _AnyStr | _SequenceLike[_AnyStr] | None = None, alignment: int | None = None, scale: int | None = None) -> VideoNode: ...
+            @_Wrapper.Function
+            def Text(self, clip: VideoNode, text: _AnyStr, alignment: int | None = None, scale: int | None = None) -> VideoNode: ...
+
+    class _VideoNode_bound:
+        class Plugin(_VSPlugin):
+            @_Wrapper.Function
+            def ClipInfo(self, alignment: int | None = None, scale: int | None = None) -> VideoNode: ...
+            @_Wrapper.Function
+            def CoreInfo(self, alignment: int | None = None, scale: int | None = None) -> VideoNode: ...
+            @_Wrapper.Function
+            def FrameNum(self, alignment: int | None = None, scale: int | None = None) -> VideoNode: ...
+            @_Wrapper.Function
+            def FrameProps(self, props: _AnyStr | _SequenceLike[_AnyStr] | None = None, alignment: int | None = None, scale: int | None = None) -> VideoNode: ...
+            @_Wrapper.Function
+            def Text(self, text: _AnyStr, alignment: int | None = None, scale: int | None = None) -> VideoNode: ...
+
+# </implementation/text>
 
 # <implementation/zsmooth>
 class _zsmooth:

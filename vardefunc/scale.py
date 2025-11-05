@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
-from jetpytools import SPathLike
+from jetpytools import KwargsT, SPathLike
 from vskernels import Catrom, EwaLanczos, KernelLike, Placebo, Scaler, ScalerLike
 from vskernels.types import LeftShift, TopShift
 from vsscale import ArtCNN, PlaceboShader
@@ -12,7 +12,6 @@ from vstools import (
     ChromaLocation,
     ColorRange,
     DitherType,
-    KwargsT,
     check_variable,
     core,
     depth,

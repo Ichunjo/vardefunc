@@ -1,58 +1,55 @@
-__all__ = ["OCR"]
-
 import itertools
 import math
-from typing import Dict, List, Optional, Sequence, Set, Tuple, Union
+from typing import Sequence
 
-import vapoursynth as vs
 from pytimeconv import Convert
 from vsmasktools import max_planes, region_rel_mask
-from vstools import clip_async_render
+from vstools import clip_async_render, core, vs
 
 from .types import AnyPath
 
-core = vs.core
+__all__ = ["OCR"]
 
 
 class OCR:
     """OCR Interface using ocr.Recognize"""
 
     clip: vs.VideoNode
-    coord: Tuple[int, int, int]
-    coord_alt: Optional[Tuple[int, int, int]]
+    coord: tuple[int, int, int]
+    coord_alt: tuple[int, int, int] | None
     thr_in: Sequence[int]
     thr_out: Sequence[int]
     thr_scd: float
 
-    results: List[Tuple[int, bytes]]
+    results: list[tuple[int, bytes]]
 
     _brd_crop: int = 8
 
     def __init__(
         self,
         clip: vs.VideoNode,
-        coord: Tuple[int, int, int],
-        coord_alt: Optional[Tuple[int, int, int]] = None,
-        thr_in: Union[int, Tuple[int, int, int]] = 225,
-        thr_out: Union[int, Tuple[int, int, int]] = 80,
+        coord: tuple[int, int, int],
+        coord_alt: tuple[int, int, int] | None = None,
+        thr_in: int | tuple[int, int, int] = 225,
+        thr_out: int | tuple[int, int, int] = 80,
     ) -> None:
         """
         Args:
             clip (vs.VideoNode):
                 Source clip. If GRAY clip, `thr_in` and `thr_out` should be an integer.
 
-            coord (Tuple[int, int, int]):
-                Tuple of coordinates following the syntax: width, height, margin vertical from the bottom
+            coord (tuple[int, int, int]):
+                tuple of coordinates following the syntax: width, height, margin vertical from the bottom
 
-            coord_alt (Optional[Tuple[int, int, int]], optional):
-                Tuple of alternate coordinates following the syntax: width, height, margin vertical from the top.
+            coord_alt (tuple[int, int, int] | None, optional):
+                tuple of alternate coordinates following the syntax: width, height, margin vertical from the top.
                 Defaults to None
 
-            thr_in (Union[int, Tuple[int, int, int]], optional):
+            thr_in (Union[int, tuple[int, int, int]], optional):
                 Threshold for subtitles representing the minimum inline brightness.
                 Defaults to 225.
 
-            thr_out (Union[int, Tuple[int, int, int]], optional):
+            thr_out (Union[int, tuple[int, int, int]], optional):
                 Threshold for subtitles representing the maximum outline brightness.
                 Defaults to 80.
         """
@@ -70,17 +67,17 @@ class OCR:
             raise ValueError("OCR: number of thr_in and thr_out values must correspond to the number of clip planes!")
 
     def launch(
-        self, datapath: Optional[str] = None, language: Optional[str] = None, options: Optional[Sequence[str]] = None
+        self, datapath: str | None = None, language: str | None = None, options: Sequence[str] | None = None
     ) -> None:
         """http://www.vapoursynth.com/doc/plugins/ocr.html
 
         Args:
-            datapath (Optional[str], optional):
+            datapath (str | None, optional):
                 Path to a folder containing a “tessdata” folder, in which Tesseract's data files must be found.
                 Must have a trailing slash.
                 Defaults to None.
 
-            language (Optional[str], optional):
+            language (str | None, optional):
                 An ISO 639-3 language string.
                 Uses Tesseract's default language if unset (usually eng).
                 Defaults to None.
@@ -102,7 +99,7 @@ class OCR:
             del ppclip_alt, ocred_alt
 
     def _do_ocr(self, ppclip: vs.VideoNode, ocred: vs.VideoNode) -> None:
-        def _select_clips(n: int, f: vs.VideoFrame, clips: List[vs.VideoNode]) -> vs.VideoNode:
+        def _select_clips(n: int, f: vs.VideoFrame, clips: list[vs.VideoNode]) -> vs.VideoNode:
             return clips[1] if f.props["PlaneStatsMax"] > 0 else clips[0].std.BlankClip(1, 1)  # type: ignore
 
         ocred = core.std.FrameEval(
@@ -111,7 +108,7 @@ class OCR:
             prop_src=ppclip.std.PlaneStats(),
         )
 
-        results: Set[Tuple[int, bytes]] = set()
+        results = set[tuple[int, bytes]]()
 
         def _callback(n: int, f: vs.VideoFrame) -> None:
             if (prop_ocr := "OCRString") in f.props:
@@ -123,18 +120,19 @@ class OCR:
     def write_ass(
         self,
         output: AnyPath,
-        string_replace: List[Tuple[str, str]] = [("_", "-"), ("…", "..."), ("‘", "'"), ("’", "'"), (" '", "'")],  # noqa: RUF001
+        string_replace: list[tuple[str, str]] = [("_", "-"), ("…", "..."), ("‘", "'"), ("’", "'"), (" '", "'")],  # noqa: RUF001
     ) -> None:
         """Write results as a readable ass file.
 
         Args:
             output (AnyPath): Output path
 
-            string_replace (List[Tuple[str, str]], optional):
-                List of strings you want to replace.
+            string_replace (list[tuple[str, str]], optional):
+                list of strings you want to replace.
                 Defaults to [ ('_', '-'), ('…', '...'), ('‘', "'"), ('’', "'"), (" '", "'") ].
         """  # noqa: RUF002
-        resultsd: Dict[int, Tuple[int, str]] = {}
+        resultsd = dict[int, tuple[int, str]]()
+
         for frame, string_byte in sorted(self.results):
             nstring = string_byte.decode("utf-8").replace("\n", "\\N")
             for r in string_replace:
@@ -159,7 +157,7 @@ class OCR:
                         f"Dialogue: 0,{Convert.f2assts(s, fps)},{Convert.f2assts(e, fps)},Default,,0,0,0,,{string}\n"
                     )
 
-    def _cropping(self, clip: vs.VideoNode, c: Tuple[int, int, int], alt: bool) -> vs.VideoNode:
+    def _cropping(self, clip: vs.VideoNode, c: tuple[int, int, int], alt: bool) -> vs.VideoNode:
         cw, ch, h = c
         wcrop = (self.clip.width - cw) / 2
         hcrop = h if alt else self.clip.height - ch - h
@@ -198,14 +196,14 @@ class OCR:
 
         return core.std.MaskedMerge(core.std.Lut(self.clip, function=lambda x: round(x / 2)), self.clip, cmask)
 
-    def _compute_preview_cropped(self, c: Tuple[int, int, int], alt: bool) -> vs.VideoNode:
+    def _compute_preview_cropped(self, c: tuple[int, int, int], alt: bool) -> vs.VideoNode:
         cw, ch, h = c
         wcrop = (self.clip.width - cw) / 2
         left, right = math.ceil(wcrop), math.floor(wcrop)
         hcrop = self.clip.height - ch - h, h
         if alt:
             hcrop = hcrop[::-1]
-        return region_rel_mask(self.clip.std.BlankClip(format=vs.GRAY8, color=255), left, right, *hcrop)
+        return region_rel_mask(self.clip.std.BlankClip(format=vs.GRAY8, color=255), left, right, *hcrop)  # pyright: ignore[reportArgumentType]
 
     @property
     def preview_cleaned(self) -> vs.VideoNode:
