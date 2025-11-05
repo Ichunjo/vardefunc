@@ -6,7 +6,7 @@ from fractions import Fraction
 from inspect import Signature
 from logging import Handler, LogRecord, StreamHandler
 from types import MappingProxyType, TracebackType
-from typing import Any, Callable, Concatenate, Final, IO, Iterable, Iterator, Literal, Mapping, MutableMapping, NamedTuple, Protocol, Self, SupportsFloat, SupportsInt, TextIO, TypedDict, final, overload
+from typing import Any, Callable, Concatenate, Final, IO, Iterable, Iterator, Literal, Mapping, MutableMapping, NamedTuple, Protocol, Self, SupportsInt, TextIO, TypedDict, final, overload
 from warnings import deprecated
 from weakref import ReferenceType
 
@@ -83,22 +83,13 @@ __all__ = [
 type _AnyStr = str | bytes | bytearray
 
 type _VSValueSingle = (
-    SupportsInt
-    | SupportsFloat
-    | _AnyStr
-    | RawFrame
-    | VideoFrame
-    | AudioFrame
-    | RawNode
-    | VideoNode
-    | AudioNode
-    | Callable[..., Any]
+    int | float | _AnyStr | RawFrame | VideoFrame | AudioFrame | RawNode | VideoNode | AudioNode | Callable[..., Any]
 )
 
 type _VSValueIterable = (
-    _SupportsIter[SupportsInt]
+    _SupportsIter[int]
     | _SupportsIter[_AnyStr]
-    | _SupportsIter[SupportsFloat]
+    | _SupportsIter[float]
     | _SupportsIter[RawFrame]
     | _SupportsIter[VideoFrame]
     | _SupportsIter[AudioFrame]
@@ -106,8 +97,8 @@ type _VSValueIterable = (
     | _SupportsIter[VideoNode]
     | _SupportsIter[AudioNode]
     | _SupportsIter[Callable[..., Any]]
-    | _GetItemIterable[SupportsInt]
-    | _GetItemIterable[SupportsFloat]
+    | _GetItemIterable[int]
+    | _GetItemIterable[float]
     | _GetItemIterable[_AnyStr]
     | _GetItemIterable[RawFrame]
     | _GetItemIterable[VideoFrame]
@@ -143,34 +134,34 @@ class _VSCallback_akarin_PropExpr_dict(Protocol):
         self,
     ) -> Mapping[
         str,
-        SupportsInt
-        | SupportsFloat
+        int
+        | float
         | _AnyStr
-        | _SupportsIter[SupportsInt]
+        | _SupportsIter[int]
         | _SupportsIter[_AnyStr]
-        | _SupportsIter[SupportsFloat]
-        | _GetItemIterable[SupportsInt]
-        | _GetItemIterable[SupportsFloat]
+        | _SupportsIter[float]
+        | _GetItemIterable[int]
+        | _GetItemIterable[float]
         | _GetItemIterable[_AnyStr],
     ]: ...
 
 class _VSCallback_descale_Decustom_custom_kernel(Protocol):
-    def __call__(self, *, x: SupportsFloat) -> SupportsFloat: ...
+    def __call__(self, *, x: float) -> float: ...
 
 class _VSCallback_descale_ScaleCustom_custom_kernel(Protocol):
-    def __call__(self, *, x: SupportsFloat) -> SupportsFloat: ...
+    def __call__(self, *, x: float) -> float: ...
 
 class _VSCallback_std_FrameEval_eval_0(Protocol):
-    def __call__(self, *, n: SupportsInt) -> VideoNode: ...
+    def __call__(self, *, n: int) -> VideoNode: ...
 
 class _VSCallback_std_FrameEval_eval_1(Protocol):
-    def __call__(self, *, n: SupportsInt, f: VideoFrame) -> VideoNode: ...
+    def __call__(self, *, n: int, f: VideoFrame) -> VideoNode: ...
 
 class _VSCallback_std_FrameEval_eval_2(Protocol):
-    def __call__(self, *, n: SupportsInt, f: list[VideoFrame]) -> VideoNode: ...
+    def __call__(self, *, n: int, f: list[VideoFrame]) -> VideoNode: ...
 
 class _VSCallback_std_FrameEval_eval_3(Protocol):
-    def __call__(self, *, n: SupportsInt, f: VideoFrame | list[VideoFrame]) -> VideoNode: ...
+    def __call__(self, *, n: int, f: VideoFrame | list[VideoFrame]) -> VideoNode: ...
 
 type _VSCallback_std_FrameEval_eval = (  # noqa: PYI047
     _VSCallback_std_FrameEval_eval_0
@@ -180,29 +171,29 @@ type _VSCallback_std_FrameEval_eval = (  # noqa: PYI047
 )
 
 class _VSCallback_std_Lut_function_0(Protocol):
-    def __call__(self, *, x: SupportsInt) -> int: ...
+    def __call__(self, *, x: int) -> int: ...
 
 class _VSCallback_std_Lut_function_1(Protocol):
-    def __call__(self, *, x: SupportsFloat) -> SupportsFloat: ...
+    def __call__(self, *, x: float) -> float: ...
 
 type _VSCallback_std_Lut_function = _VSCallback_std_Lut_function_0 | _VSCallback_std_Lut_function_1  # noqa: PYI047
 
 class _VSCallback_std_Lut2_function_0(Protocol):
-    def __call__(self, *, x: SupportsInt, y: SupportsInt) -> int: ...
+    def __call__(self, *, x: int, y: int) -> int: ...
 
 class _VSCallback_std_Lut2_function_1(Protocol):
-    def __call__(self, *, x: SupportsFloat, y: SupportsFloat) -> SupportsFloat: ...
+    def __call__(self, *, x: float, y: float) -> float: ...
 
 type _VSCallback_std_Lut2_function = _VSCallback_std_Lut2_function_0 | _VSCallback_std_Lut2_function_1  # noqa: PYI047
 
 class _VSCallback_std_ModifyFrame_selector_0(Protocol):
-    def __call__(self, *, n: SupportsInt, f: VideoFrame) -> VideoFrame: ...
+    def __call__(self, *, n: int, f: VideoFrame) -> VideoFrame: ...
 
 class _VSCallback_std_ModifyFrame_selector_1(Protocol):
-    def __call__(self, *, n: SupportsInt, f: list[VideoFrame]) -> VideoFrame: ...
+    def __call__(self, *, n: int, f: list[VideoFrame]) -> VideoFrame: ...
 
 class _VSCallback_std_ModifyFrame_selector_2(Protocol):
-    def __call__(self, *, n: SupportsInt, f: VideoFrame | list[VideoFrame]) -> VideoFrame: ...
+    def __call__(self, *, n: int, f: VideoFrame | list[VideoFrame]) -> VideoFrame: ...
 
 type _VSCallback_std_ModifyFrame_selector = (  # noqa: PYI047
     _VSCallback_std_ModifyFrame_selector_0
@@ -211,7 +202,7 @@ type _VSCallback_std_ModifyFrame_selector = (  # noqa: PYI047
 )
 
 class _VSCallback_resize2_Custom_custom_kernel(Protocol):
-    def __call__(self, *, x: SupportsFloat) -> SupportsFloat: ...
+    def __call__(self, *, x: float) -> float: ...
 
 class LogHandle: ...
 

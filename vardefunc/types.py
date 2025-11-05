@@ -45,7 +45,7 @@ class VNumpy:
 
     @classmethod
     def zip_arrays(cls, *arrays: NDArray[AnyInt]) -> NDArray[AnyInt]:
-        return c_[*arrays]  # type: ignore[no-any-return]
+        return c_[*arrays]
 
 
 class DuplicateFrame(int):

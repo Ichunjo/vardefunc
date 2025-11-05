@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from functools import partial, wraps
+from functools import wraps
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Mapping, Self, SupportsFloat, cast
 
 from jetpytools import KwargsNotNone, Singleton, cachedproperty
@@ -40,7 +40,7 @@ class FilterBase[**P, R](Singleton):
         return self._bd
 
     def apply_filter(self, clip: vs.VideoNode, **kwargs: Any) -> vs.VideoNode:
-        return self._filter_func(clip, **self._bd.settings[self.setting_name] | KwargsNotNone(kwargs))  # type:ignore[no-any-return]
+        return self._filter_func(clip, **self._bd.settings[self.setting_name] | KwargsNotNone(kwargs))
 
     def select(self) -> Self:
         self.__is_selected__ = True
@@ -160,11 +160,11 @@ class Filter:
 
         if TYPE_CHECKING:
 
-            def DEBLOCK(
+            def DEBLOCK(  # noqa: N802
                 self, *, strength: SupportsFloat | vs.VideoNode | None = None, **kwargs: Any
             ) -> BasedDenoise[P, R]: ...
 
-            def DENOISE(
+            def DENOISE(  # noqa: N802
                 self, *, strength: SupportsFloat | vs.VideoNode | None = None, **kwargs: Any
             ) -> BasedDenoise[P, R]: ...
 
@@ -486,7 +486,9 @@ def adaptative_regrain(
         ...
         new_grained = core.neo_f3kdb.Deband(last, preset='depth', grainy=32, grainc=32)
         original_grained = core.std.MergeDiff(last, diff)
-        adapt_regrain = vdf.adaptative_regrain(last, new_grained, original_grained, range_avg=(0.5, 0.4), luma_scaling=28)
+        adapt_regrain = vdf.adaptative_regrain(
+            last, new_grained, original_grained, range_avg=(0.5, 0.4), luma_scaling=28
+        )
     """
 
     avg = core.std.PlaneStats(denoised)
@@ -514,6 +516,4 @@ def adaptative_regrain(
             clip = core.std.Merge(adapt, new, [weight])
         return clip
 
-    diff_function = partial(_diff, avg_max=avg_max, avg_min=avg_min, new=new_grained, adapt=adapt_grained)
-
-    return core.std.FrameEval(denoised, diff_function, [avg])
+    return core.std.FrameEval(denoised, lambda n, f: _diff(n, f, avg_max, avg_min, new_grained, adapt_grained), avg)  # pyright: ignore[reportArgumentType]

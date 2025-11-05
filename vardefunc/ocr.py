@@ -2,7 +2,6 @@ __all__ = ["OCR"]
 
 import itertools
 import math
-from functools import partial
 from typing import Dict, List, Optional, Sequence, Set, Tuple, Union
 
 import vapoursynth as vs
@@ -77,13 +76,13 @@ class OCR:
 
         Args:
             datapath (Optional[str], optional):
-                Path to a folder containing a “tessdata” folder, in which Tesseract’s data files must be found.
+                Path to a folder containing a “tessdata” folder, in which Tesseract's data files must be found.
                 Must have a trailing slash.
                 Defaults to None.
 
             language (Optional[str], optional):
                 An ISO 639-3 language string.
-                Uses Tesseract’s default language if unset (usually eng).
+                Uses Tesseract's default language if unset (usually eng).
                 Defaults to None.
 
             options (Optional[Sequence], optional):
@@ -108,7 +107,7 @@ class OCR:
 
         ocred = core.std.FrameEval(
             core.std.Splice([ppclip[:-1], ppclip.std.BlankClip(1, 1, length=1)], True),
-            partial(_select_clips, clips=[ppclip, ocred]),
+            lambda n, f: _select_clips(n, f, [ppclip, ocred]),  # pyright: ignore[reportArgumentType]
             prop_src=ppclip.std.PlaneStats(),
         )
 
@@ -124,7 +123,7 @@ class OCR:
     def write_ass(
         self,
         output: AnyPath,
-        string_replace: List[Tuple[str, str]] = [("_", "-"), ("…", "..."), ("‘", "'"), ("’", "'"), (" '", "'")],
+        string_replace: List[Tuple[str, str]] = [("_", "-"), ("…", "..."), ("‘", "'"), ("’", "'"), (" '", "'")],  # noqa: RUF001
     ) -> None:
         """Write results as a readable ass file.
 
@@ -134,7 +133,7 @@ class OCR:
             string_replace (List[Tuple[str, str]], optional):
                 List of strings you want to replace.
                 Defaults to [ ('_', '-'), ('…', '...'), ('‘', "'"), ('’', "'"), (" '", "'") ].
-        """
+        """  # noqa: RUF002
         resultsd: Dict[int, Tuple[int, str]] = {}
         for frame, string_byte in sorted(self.results):
             nstring = string_byte.decode("utf-8").replace("\n", "\\N")
@@ -172,7 +171,7 @@ class OCR:
         square = core.std.AddBorders(
             clip_black,
             *(int(self._brd_crop / 2),) * 4,
-            color=[(1 << clip.format.bits_per_sample) - 1] * clip_black.format.num_planes,  # type: ignore
+            color=[(1 << clip.format.bits_per_sample) - 1] * clip_black.format.num_planes,
         )
 
         white_raw = clip.std.Binarize(self.thr_in)

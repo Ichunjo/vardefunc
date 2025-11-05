@@ -25,16 +25,14 @@ from typing import Any, Callable, Iterable, MutableSequence, Optional, Self, Seq
 import numpy as np
 from pytimeconv import Convert
 from vstools import ClipsCache, FrameRangeN, FrameRangesN, core, vs
-from vstools.utils.ranges import _RangesCallBack
+from vstools.functions.ranges import _RangesCallBack
 
-from .types import AnyInt, NDArray, Range, Trim
-from .types import DuplicateFrame as DF
-from .types import VNumpy as vnp
+from .types import AnyInt, DuplicateFrame, Range, Trim, VNumpy
 
 
 def select_frames(
     clips: vs.VideoNode | Sequence[vs.VideoNode],
-    indices: NDArray[AnyInt] | Sequence[int] | Sequence[tuple[int, int]],
+    indices: np.typing.NDArray[AnyInt] | Sequence[int] | Sequence[tuple[int, int]],
     *,
     mismatch: bool = False,
 ) -> vs.VideoNode:
@@ -55,10 +53,10 @@ def select_frames(
     :return:            The selected frames in a single clip.
     """
     clips = clips if isinstance(clips, Sequence) else [clips]
-    indices = vnp.array(indices) if isinstance(indices, Sequence) else indices
+    indices = VNumpy.array(indices) if isinstance(indices, Sequence) else indices
 
     if indices.ndim == 1:
-        indices = vnp.zip_arrays(np.zeros(len(indices), np.uint32), indices)
+        indices = VNumpy.zip_arrays(np.zeros(len(indices), np.uint32), indices)
     elif indices.ndim == 2:
         pass
     else:
@@ -70,7 +68,7 @@ def select_frames(
         else clips[0].std.BlankClip(length=len(indices), varsize=True, varformat=True)
     )
 
-    def _select_func(n: int, clips: Sequence[vs.VideoNode], indices: NDArray[AnyInt]) -> vs.VideoNode:
+    def _select_func(n: int, clips: Sequence[vs.VideoNode], indices: np.typing.NDArray[AnyInt]) -> vs.VideoNode:
         # index: NDArray[AnyInt] = indices[n]  # Get the index / num_frame pair
         # i_clip = int(index[0])  # Get the index
         # num = int(index[1])  # Get the num_frame
@@ -239,14 +237,14 @@ def to_incl_excl(ranges: list[Range]) -> list[Range]:
     return [(s, e + 1) for (s, e) in ranges]
 
 
-class _ranges_to_indices:
+class _ranges_to_indices:  # noqa: N801
     def __call__(
         self,
         ref: vs.VideoNode,
         ranges: FrameRangeN | FrameRangesN | _RangesCallBack,
         ref_indices: tuple[int, int] = (0, 1),
-    ) -> NDArray[AnyInt]:
-        return vnp.zip_arrays(
+    ) -> np.typing.NDArray[AnyInt]:
+        return VNumpy.zip_arrays(
             np.fromiter(self.gen_indices(ref, ranges, ref_indices), np.uint32, ref.num_frames),
             np.arange(ref.num_frames, dtype=np.uint32),
         )
@@ -268,7 +266,7 @@ class _ranges_to_indices:
 ranges_to_indices = _ranges_to_indices()
 
 
-def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: list[Trim | DF] | Trim) -> vs.VideoNode:
+def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: list[Trim | DuplicateFrame] | Trim) -> vs.VideoNode:
     """Trims and/or duplicates frames"""
     trims_or_dfs = [trims_or_dfs] if isinstance(trims_or_dfs, tuple) else trims_or_dfs
     indices: list[int] = []
@@ -283,7 +281,7 @@ def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: list[Trim | DF] | Trim)
 
 
 def adjust_audio_frames(
-    audio: vs.AudioNode, trims_or_dfs: list[Trim | DF] | Trim, *, ref_fps: Optional[Fraction] = None
+    audio: vs.AudioNode, trims_or_dfs: list[Trim | DuplicateFrame] | Trim, *, ref_fps: Optional[Fraction] = None
 ) -> vs.AudioNode:
     audios: list[vs.AudioNode] = []
     trims_or_dfs = [trims_or_dfs] if isinstance(trims_or_dfs, tuple) else trims_or_dfs

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar
 
 from jetpytools import SPathLike
 from vskernels import Catrom, EwaLanczos, KernelLike, Placebo, Scaler, ScalerLike
@@ -11,7 +11,6 @@ from vsscale import ArtCNN, PlaceboShader
 from vstools import (
     ChromaLocation,
     ColorRange,
-    ConstantFormatVideoNode,
     DitherType,
     KwargsT,
     check_variable,
@@ -44,7 +43,7 @@ class EwaLanczosChroma(EwaLanczos):
         height: int | None = None,
         shift: tuple[TopShift | list[TopShift], LeftShift | list[LeftShift]] = (0, 0),
         **kwargs: Any,
-    ) -> vs.VideoNode | ConstantFormatVideoNode:
+    ) -> vs.VideoNode:
         assert check_variable(clip, self.__class__)
         assert clip.format.color_family is vs.YUV
 
@@ -53,8 +52,8 @@ class EwaLanczosChroma(EwaLanczos):
         left_shift *= u.width / clip.width
         top_shift *= u.height / clip.height
 
-        u = super().scale(u, clip.width, clip.height, (-top_shift, -left_shift), **kwargs)  # type: ignore
-        v = super().scale(v, clip.width, clip.height, (-top_shift, -left_shift), **kwargs)  # type: ignore
+        u = super().scale(u, clip.width, clip.height, (-top_shift, -left_shift), **kwargs)
+        v = super().scale(v, clip.width, clip.height, (-top_shift, -left_shift), **kwargs)
 
         return core.std.ShufflePlanes([clip, u, v], [0, 0, 0], vs.YUV, clip)
 
@@ -82,10 +81,10 @@ class ArtCNNShader(ArtCNNShaderBase):
     class C4F32(ArtCNNShaderBase):
         shader_file = r"C:\Users\Varde\mpv\Shaders\ArtCNN_C4F32.glsl"
 
-    class C4F16_Chroma(ArtCNNShaderBase):
+    class C4F16_Chroma(ArtCNNShaderBase):  # noqa: N801
         shader_file = r"C:\Users\Varde\mpv\Shaders\ArtCNN_C4F16_Chroma.glsl"
 
-    class C4F32_Chroma(ArtCNNShaderBase):
+    class C4F32_Chroma(ArtCNNShaderBase):  # noqa: N801
         shader_file = r"C:\Users\Varde\mpv\Shaders\ArtCNN_C4F32_Chroma.glsl"
 
 
@@ -134,8 +133,6 @@ def mpv_preview(
         planes[2] = cscale.scale(planes[2], planes[0].width, planes[0].height, (-top_shift, -left_shift))
 
         preview = core.std.CopyFrameProps(join(planes), clip)
-
-    preview = cast(ConstantFormatVideoNode, preview)
 
     if is_preview():
         props["PreviewCscale"] = cscale.__class__.__name__

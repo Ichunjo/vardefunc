@@ -22,7 +22,6 @@ from contextlib import AbstractContextManager
 from functools import partial, wraps
 from itertools import count
 from operator import ilshift, imatmul, ior
-from types import TracebackType
 from typing import (
     Any,
     Callable,
@@ -38,8 +37,6 @@ from typing import (
     Self,
     Sequence,
     Tuple,
-    Type,
-    TypeVar,
     Union,
     cast,
     overload,
@@ -142,33 +139,34 @@ class DebugOutput(DebugOutputMMap):
     ) -> None:
         """
         Args:
-            clips (vs.VideoNode | List[vs.VideoNode] | Tuple[int, vs.VideoNode] | Tuple[int, List[vs.VideoNode]]):
+            clips:
                 `clips` can be a VideoNode, a list of planes,
                 a tuple of an index and VideoNode or a tuple of an index and a list of planes.
                 If a list of planes is passed, DebugOutput will try to stack the planes for previewing.
-                Only 444 and 420 format are allowed. Otherwise a warning will be raise and a garbage clip will be displayed.
+                Only 444 and 420 format are allowed. Otherwise a warning will be raise and a garbage clip
+                will be displayed.
 
-            named_clips (Dict[str, vs.VideoNode | List[vs.VideoNode] | Tuple[int, vs.VideoNode] | Tuple[int, List[vs.VideoNode]]]):
+            named_clips:
                 Same as clips except it's Keyword arguments.
                 Location of named_clips's names are hardcoded to 8.
 
-            props (int, optional):
+            props:
                 Location of the displayed FrameProps. 0 means no display.
                 Defaults to 0.
 
-            num (int, optional):
+            num:
                 Location of the displayed FrameNum. 0 means no display.
                 Defaults to 0.
 
-            scale (int, optional):
+            scale:
                 Global integer scaling factor for the bitmap font.
                 Defaults to 1.
 
-            clear_outputs (bool, optional):
+            clear_outputs:
                 Clears all clips set for output in the current environment.
                 Defaults to False.
 
-            check_curr_env (bool, optional):
+            check_curr_env:
                 Check all clips set for output in the current environment.
                 Defaults to True.
         """
@@ -444,10 +442,7 @@ def fade_filter(
     return insert_clip(clip, clip_fad, start_f)
 
 
-PlanesT = TypeVar("PlanesT", bound="Planes")
-
-
-class Planes(AbstractContextManager[PlanesT], Sequence[vs.VideoNode]):
+class Planes(AbstractContextManager["Planes"], Sequence[vs.VideoNode]):
     """General context manager for easier planes management"""
 
     __slots__ = ("_clip", "_family", "_final_clip", "_in_context", "_planes")
@@ -480,12 +475,7 @@ class Planes(AbstractContextManager[PlanesT], Sequence[vs.VideoNode]):
         self._in_context = True
         return self
 
-    def __exit__(
-        self,
-        __exc_type: Type[BaseException] | None,
-        __exc_value: BaseException | None,
-        __traceback: TracebackType | None,
-    ) -> bool | None:
+    def __exit__(self, *args: object) -> bool | None:
         self._final_clip = join(self._planes, self._family)
         self._planes.clear()
         self._in_context = False
@@ -539,6 +529,7 @@ class Planes(AbstractContextManager[PlanesT], Sequence[vs.VideoNode]):
             return out
 
 
+# ruff: noqa: N802
 class YUVPlanes(Planes):
     def __init__(self, clip: vs.VideoNode, bits: Optional[int] = None) -> None:
         super().__init__(clip, bits, vs.YUV)

@@ -23,7 +23,8 @@ def cambi_mask(
 
     :param clip:            Input clip
     :param scale:           0 <= i < 5, defaults to 1
-    :param merge_previous:  Will merge the GRAYS cscore frame stored as frame property for scale 0 <= i < 5, defaults to True
+    :param merge_previous:  Will merge the GRAYS cscore frame stored as frame property for scale 0 <= i < 5,
+                            defaults to True
     :param blur_func:       A bluring function called on the mask, defaults to lambdaclip:box_blur(clip, 2, 3, 0)
     :param scaler:          Scaler used to resize the cscore frames, defaults to Bilinear
     :return:                GRAY float deband mask
