@@ -22,6 +22,12 @@ __all__ = [
 ]
 
 
+@copy_signature(vstools.set_output)
+def set_output(*args: Any, **kwargs: Any) -> None:
+    if is_preview():
+        vstools.set_output(*args, **kwargs)
+
+
 @lru_cache
 def is_preview() -> bool:
     try:
