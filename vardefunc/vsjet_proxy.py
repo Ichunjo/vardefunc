@@ -15,7 +15,7 @@ from .types import AnyInt, VNumpy
 from .util import normalise_ranges, ranges_to_indices, select_frames
 
 __all__ = [
-    "based_aa",
+    "Rescale",
     "is_preview",
     "replace_ranges",
     "set_output",
