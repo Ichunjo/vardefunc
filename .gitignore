@@ -13,3 +13,4 @@ upload_to_pip
 
 .vsjet/
 test.*
+test_*.py
