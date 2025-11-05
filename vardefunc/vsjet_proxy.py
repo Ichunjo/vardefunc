@@ -1,18 +1,17 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Any, Iterator, Literal, Sequence, cast, overload
+from typing import Any, Iterator, Sequence, cast, overload
 
 import numpy as np
-import vsaa
-import vsmasktools
 import vsscale
 import vstools
+from jetpytools import copy_signature
 from numpy.typing import NDArray
 from vskernels import BorderHandling, ComplexKernelLike, Hermite, LeftShift, ScalerLike, TopShift
+from vstools import FieldBasedT, FrameRangeN, FrameRangesN, vs
 
-from .types import AnyInt, NDArray
-from .types import VNumpy as vnp
+from .types import AnyInt, VNumpy
 from .util import normalise_ranges, ranges_to_indices, select_frames
 
 __all__ = [
@@ -146,39 +145,7 @@ def replace_ranges(
     nindices = np.max([ref_indices, *indices], axis=0, out=ref_indices)
 
     return select_frames(
-        [clip_a, *clips], vnp.zip_arrays(nindices, np.arange(clip_a.num_frames, dtype=np.uint32)), mismatch=mismatch
-    )
-
-
-def based_aa(
-    clip: vs.VideoNode,
-    rfactor: float = 2.0,
-    mask: vs.VideoNode | vsmasktools.EdgeDetectT | Literal[False] = vsmasktools.Prewitt,
-    mask_thr: int = 60,
-    pscale: float = 0.0,
-    downscaler: ScalerLike | None = None,
-    supersampler: ScalerLike | Literal[False] = vsscale.ArtCNN,
-    antialiaser: vsaa.AntiAliaser | None = None,
-    prefilter: vs.VideoNode | VSFunctionNoArgs[vs.VideoNode, ConstantFormatVideoNode] | Literal[False] = False,
-    postfilter: VSFunctionNoArgs[vs.VideoNode, ConstantFormatVideoNode] | Literal[False] | KwargsT | None = None,
-    show_mask: bool = False,
-    **aa_kwargs: Any,
-) -> vs.VideoNode:
-    """vsaa.based_aa with use_mclip=True"""
-
-    return vsaa.based_aa(
-        clip,
-        rfactor,
-        mask,
-        mask_thr,
-        pscale,
-        downscaler,
-        supersampler,
-        antialiaser,
-        prefilter,
-        postfilter,
-        show_mask,
-        **{"use_mclip": True} | aa_kwargs,
+        [clip_a, *clips], VNumpy.zip_arrays(nindices, np.arange(clip_a.num_frames, dtype=np.uint32)), mismatch=mismatch
     )
 
 
