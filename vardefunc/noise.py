@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from enum import Enum
 from functools import partial, wraps
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Mapping, Optional, Self, SupportsFloat, cast
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Mapping, Self, SupportsFloat, cast
 
 from jetpytools import KwargsNotNone, Singleton, cachedproperty
 from vsdenoise import (
@@ -20,26 +19,10 @@ from vsdenoise import (
     wnnm,
 )
 from vsdenoise import mc_clamp as vsdenoise_mc_clamp
-from vsmasktools import FDoGTCanny, adg_mask, range_mask
-from vstools import (
-    ColorRange,
-    DitherType,
-    InvalidColorFamilyError,
-    Planes,
-    VSFunctionKwArgs,
-    VSObject,
-    core,
-    depth,
-    get_y,
-    join,
-    normalize_planes,
-    split,
-    vs,
-)
+from vsmasktools import adg_mask
+from vstools import InvalidColorFamilyError, Planes, VSFunctionKwArgs, VSObject, core, get_y, join, normalize_planes, vs
 
-from .util import pick_px_op
-
-__all__ = ["BasedDenoise", "BilateralMethod", "adaptative_regrain", "based_denoise", "decsiz"]
+__all__ = ["BasedDenoise", "adaptative_regrain", "based_denoise"]
 
 
 class FilterBase[**P, R](Singleton):
@@ -467,126 +450,6 @@ def based_denoise(
     out = join(bm3dd, chromad)
 
     return vsdenoise_mc_clamp(out, clip, bd.mc.mv, **mc_clamp_args) if mc_clamp else out
-
-
-class BilateralMethod(Enum):
-    BILATERAL = 0
-    BILATERAL_GPU = 1
-    BILATERAL_GPU_RTC = 2
-
-    @property
-    def func(self) -> Callable[..., vs.VideoNode]:
-        return [  # type: ignore
-            lambda: core.bilateral.Bilateral,  # type: ignore
-            lambda: core.bilateralgpu.Bilateral,  # type: ignore
-            lambda: core.bilateralgpu_rtc.Bilateral,  # type: ignore
-        ][self.value]()  # type: ignore
-
-
-def decsiz(
-    clip: vs.VideoNode,
-    sigmaS: float = 10.0,
-    sigmaR: float = 0.009,
-    min_in: Optional[float] = None,
-    max_in: Optional[float] = None,
-    gamma: float = 1.0,
-    blur_method: BilateralMethod = BilateralMethod.BILATERAL,
-    protect_mask: Optional[vs.VideoNode] = None,
-    prefilter: bool = True,
-    planes: Optional[list[int]] = None,
-    show_mask: bool = False,
-) -> vs.VideoNode:
-    """Denoising function using Bilateral intended to decrease the filesize
-       by just blurring the invisible grain above max_in and keeping all of it
-       below min_in. The range in between is progressive.
-
-    Args:
-        clip (vs.VideoNode): Source clip.
-
-        sigmaS (float, optional): Bilateral parameter.
-            Sigma of Gaussian function to calculate spatial weight. Defaults to 10.0.
-
-        sigmaR (float, optional): Bilateral parameter.
-            Sigma of Gaussian function to calculate range weight. Defaults to 0.009.
-
-        min_in (Union[int, float], optional):
-            Minimum pixel value below which the grain is kept. Defaults to None.
-
-        max_in (Union[int, float], optional):
-            Maximum pixel value above which the grain is blurred. Defaults to None.
-
-        gamma (float, optional):
-            Controls the degree of non-linearity of the conversion. Defaults to 1.0.
-
-        protect_mask (vs.VideoNode, optional):
-            Mask that includes all the details that should not be blurred.
-            If None, it uses the default one.
-
-        prefilter (bool, optional):
-            Blurs the luma as reference or not. Defaults to True.
-
-        planes (list[int], optional): Defaults to all planes.
-
-        show_mask (bool, optional): Returns the mask.
-
-    Returns:
-        vs.VideoNode: Denoised clip.
-
-    Example:
-        import vardefunc as vdf
-
-        clip = depth(clip, 16)
-        clip = vdf.decsiz(clip, min_in=128<<8, max_in=200<<8)
-    """
-    if clip.format is None:
-        raise ValueError("decsiz: Variable format not allowed!")
-
-    bits = clip.format.bits_per_sample
-    is_float = clip.format.sample_type == vs.FLOAT
-    peak = (1 << bits) - 1 if not is_float else 1.0
-    gamma = 1 / gamma
-    planes = [0] if clip.format.color_family == vs.GRAY else planes if planes else [0, 1, 2]
-
-    if not protect_mask:
-        clip16 = depth(clip, 16)
-        masks = [
-            *split(range_mask(clip16, rad=3, radc=2).resize.Bilinear(format=vs.YUV444P16)),
-            FDoGTCanny().edgemask(get_y(clip16)).std.Maximum().std.Minimum(),
-        ]
-        protect_mask = core.std.Expr(masks, "x y max z max 3250 < 0 65535 ? a max 8192 < 0 65535 ?").std.BoxBlur(
-            hradius=1, vradius=1, hpasses=2, vpasses=2
-        )
-
-    clip_y = get_y(clip)
-    pre = clip_y.std.BoxBlur(hradius=2, vradius=2, hpasses=4, vpasses=4) if prefilter else clip_y
-
-    denoise_mask = pick_px_op(
-        is_float,
-        (
-            f"x {min_in} max {max_in} min {min_in} - {max_in} {min_in} - / {gamma} pow 0 max 1 min {peak} *",
-            lambda x: round(
-                min(1, max(0, pow((min(max_in, max(min_in, x)) - min_in) / (max_in - min_in), gamma))) * peak  # type: ignore
-            ),
-        ),  # type: ignore
-    )(pre)
-
-    mask = core.std.Expr(
-        [
-            depth(protect_mask, bits, range_out=ColorRange.FULL, range_in=ColorRange.FULL, dither_type=DitherType.NONE),
-            denoise_mask,
-        ],
-        "y x -",
-    )
-
-    if show_mask:
-        return mask
-
-    if blur_method == BilateralMethod.BILATERAL:
-        denoise = core.bilateral.Bilateral(clip, sigmaS=sigmaS, sigmaR=sigmaR, planes=planes, algorithm=0)
-    else:
-        denoise = blur_method.func(clip, sigmaS, sigmaR)
-
-    return core.std.MaskedMerge(clip, denoise, mask, planes)  # type: ignore
 
 
 def adaptative_regrain(
