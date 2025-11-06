@@ -31,7 +31,7 @@ jobs:
         if: steps.check_tag.outputs.exists == 'false'
         with:
           script: |
-            github.git.createRef({
+            github.rest.git.createRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
               ref: `refs/tags/${{ steps.get_version.outputs.version }}`,
