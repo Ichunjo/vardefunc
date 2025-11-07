@@ -31,7 +31,7 @@ dependencies = [
 dev = [
   "mypy==1.18.2",
   "ruff==0.14.4",
-  "twine==6.1.0"
+  "twine==6.2.0"
 ]
 
 [project.urls]
