@@ -29,11 +29,10 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "mypy~=1.17.0",
-    "ruff~=0.13.0",
-    "twine~=6.1.0",
+  "mypy==1.17.0",
+  "ruff==0.13.0",
+  "twine==6.1.0"
 ]
-
 
 [project.urls]
 Homepage = "https://github.com/Ichunjo/vardefunc"
