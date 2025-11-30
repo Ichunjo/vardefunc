@@ -22,7 +22,7 @@ dependencies = [
     "numpy>=2.0.0",
     "pytimeconv>=0.0.2",
     "VapourSynth>=69",
-    "vsjetpack~=0.8.0",
+    "vsjetpack~=1.0.0",
 ]
 
 [dependency-groups]
