@@ -1,10 +1,9 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "versioningit"]
 build-backend = "hatchling.build"
 
 [project]
 name = "vardefunc"
-version = "0.11.1"
 description = "Vardë's Vapoursynth functions"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -17,16 +16,17 @@ classifiers = [
     "Operating System :: OS Independent",
     "Typing :: Typed",
 ]
+dynamic = ["version"]
 
 dependencies = [
-    "numpy>=2.0.0,<3.0.0",
+    "numpy>=2.0.0",
     "pytimeconv>=0.0.2",
     "VapourSynth>=69",
     "vsjetpack~=0.8.0",
 ]
 
 [dependency-groups]
-dev = ["mypy==1.18.2", "ruff==0.14.6", "twine==6.2.0"]
+dev = ["mypy==1.18.2", "ruff==0.14.6"]
 
 [project.urls]
 Homepage = "https://github.com/Ichunjo/vardefunc"
@@ -41,8 +41,16 @@ include = ["vardefunc", "pyproject.toml", "README.md", "LICENSE"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["vardefunc"]
-include = ["vardefunc/py.typed"]
 
+[tool.hatch.version]
+source = "versioningit"
+default-version = "0.0.0+unknown"
+next-version = "minor"
+
+[tool.hatch.version.format]
+distance = "{next_version}.dev{distance}+{vcs}{rev}"
+dirty = "{next_version}+dirty"
+distance-dirty = "{next_version}.dev{distance}+{vcs}{rev}.dirty"
 
 [tool.mypy]
 mypy_path = "$MYPY_CONFIG_FILE_DIR/stubs"
