@@ -1,14 +1,13 @@
 # vardefunc
+
+[![PyPI Version](https://img.shields.io/pypi/v/vardefunc)](https://pypi.org/project/vardefunc/)
+
 Vardë's VapourSynth functions
 
-# How to install vardefunc
-If you have the old `vardefunc.py` module, first of all, please remove it from your system.
+## How to install
 
-You can now install `vardefunc` with the following command:
-```
-python -m pip install vardefunc
-```
-or from Github:
-```
-python -m pip install git+https://github.com/Ichunjo/vardefunc.git
+`vardefunc` is distributed via **PyPI**, and the latest stable release can be installed using:
+
+```sh
+pip install vardefunc
 ```
