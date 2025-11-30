@@ -14,15 +14,11 @@ wheels = [
 [[package]]
 name = "lvsfunc"
 version = "0.8.7"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/Jaded-Encoding-Thaumaturgy/lvsfunc#b2b515fafca0b290fcf18460db3ee7a9e115fb86" }
 dependencies = [
     { name = "numpy" },
     { name = "vapoursynth" },
     { name = "vsjetpack" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/6e/aa/b90a304747b1dc3fb7570aa6e0682f0ef7cac120f07bb92820d2fb7c6293/lvsfunc-0.8.7.tar.gz", hash = "sha256:5aac92ee1194b22b26fd0c6f09b95345cd44ff27545b797ed8f663162940be94", size = 6167888, upload-time = "2025-10-26T03:55:05.751Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/22/07/01e998a9530b8e04a7ccca44468cbb59662035e7b574a1506bbed838cb8a/lvsfunc-0.8.7-py3-none-any.whl", hash = "sha256:f84de1d5c53811975115f074c57b9bbf06dd33f362158c230736b7dc6bf27331", size = 6178006, upload-time = "2025-10-26T03:55:03.295Z" },
 ]
 
 [[package]]
@@ -197,7 +193,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "lvsfunc", marker = "extra == 'comp'" },
+    { name = "lvsfunc", marker = "extra == 'comp'", git = "https://github.com/Jaded-Encoding-Thaumaturgy/lvsfunc" },
     { name = "numpy", specifier = ">=2.0.0" },
     { name = "pytimeconv", specifier = ">=0.0.2" },
     { name = "vapoursynth", specifier = ">=69" },
