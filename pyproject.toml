@@ -28,6 +28,9 @@ dependencies = [
 [dependency-groups]
 dev = ["mypy==1.18.2", "ruff==0.14.6"]
 
+[project.optional-dependencies]
+comp = ["lvsfunc"]
+
 [project.urls]
 Homepage = "https://github.com/Ichunjo/vardefunc"
 Repository = "https://github.com/Ichunjo/vardefunc"
