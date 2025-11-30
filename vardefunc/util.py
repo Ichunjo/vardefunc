@@ -13,7 +13,7 @@ from typing import Any, Callable, Iterable, MutableSequence, Optional, Self, Seq
 import numpy as np
 from pytimeconv import Convert
 from vstools import ClipsCache, FrameRangeN, FrameRangesN, core, vs
-from vstools.functions.ranges import _RangesCallBack
+from vstools.utils.ranges import _RangesCallBack
 
 from .types import AnyInt, DuplicateFrame, Range, Trim, VNumpy
 
