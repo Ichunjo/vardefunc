@@ -26,7 +26,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --locked --no-install-package vapoursynth
+        run: uv sync --locked --all-extras --all-groups --no-install-package vapoursynth
 
       - name: Run Ruff check
         id: ruff_check
