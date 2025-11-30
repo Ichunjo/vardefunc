@@ -80,6 +80,7 @@ line-length = 120
 
 [tool.ruff.format]
 docstring-code-format = true
+exclude = ["stubs/vapoursynth/__init__.pyi"]
 
 [tool.ruff.lint]
 extend-select = ["E", "C4", "I", "PYI", "Q", "SIM", "N", "W", "RUF"]
