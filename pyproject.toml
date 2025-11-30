@@ -9,15 +9,13 @@ description = "Vardë's Vapoursynth functions"
 readme = "README.md"
 requires-python = ">=3.13"
 license = { text = "MIT" }
-authors = [
-    { name = "Vardë", email = "ichunjo.le.terrible@gmail.com" },
-]
+authors = [{ name = "Vardë", email = "ichunjo.le.terrible@gmail.com" }]
 classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Typing :: Typed"
+    "Typing :: Typed",
 ]
 
 dependencies = [
@@ -28,11 +26,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = [
-    "mypy==1.18.2",
-    "ruff==0.14.6",
-    "twine==6.2.0",
-]
+dev = ["mypy==1.18.2", "ruff==0.14.6", "twine==6.2.0"]
 
 [project.urls]
 Homepage = "https://github.com/Ichunjo/vardefunc"
@@ -40,18 +34,10 @@ Repository = "https://github.com/Ichunjo/vardefunc"
 Issues = "https://github.com/Ichunjo/vardefunc/issues"
 
 [tool.hatch.build]
-include = [
-    "vardefunc",
-    "vardefunc/py.typed",
-]
+include = ["vardefunc", "vardefunc/py.typed"]
 
 [tool.hatch.build.targets.sdist]
-include = [
-    "vardefunc",
-    "pyproject.toml",
-    "README.md",
-    "LICENSE",
-]
+include = ["vardefunc", "pyproject.toml", "README.md", "LICENSE"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["vardefunc"]
@@ -85,17 +71,7 @@ line-length = 120
 docstring-code-format = true
 
 [tool.ruff.lint]
-extend-select = [
-    "E",
-    "C4",
-    "I",
-    "PYI",
-    "Q",
-    "SIM",
-    "N",
-    "W",
-    "RUF"
-]
+extend-select = ["E", "C4", "I", "PYI", "Q", "SIM", "N", "W", "RUF"]
 ignore = ["PYI041"]
 
 [tool.ruff.lint.per-file-ignores]
