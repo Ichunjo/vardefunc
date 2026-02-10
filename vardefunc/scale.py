@@ -141,6 +141,7 @@ def mpv_preview(
         preview.format.replace(color_family=vs.RGB, sample_type=vs.INTEGER, bits_per_sample=8),
         ColorRange.from_video(preview),
         ColorRange.FULL,
+        False,
     ).std.SetFrameProps(**props)
 
 
