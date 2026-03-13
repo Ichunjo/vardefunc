@@ -26,7 +26,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["mypy==1.19.1", "ruff==0.15.5"]
+dev = ["mypy==1.19.1", "ruff==0.15.6"]
 
 [project.optional-dependencies]
 comp = ["lvsfunc"]
