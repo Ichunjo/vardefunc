@@ -300,7 +300,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.0.0" },
     { name = "pytimeconv", specifier = ">=0.0.2" },
     { name = "vapoursynth", specifier = ">=69" },
-    { name = "vsjetpack", specifier = "~=1.4.0" },
+    { name = "vsjetpack", specifier = "~=1.5.0" },
 ]
 provides-extras = ["comp"]
 
@@ -312,14 +312,14 @@ dev = [
 
 [[package]]
 name = "vsjetpack"
-version = "1.4.0"
+version = "1.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jetpytools" },
     { name = "numpy" },
     { name = "vapoursynth" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fc/02/928b2ca5d88e7234826fc1d67a2b05b431dd0912903e1e045bb5c1ce206f/vsjetpack-1.4.0.tar.gz", hash = "sha256:54bcd8de5b2d49271da956b1e9fe354a0ed7f3b5abe9b52a1152a7692c43ede4", size = 372546, upload-time = "2026-04-18T16:46:41.029Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a6/df/37da0c9b40e29f43d37540e63ad88a4af478fb4807118af8e88e2fb87a0b/vsjetpack-1.5.0.tar.gz", hash = "sha256:1c9a410329c60ee0058a1bf6a84b692f85db68154de55d04a80ea43f25a5c1cf", size = 376051, upload-time = "2026-05-12T14:26:34.304Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/88/87/68a0af7a1e33a21cd2bd7969f5965ecbe311281c77051cde2b2328b45530/vsjetpack-1.4.0-py3-none-any.whl", hash = "sha256:e9cafcdb422c7e9bc24b816323a43daaaa68dc6918295d208745d7a5679a9647", size = 408837, upload-time = "2026-04-18T16:46:39.546Z" },
+    { url = "https://files.pythonhosted.org/packages/19/c2/817a6836b38d06d80e5e8a03a5e6105e836aba51050f7cdd2eae4bf3f914/vsjetpack-1.5.0-py3-none-any.whl", hash = "sha256:7ce19a1e7ea082febbb9e57ee5c256e055cf7ac978f2ef7c00cba1bf017e3281", size = 410987, upload-time = "2026-05-12T14:26:32.32Z" },
 ]
