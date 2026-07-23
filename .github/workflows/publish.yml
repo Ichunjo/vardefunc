@@ -1,4 +1,4 @@
-name: Publish to PyPI
+name: Publish
 on:
   release:
     types: published
@@ -31,7 +31,7 @@ jobs:
           enable-cache: true
 
       - name: Build
-        run: uvx hatch build
+        run: uv build
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

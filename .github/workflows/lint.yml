@@ -1,4 +1,4 @@
-name: Lint Python code with Ruff & mypy
+name: Lint
 
 on:
   push:
@@ -26,17 +26,17 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --locked --all-extras --all-groups --no-install-package vapoursynth
+        run: uv sync --locked --all-extras --all-groups
 
       - name: Run Ruff check
         id: ruff_check
-        run: uv run --no-sync ruff check vardefunc
+        run: uv run ruff check vardefunc
 
       - name: Run Ruff format
         id: ruff_format
         if: success() || (failure() && steps.ruff_check.conclusion == 'failure')
-        run: uv run --no-sync ruff format --check --diff
+        run: uv run ruff format --check --diff
 
       - name: Running mypy
         if: success() || (failure() && (steps.ruff_check.conclusion == 'failure' || steps.ruff_format.conclusion == 'failure'))
-        run: uv run --no-sync mypy vardefunc
+        run: uv run mypy vardefunc
