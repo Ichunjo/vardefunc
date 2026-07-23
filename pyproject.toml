@@ -22,11 +22,11 @@ dependencies = [
     "numpy>=2.0.0",
     "pytimeconv>=0.0.2",
     "VapourSynth>=69",
-    "vsjetpack~=1.4.0",
+    "vsjetpack~=2.1.1",
 ]
 
 [dependency-groups]
-dev = ["mypy==2.3.0", "ruff==0.15.22"]
+dev = ["mypy==2.3.0", "ruff==0.15.22", "vapoursynth-fmtconv"]
 
 [project.optional-dependencies]
 comp = ["lvsfunc"]
@@ -56,7 +56,16 @@ dirty = "{next_version}+dirty"
 distance-dirty = "{next_version}.dev{distance}+{vcs}{rev}.dirty"
 
 [tool.uv.sources]
-lvsfunc = { git = "https://github.com/Jaded-Encoding-Thaumaturgy/lvsfunc" }
+vapoursynth-ffms2 = { index = "vs-wheels" }
+vapoursynth-fmtconv = { index = "vs-wheels" }
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+
+[[tool.uv.index]]
+name = "vs-wheels"
+url = "https://jaded-encoding-thaumaturgy.github.io/vs-wheels/simple"
 
 [tool.mypy]
 mypy_path = "$MYPY_CONFIG_FILE_DIR/stubs"
