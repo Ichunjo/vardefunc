@@ -7,7 +7,7 @@ import numpy as np
 import vsscale
 import vstools
 from vskernels import BorderHandling, ComplexKernelLike, Hermite, LeftShift, ScalerLike, TopShift
-from vstools import FieldBasedT, FrameRangeN, FrameRangesN, vs
+from vstools import FieldBased, FrameRangeN, FrameRangesN, vs
 
 from .types import AnyInt, VNumpy
 from .util import normalise_ranges, ranges_to_indices, select_frames
@@ -158,7 +158,7 @@ class Rescale(vsscale.Rescale):
             vsscale.helpers.LeftCrop, vsscale.helpers.RightCrop, vsscale.helpers.TopCrop, vsscale.helpers.BottomCrop
         ] = vsscale.helpers.CropRel(),
         shift: tuple[TopShift, LeftShift] = (0, 0),
-        field_based: FieldBasedT | bool | None = None,
+        field_based: FieldBased | bool | None = None,
         border_handling: int | BorderHandling = BorderHandling.MIRROR,
         **kwargs: Any,
     ) -> None:
