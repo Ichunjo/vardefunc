@@ -5,26 +5,23 @@ from __future__ import annotations
 import math
 import warnings
 from abc import ABC
+from collections.abc import Callable, Iterable, Iterator, MutableMapping, Sequence
 from contextlib import AbstractContextManager
 from functools import partial, wraps
 from itertools import count
 from operator import ilshift, imatmul, ior
 from typing import (
     Any,
-    Callable,
     ClassVar,
-    Iterable,
-    Iterator,
     Literal,
-    MutableMapping,
     NamedTuple,
     Self,
-    Sequence,
     TypeVar,
     cast,
     overload,
 )
 
+from jetpytools import CustomTypeError
 from vstools import core, depth, get_depth, get_w, insert_clip, join, plane, vs
 
 from .types import OpInput, Output
@@ -463,7 +460,7 @@ class Planes(AbstractContextManager["Planes"], Sequence[vs.VideoNode]):
         if isinstance(planes := self._clip.std.SplitPlanes(), Sequence):
             self._planes = list(planes)
         else:
-            raise ValueError(f"{self.__class__.__name__}: GRAY colour family isn't supported!")
+            raise CustomTypeError(f"{self.__class__.__name__}: GRAY colour family isn't supported!")
         self._in_context = True
         return self
 

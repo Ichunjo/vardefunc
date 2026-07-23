@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Mapping, Self, SupportsFloat, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Self, SupportsFloat, cast
 
 from jetpytools import KwargsNotNone, Singleton, cachedproperty
 from vsdenoise import (
@@ -220,7 +221,7 @@ class BasedDenoise[**P, R](VSObject):
         self.dfttest.select()
         self.mc.select()
         self.bm3d.select()
-        self.nl_means
+        self.nl_means  # # noqa: B018
 
         return res
 
@@ -281,7 +282,7 @@ class BasedDenoise[**P, R](VSObject):
 
             chroma_denoiser = func(self)
 
-            setattr(chroma_denoiser, "__is_selected_chroma__", True)
+            setattr(chroma_denoiser, "__is_selected_chroma__", True)  # noqa: B010
 
             return chroma_denoiser
 

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable, MutableSequence, Sequence
 from contextlib import suppress
 from fractions import Fraction
 from functools import cached_property, partial
 from itertools import groupby, pairwise
 from math import inf
 from types import NoneType
-from typing import Any, Callable, Iterable, MutableSequence, Optional, Self, Sequence, TypeGuard, cast, overload
+from typing import Any, Self, TypeGuard, cast, overload
 
 import numpy as np
 from pytimeconv import Convert
@@ -280,7 +281,7 @@ def adjust_clip_frames(clip: vs.VideoNode, trims_or_dfs: list[Trim | DuplicateFr
 
 
 def adjust_audio_frames(
-    audio: vs.AudioNode, trims_or_dfs: list[Trim | DuplicateFrame] | Trim, *, ref_fps: Optional[Fraction] = None
+    audio: vs.AudioNode, trims_or_dfs: list[Trim | DuplicateFrame] | Trim, *, ref_fps: Fraction | None = None
 ) -> vs.AudioNode:
     audios: list[vs.AudioNode] = []
     trims_or_dfs = [trims_or_dfs] if isinstance(trims_or_dfs, tuple) else trims_or_dfs
@@ -325,7 +326,7 @@ def pick_px_op(
 class MutableVideoNode(MutableSequence[vs.VideoNode]):
     def __init__(self, node: vs.VideoNode | Sequence[tuple[int, vs.VideoNode]]) -> None:
         if isinstance(node, vs.VideoNode):
-            self._mutable_node: list[vs.VideoNode | tuple[int, None | vs.VideoNode]] = [
+            self._mutable_node: list[vs.VideoNode | tuple[int, vs.VideoNode | None]] = [
                 (x, node) for x in range(node.num_frames)
             ]
         else:
@@ -350,29 +351,29 @@ class MutableVideoNode(MutableSequence[vs.VideoNode]):
         return self.__class__(values)
 
     @overload
-    def __setitem__(self, index: int, value: vs.VideoNode | tuple[int, None | vs.VideoNode]) -> None: ...
+    def __setitem__(self, index: int, value: vs.VideoNode | tuple[int, vs.VideoNode | None]) -> None: ...
 
     @overload
     def __setitem__(
         self,
         index: slice,
         value: vs.VideoNode
-        | tuple[int, None | vs.VideoNode]
+        | tuple[int, vs.VideoNode | None]
         | Iterable[vs.VideoNode]
-        | Iterable[tuple[int, None | vs.VideoNode]],
+        | Iterable[tuple[int, vs.VideoNode | None]],
     ) -> None: ...
 
     def __setitem__(
         self,
         index: int | slice,
         value: vs.VideoNode
-        | tuple[int, None | vs.VideoNode]
+        | tuple[int, vs.VideoNode | None]
         | Iterable[vs.VideoNode]
-        | Iterable[tuple[int, None | vs.VideoNode]],
+        | Iterable[tuple[int, vs.VideoNode | None]],
     ) -> None:
         self._normalize_inner_list()
 
-        def _no_iterable(value: Any) -> TypeGuard[vs.VideoNode | tuple[int, None | vs.VideoNode]]:
+        def _no_iterable(value: Any) -> TypeGuard[vs.VideoNode | tuple[int, vs.VideoNode | None]]:
             return (
                 isinstance(value, tuple)
                 and isinstance(value[0], int)
@@ -380,7 +381,7 @@ class MutableVideoNode(MutableSequence[vs.VideoNode]):
             ) or isinstance(value, vs.VideoNode)
 
         if isinstance(index, int):
-            self._mutable_node[index] = cast(vs.VideoNode | tuple[int, None | vs.VideoNode], value)
+            self._mutable_node[index] = cast(vs.VideoNode | tuple[int, vs.VideoNode | None], value)
         elif isinstance(index, slice):
             if _no_iterable(value):
                 self._mutable_node[index] = [value]
