@@ -26,7 +26,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["mypy==2.3.0", "ruff==0.15.22", "vapoursynth-fmtconv"]
+dev = ["mypy==2.3.0", "ruff==0.16.0", "vapoursynth-fmtconv"]
 
 [project.optional-dependencies]
 comp = ["lvsfunc"]
@@ -96,7 +96,7 @@ exclude = ["stubs/vapoursynth/__init__.pyi"]
 
 [tool.ruff.lint]
 extend-select = ["E", "C4", "I", "PYI", "Q", "SIM", "N", "W", "RUF"]
-ignore = ["PYI041"]
+ignore = ["PYI041", "B008"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.*" = ["F401", "F403"]

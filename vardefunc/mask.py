@@ -35,7 +35,7 @@ def cambi_mask(
     scores = core.akarin.Cambi(clip, scores=True, **cambi_args)
     if merge_previous:
         cscores = [
-            blur_func(scores.std.PropToClip(f"CAMBI_SCALE{i}").std.Deflate().std.Deflate()) for i in range(0, scale + 1)
+            blur_func(scores.std.PropToClip(f"CAMBI_SCALE{i}").std.Deflate().std.Deflate()) for i in range(scale + 1)
         ]
         scaler = Scaler.ensure_obj(scaler)
 

@@ -1,6 +1,6 @@
 import itertools
 import math
-from typing import Sequence
+from collections.abc import Sequence
 
 from pytimeconv import Convert
 from vsmasktools import max_planes, region_rel_mask
@@ -117,11 +117,7 @@ class OCR:
         clip_async_render(ocred, progress="OCRing clip...", callback=_callback)
         self.results += sorted(results)
 
-    def write_ass(
-        self,
-        output: AnyPath,
-        string_replace: list[tuple[str, str]] = [("_", "-"), ("…", "..."), ("‘", "'"), ("’", "'"), (" '", "'")],  # noqa: RUF001
-    ) -> None:
+    def write_ass(self, output: AnyPath, string_replace: list[tuple[str, str]] | None = None) -> None:
         """Write results as a readable ass file.
 
         Args:
@@ -132,6 +128,7 @@ class OCR:
                 Defaults to [ ('_', '-'), ('…', '...'), ('‘', "'"), ('’', "'"), (" '", "'") ].
         """  # noqa: RUF002
         resultsd = dict[int, tuple[int, str]]()
+        string_replace = string_replace or [("_", "-"), ("…", "..."), ("‘", "'"), ("’", "'"), (" '", "'")]  # noqa: RUF001
 
         for frame, string_byte in sorted(self.results):
             nstring = string_byte.decode("utf-8").replace("\n", "\\N")

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from fractions import Fraction
 from os import PathLike
-from typing import Any, Self, Sequence
+from typing import Any, Self
 
 from jetpytools import StrictRange
 from numpy import array as np_array
