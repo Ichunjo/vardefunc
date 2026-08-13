@@ -26,7 +26,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["mypy==2.3.0", "ruff==0.16.2", "vapoursynth-fmtconv"]
+dev = ["mypy==2.3.0", "ruff==0.16.3", "vapoursynth-fmtconv"]
 
 [project.optional-dependencies]
 comp = ["lvsfunc"]
