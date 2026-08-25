@@ -19,17 +19,14 @@ classifiers = [
 dynamic = ["version"]
 
 dependencies = [
-    "numpy>=2.0.0",
+    "numpy>=2.5.0",
     "pytimeconv>=0.0.2",
-    "VapourSynth>=69",
-    "vsjetpack~=2.1.1",
+    "VapourSynth>=79",
+    "vsjetpack~=2.2.2",
 ]
 
 [dependency-groups]
-dev = ["mypy==2.3.1", "ruff==0.16.4", "vapoursynth-fmtconv"]
-
-[project.optional-dependencies]
-comp = ["lvsfunc"]
+dev = ["mypy==2.3.1", "ruff==0.16.4", "vsstubs>=2.3.0"]
 
 [project.urls]
 Homepage = "https://github.com/Ichunjo/vardefunc"
@@ -54,10 +51,6 @@ next-version = "minor"
 distance = "{next_version}.dev{distance}+{vcs}{rev}"
 dirty = "{next_version}+dirty"
 distance-dirty = "{next_version}.dev{distance}+{vcs}{rev}.dirty"
-
-[tool.uv.sources]
-vapoursynth-ffms2 = { index = "vs-wheels" }
-vapoursynth-fmtconv = { index = "vs-wheels" }
 
 [[tool.uv.index]]
 name = "pypi"
