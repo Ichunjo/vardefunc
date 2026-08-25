@@ -5,9 +5,8 @@ from fractions import Fraction
 from os import PathLike
 from typing import Any, Self
 
+import numpy as np
 from jetpytools import StrictRange
-from numpy import array as np_array
-from numpy import c_, int8, int16, int32, uint8, uint16, uint32
 from numpy.typing import NDArray
 from pytimeconv import Convert
 from vapoursynth import VideoNode
@@ -31,7 +30,7 @@ OpInput = (
 )
 
 # Any Numpy integrer
-AnyInt = int8 | int16 | int32 | uint8 | uint16 | uint32
+AnyInt = np.int8 | np.int16 | np.int32 | np.uint8 | np.uint16 | np.uint32
 
 AnyPath = PathLike[str] | str
 
@@ -39,11 +38,11 @@ AnyPath = PathLike[str] | str
 class VNumpy:
     @staticmethod
     def array(obj: NDArray[AnyInt] | Sequence[Any], **kwargs: Any) -> NDArray[AnyInt]:
-        return np_array(obj, **kwargs)
+        return np.array(obj, **kwargs)
 
     @classmethod
     def zip_arrays(cls, *arrays: NDArray[AnyInt]) -> NDArray[AnyInt]:
-        return c_[*arrays]
+        return np.c_[*arrays]
 
 
 class DuplicateFrame(int):
