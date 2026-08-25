@@ -12,7 +12,6 @@ from vsdenoise import (
     MVTools,
     SLocationLike,
     bm3d,
-    ccd,
     dpir,
     mc_degrain,
     nl_means,
@@ -266,7 +265,7 @@ class BasedDenoise[**P, R](VSObject):
             "nl_means": Filter.NLMeans(self, lambda clip, **kwargs: nl_means(clip, **kwargs)),
             "wnnm": Filter.WNNM(self, lambda clip, **kwargs: wnnm(clip, **kwargs)),
             "dpir": Filter.DPIR(self, lambda clip, **kwargs: dpir.DEBLOCK(clip, **kwargs)),
-            "ccd": Filter.CCD(self, lambda clip, **kwargs: ccd(clip, **kwargs)),
+            "ccd": Filter.CCD(self, lambda clip, **kwargs: core.zsmooth.CCD(clip, **kwargs)),
         }
 
     @property

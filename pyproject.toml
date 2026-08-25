@@ -22,7 +22,8 @@ dependencies = [
     "numpy>=2.5.0",
     "pytimeconv>=0.0.2",
     "VapourSynth>=79",
-    "vsjetpack~=2.2.2",
+    "vapoursynth-zsmooth>=0.20.0",
+    "vsjetpack[denoise]~=2.2.2",
 ]
 
 [dependency-groups]
