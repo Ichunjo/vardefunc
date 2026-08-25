@@ -1,30 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
-from functools import lru_cache
 from typing import Any, cast, overload
 
 import numpy as np
-import vsscale
 import vstools
-from vskernels import BorderHandling, ComplexKernelLike, Hermite, LeftShift, ScalerLike, TopShift
-from vstools import FieldBased, FrameRangeN, FrameRangesN, vs
+from vstools import FrameRangeN, FrameRangesN, vs
 
 from .types import AnyInt, VNumpy
 from .util import normalise_ranges, ranges_to_indices, select_frames
 
-__all__ = ["Rescale", "is_preview", "replace_ranges"]
-
-
-@lru_cache
-def is_preview() -> bool:
-    import importlib
-
-    try:
-        module = importlib.import_module("vspreview.api")
-        return module.is_preview()
-    except ImportError:
-        return False
+__all__ = ["replace_ranges"]
 
 
 vstools.replace_ranges.exclusive = True
@@ -141,40 +127,3 @@ def replace_ranges(
     return select_frames(
         [clip_a, *clips], VNumpy.zip_arrays(nindices, np.arange(clip_a.num_frames, dtype=np.uint32)), mismatch=mismatch
     )
-
-
-class Rescale(vsscale.Rescale):
-    def __init__(
-        self,
-        clip: vs.VideoNode,
-        /,
-        height: int | float,
-        kernel: ComplexKernelLike,
-        upscaler: ScalerLike = vsscale.ArtCNN,
-        downscaler: ScalerLike = Hermite(linear=True),
-        width: int | float | None = None,
-        base_height: int | None = None,
-        base_width: int | None = None,
-        crop: tuple[
-            vsscale.helpers.LeftCrop, vsscale.helpers.RightCrop, vsscale.helpers.TopCrop, vsscale.helpers.BottomCrop
-        ] = vsscale.helpers.CropRel(),
-        shift: tuple[TopShift, LeftShift] = (0, 0),
-        field_based: FieldBased | bool | None = None,
-        border_handling: int | BorderHandling = BorderHandling.MIRROR,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(
-            clip,
-            height,
-            kernel,
-            upscaler,
-            downscaler,
-            width,
-            base_height,
-            base_width,
-            crop,
-            shift,
-            field_based,
-            border_handling,
-            **{"_add_props": is_preview()} | kwargs,
-        )

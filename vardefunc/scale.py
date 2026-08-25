@@ -22,8 +22,6 @@ from vstools import (
     vs,
 )
 
-from .vsjet_proxy import is_preview
-
 __all__ = ["EwaLanczosChroma", "mpv_preview"]
 
 
@@ -113,13 +111,11 @@ def mpv_preview(
             if (planes[0].width, planes[0].height) > (w, h):
                 planes[0] = dscale.scale(planes[0], w, h)
 
-                if is_preview():
-                    props["PreviewDscale"] = dscale.__class__.__name__
+                props["PreviewDscale"] = dscale.__class__.__name__
         else:
             planes[0] = scale.scale(planes[0], w, h)
 
-        if is_preview():
-            props["PreviewScale"] = scale.__class__.__name__
+        props["PreviewScale"] = scale.__class__.__name__
 
     if isinstance(cscale, (ArtCNNShader, ArtCNN)) and (w, h) == (None, None):
         preview = cscale.scale(clip.resize.Bilinear(format=vs.YUV444P16))
@@ -133,8 +129,7 @@ def mpv_preview(
 
         preview = core.std.CopyFrameProps(join(planes), clip)
 
-    if is_preview():
-        props["PreviewCscale"] = cscale.__class__.__name__
+    props["PreviewCscale"] = cscale.__class__.__name__
 
     return dither_type.apply(
         preview,
