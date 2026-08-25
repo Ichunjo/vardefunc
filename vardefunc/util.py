@@ -309,7 +309,7 @@ def pick_px_op(
             func = partial(core.std.Lut, function=lut)
         elif isinstance(lut, Sequence):
             if all(isinstance(x, int) for x in lut):
-                func = partial(core.std.Lut, lut=lut)  # type: ignore
+                func = partial(core.std.Lut, lut=lut)
             elif all(isinstance(x, float) for x in lut):
                 func = partial(core.std.Lut, lutf=lut)
             else:

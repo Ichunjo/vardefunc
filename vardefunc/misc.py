@@ -22,7 +22,7 @@ from typing import (
 )
 
 from jetpytools import CustomTypeError
-from vstools import core, depth, get_depth, get_w, insert_clip, join, plane, vs
+from vstools import core, depth, get_depth, get_w, insert_clip, join, plane, stack_clips, vs
 
 from .types import OpInput, Output
 
@@ -279,18 +279,7 @@ class DebugOutput(DebugOutputMMap):
                 "Problematic output: \noutput list out of range", 5, 2
             )
         else:
-            from lvsfunc.comparison import Direction, Stack
-
-            if len({c.width for c in planes}) == len({c.height for c in planes}) == 1:
-                out = Stack(planes).clip
-            else:
-                try:
-                    out = Stack([planes[0], Stack(planes[1:], direction=Direction.VERTICAL).clip]).clip
-                except ValueError:
-                    warnings.warn("DebugOutput: unexpected subsampling")
-                    out = core.std.BlankClip(format=vs.GRAY8, color=128).text.Text(
-                        "Problematic output: \nunexpected subsampling", 5, 2
-                    )
+            out = stack_clips(planes)
         return out
 
     @staticmethod
