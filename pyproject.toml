@@ -26,7 +26,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["mypy==2.3.1", "ruff==0.16.4", "vsstubs>=2.3.0"]
+dev = ["mypy==2.3.1", "ruff==0.16.5", "vsstubs>=2.3.0"]
 
 [project.urls]
 Homepage = "https://github.com/Ichunjo/vardefunc"
