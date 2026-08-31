@@ -28,7 +28,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["mypy==2.3.1", "ruff==0.16.5", "vsstubs>=2.3.0"]
+dev = ["mypy==2.3.1", "ruff==0.16.5", "vsstubs>=2.3.0", "vapoursynth-fmtconv"]
 
 [project.urls]
 Homepage = "https://github.com/Ichunjo/vardefunc"
@@ -53,6 +53,9 @@ next-version = "minor"
 distance = "{next_version}.dev{distance}+{vcs}{rev}"
 dirty = "{next_version}+dirty"
 distance-dirty = "{next_version}.dev{distance}+{vcs}{rev}.dirty"
+
+[tool.uv.sources]
+vapoursynth-fmtconv = { index = "vs-wheels" }
 
 [[tool.uv.index]]
 name = "pypi"
