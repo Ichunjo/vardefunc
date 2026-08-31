@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from functools import wraps
+from logging import getLogger
 from typing import TYPE_CHECKING, Any, ClassVar, Self, SupportsFloat, cast
 
 from jetpytools import KwargsNotNone, Singleton, cachedproperty
@@ -35,6 +36,8 @@ from vstools import (
 
 __all__ = ["BasedDenoise", "adaptative_regrain", "based_denoise"]
 
+logger = getLogger(__name__)
+
 
 class FilterBase[**P, R](Singleton):
     setting_name: ClassVar[str]
@@ -51,7 +54,9 @@ class FilterBase[**P, R](Singleton):
         return self._bd
 
     def apply_filter(self, clip: vs.VideoNode, **kwargs: Any) -> vs.VideoNode:
-        return self._filter_func(clip, **self._bd.settings[self.setting_name] | KwargsNotNone(kwargs))
+        kwargs = self._bd.settings[self.setting_name] | KwargsNotNone(kwargs)
+        logger.info("Applying %s with %s", self.setting_name, kwargs)
+        return self._filter_func(clip, **kwargs)
 
     def select(self) -> Self:
         self.__is_selected__ = True
@@ -126,9 +131,9 @@ class Filter:
         mv: MVTools
 
         def apply_filter(self, clip: vs.VideoNode, **kwargs: Any) -> vs.VideoNode:
-            clip, mv = self._filter_func(
-                clip, export_globals=True, **self._bd.settings[self.setting_name] | KwargsNotNone(kwargs)
-            )
+            kwargs = self._bd.settings[self.setting_name] | KwargsNotNone(kwargs)
+            logger.info("Applying %s with %s", self.setting_name, kwargs)
+            clip, mv = self._filter_func(clip, export_globals=True, **kwargs)
             self.mv = mv
             return clip
 
