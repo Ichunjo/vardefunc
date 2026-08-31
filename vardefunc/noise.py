@@ -452,7 +452,7 @@ def based_denoise(
     if bd.chroma_denoiser.is_selected() and any(p in planes for p in [1, 2]):
         chroma_args_map = {
             "nl_means": nlmeans_args | {"h": h, "ref": mc},
-            "wnnm": wnnm_args | {"ref": mc},
+            "wnnm": wnnm_args | {"ref": mc, "tr": tr},
             "dpir": dpir_args,
             "ccd": ccd_args | {"ref": mc, "temporal_radius": tr},
         }
