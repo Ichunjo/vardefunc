@@ -200,7 +200,7 @@ class Filter:
         if TYPE_CHECKING:
 
             def __call__(
-                self, *, tr: int | None = None, thr: float | None = None, **kwargs: Any
+                self, *, tr: int | None = None, threshold: float | None = None, **kwargs: Any
             ) -> BasedDenoise[P, R]: ...
 
 
@@ -237,7 +237,7 @@ class BasedDenoise[**P, R](VSObject):
             "nl_means": {"tr": 1, "h": 0.25, "planes": [1, 2]},
             "wnnm": {"tr": 1, "planes": [1, 2]},
             "dpir": {"planes": [1, 2]},
-            "ccd": {"tr": 1, "planes": [1, 2]},
+            "ccd": {"temporal_radius": 1},
         }
 
     @settings.deleter  # type: ignore[no-redef]
@@ -427,7 +427,7 @@ def based_denoise(
         wclip = (
             clip
             if bd.chroma_denoiser.is_selected()
-            and bd.chroma_denoiser.setting_name in ("nl_means", "wnnm")
+            and bd.chroma_denoiser.setting_name in ("nl_means", "wnnm", "ccd")
             and any(p in planes for p in [1, 2])
             else get_y(clip)
         )
@@ -454,7 +454,7 @@ def based_denoise(
             "nl_means": nlmeans_args | {"h": h, "ref": mc},
             "wnnm": wnnm_args | {"ref": mc},
             "dpir": dpir_args,
-            "ccd": ccd_args,
+            "ccd": ccd_args | {"ref": mc, "temporal_radius": tr},
         }
         chromad = bd.chroma_denoiser.apply_filter(clip, **chroma_args_map[bd.chroma_denoiser.setting_name])
     else:
