@@ -1756,6 +1756,10 @@ class VideoNode(RawNode):
     bwdif: Final[_bwdif._VideoNode_bound.Plugin]
     """BobWeaver Deinterlacing Filter"""
 # </attribute/VideoNode_bound/bwdif>
+# <attribute/VideoNode_bound/cambi>
+    cambi: Final[_cambi._VideoNode_bound.Plugin]
+    """Contrast Aware Multiscale Banding Index (CAMBI)."""
+# </attribute/VideoNode_bound/cambi>
 # <attribute/VideoNode_bound/deblock>
     deblock: Final[_deblock._VideoNode_bound.Plugin]
     """Reduces the blockiness of the image using the deblocking filter from h264"""
@@ -1946,6 +1950,10 @@ class Core:
     bwdif: Final[_bwdif._Core_bound.Plugin]
     """BobWeaver Deinterlacing Filter"""
 # </attribute/Core_bound/bwdif>
+# <attribute/Core_bound/cambi>
+    cambi: Final[_cambi._Core_bound.Plugin]
+    """Contrast Aware Multiscale Banding Index (CAMBI)."""
+# </attribute/Core_bound/cambi>
 # <attribute/Core_bound/d2v>
     d2v: Final[_d2v._Core_bound.Plugin]
     """D2V Source"""
@@ -2212,6 +2220,20 @@ class _bwdif:
             def Bwdif(self, /, field: _IntLike, edeint: VideoNode | None = None, opt: _IntLike | None = None) -> VideoNode: ...
 
 # </implementation/bwdif>
+
+# <implementation/cambi>
+class _cambi:
+    class _Core_bound:
+        class Plugin(_VSPlugin):
+            @_Wrapper.Function
+            def Cambi(self, /, clip: VideoNode, window_size: _IntLike | None = None, topk: _FloatLike | None = None, tvi_threshold: _FloatLike | None = None, max_log_contrast: _IntLike | None = None, eotf: _IntLike | None = None, prop: _AnyStr | None = None, scores: _IntLike | None = None, scaling: _FloatLike | None = None) -> VideoNode: ...
+
+    class _VideoNode_bound:
+        class Plugin(_VSPlugin):
+            @_Wrapper.Function
+            def Cambi(self, /, window_size: _IntLike | None = None, topk: _FloatLike | None = None, tvi_threshold: _FloatLike | None = None, max_log_contrast: _IntLike | None = None, eotf: _IntLike | None = None, prop: _AnyStr | None = None, scores: _IntLike | None = None, scaling: _FloatLike | None = None) -> VideoNode: ...
+
+# </implementation/cambi>
 
 # <implementation/d2v>
 class _d2v:

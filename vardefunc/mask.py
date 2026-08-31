@@ -6,9 +6,7 @@ from vskernels import Bilinear, Scaler, ScalerLike
 from vsrgtools import MeanMode, box_blur
 from vstools import DitherType, VSFunction, core, depth, get_depth, vs
 
-__all__ = [
-    "cambi_mask",
-]
+__all__ = ["cambi_mask"]
 
 
 def cambi_mask(
@@ -32,7 +30,7 @@ def cambi_mask(
     if get_depth(clip) > 10:
         clip = depth(clip, 10, dither_type=DitherType.NONE)
 
-    scores = core.akarin.Cambi(clip, scores=True, **cambi_args)
+    scores = core.cambi.Cambi(clip, scores=True, **cambi_args)
     if merge_previous:
         cscores = [
             blur_func(scores.std.PropToClip(f"CAMBI_SCALE{i}").std.Deflate().std.Deflate()) for i in range(scale + 1)
