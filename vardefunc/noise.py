@@ -26,6 +26,7 @@ from vstools import (
     VSFunctionKwArgs,
     VSObject,
     core,
+    depth,
     get_y,
     join,
     normalize_planes,
@@ -430,9 +431,11 @@ def based_denoise(
             and any(p in planes for p in [1, 2])
             else get_y(clip)
         )
+        wclip = depth(wclip, 16, dither_type="none")
         frange = bd.frange.apply_filter(wclip, **full_range_args) if bd.frange.is_selected() else wclip
         dft = bd.dfttest.apply_filter(frange, tr=tr, sloc=sloc, **dfttest_args) if bd.dfttest.is_selected() else frange
         mc = bd.mc.apply_filter(wclip, prefilter=dft, tr=tr, thsad=thsad, **mc_degrain_args)
+        mc = depth(mc, 32)
     else:
         mc = clip
 
