@@ -24,7 +24,7 @@ dependencies = [
     "VapourSynth>=79",
     "vapoursynth-cambi>=1.4.0",
     "vapoursynth-zsmooth>=0.20.0",
-    "vsjetpack[denoise]~=2.2.2",
+    "vsjetpack[denoise]~=3.0.0",
 ]
 
 [dependency-groups]
